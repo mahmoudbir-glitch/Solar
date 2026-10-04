@@ -26,6 +26,12 @@ export function EnergyFlow({telemetry}:Props){
  const solarDuration=pulseDuration(telemetry.solarPowerW);
  return <div className={`energy-flow ${online?'is-online':'is-offline'}`} aria-label="مخطط تدفق الطاقة">
   <svg className="flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+   <defs>
+    <linearGradient id="solarFlow" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stopColor="#f59e0b" stopOpacity=".15"/><stop offset="100%" stopColor="#f59e0b"/></linearGradient>
+    <linearGradient id="homeFlow" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#29b6f6"/><stop offset="100%" stopColor="#29b6f6" stopOpacity=".15"/></linearGradient>
+    <linearGradient id="batteryFlow" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#26a69a" stopOpacity=".15"/><stop offset="100%" stopColor="#26a69a"/></linearGradient>
+    <linearGradient id="gridFlow" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#ab47bc"/><stop offset="100%" stopColor="#ab47bc" stopOpacity=".15"/></linearGradient>
+   </defs>
    <line className="flow-path solar-path" x1="50" y1="18" x2="50" y2="40"/>
    <line className="flow-path home-path" x1="60" y1="50" x2="82" y2="50"/>
    <line className="flow-path battery-path" x1="50" y1="60" x2="50" y2="82"/>
