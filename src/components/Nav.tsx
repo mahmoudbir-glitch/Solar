@@ -1,0 +1,5 @@
+import Link from 'next/link';
+import {Battery, Gauge, Home, Settings, Zap} from 'lucide-react';
+const items=[['/','الرئيسية',Home],['/battery','البطارية',Battery],['/inverter','الإنفرتر',Gauge],['/energy','الطاقة',Zap],['/settings','الإعدادات',Settings]] as const;
+export function Nav(){return <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-[#1b3028] bg-[#07100df2] backdrop-blur"><div className="mx-auto flex max-w-5xl justify-around px-2 py-3">{items.map(([href,label,Icon])=><Link key={href} href={href} className="flex min-w-16 flex-col items-center gap-1 text-xs text-emerald-100/70"><Icon size={21}/><span>{label}</span></Link>)}</div></nav>}
+export function Header(){return <header className="mb-6 flex items-center justify-between"><div><div className="text-xs font-semibold tracking-widest text-emerald-400">FELICITY ENERGY MONITOR</div><h1 className="mt-1 text-2xl font-extrabold">مراقبة منظومة الطاقة</h1></div><div className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">حالة الاتصال تُقرأ من Gateway</div></header>}
