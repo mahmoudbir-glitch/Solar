@@ -1,10 +1,10 @@
 'use client';
 
-import {FormEvent, useState} from 'react';
+import {FormEvent, Suspense, useState} from 'react';
 import {LockKeyhole, LogIn, Sun, UserRound} from 'lucide-react';
 import {useRouter, useSearchParams} from 'next/navigation';
 
-export default function LoginPage(){
+function LoginContent(){
  const router=useRouter();
  const searchParams=useSearchParams();
  const [username,setUsername]=useState('');
@@ -43,4 +43,11 @@ export default function LoginPage(){
    </form>
   </div>
  </main>
+}
+
+
+export default function LoginPage(){
+ return <Suspense fallback={<main className="login-page"><div className="login-card" aria-busy="true">جارٍ التحميل...</div></main>}>
+  <LoginContent/>
+ </Suspense>;
 }
