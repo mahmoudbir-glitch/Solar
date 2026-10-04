@@ -18,7 +18,7 @@ export function Header(){
  return <header className="app-header">
   <div className="brand">
    <div className="brand-mark"><Sun size={24} strokeWidth={2.4}/></div>
-   <div><div className="brand-name">شمسك</div><div className="brand-tag">الشمس تعمل من أجلك</div></div>
+   <div><div className="brand-name">Solar</div><div className="brand-tag">مراقبة منظومة الطاقة الشمسية</div></div>
   </div>
   <div className="header-actions">
    <div className="live-badge"><Circle size={8} fill="currentColor"/><span>غير متصل</span><small>آخر قراءة --</small></div>
