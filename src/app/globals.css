@@ -2,4 +2,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#07100d;color:#edf7f1;font-family:Cairo,Arial,sans-serif}a{text-decoration:none;color:inherit}.card{background:#0d1915;border:1px solid #1b3028;border-radius:18px}.muted{color:#8da79a}.value{font-variant-numeric:tabular-nums}
+
+:root{color-scheme:light}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:#f7f1e7;color:#20251f;font-family:Cairo,Arial,sans-serif}
+a{text-decoration:none;color:inherit}
+.card{background:#fffaf2;border:1px solid #e5dac8;border-radius:18px;box-shadow:0 4px 18px rgba(72,55,32,.06)}
+.muted{color:#7c756b}
+.value{font-variant-numeric:tabular-nums}
