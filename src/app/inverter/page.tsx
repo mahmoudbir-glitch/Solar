@@ -19,7 +19,7 @@ export default function Inverter(){
  return <>
   <h1 className="page-title">الإنفرتر</h1><p className="page-subtitle">Axpert MAX 7200-48-230 · قراءة حقيقية عند الاتصال بالبوابة</p>
   <div className={"offline-banner "+(online?'online-banner':'')}><span>{online?'النظام متصل — قراءة حقيقية':'النظام غير متصل — لا توجد قراءة حقيقية'}</span></div>
-  <div className="grid-2">{values.map(([t,u,v,c])=><div className="metric-card" key={t}><div className="metric-head">{t}</div><div className="metric-value" style={{color:online?c:'#aeb8bb'}}>{v===null?'--':Number(v).toFixed(online&&typeof v==='number'&&t==='Load'?2:1)} <small>{u}</small></div></div>)}</div>
+  <div className="grid-2">{values.map(([t,u,v,c])=><div className="metric-card" key={t}><div className="metric-head">{t}</div><div className="metric-value" style={{color:online && typeof c==='string'?c:'#aeb8bb'}}>{v===null?'--':Number(v).toFixed(online&&typeof v==='number'&&t==='Load'?2:1)} <small>{u}</small></div></div>)}</div>
   <div className="card" style={{marginTop:12}}><h2 className="section-title">معلومات الجهاز</h2><div className="grid-2">
    <div><span className="muted">الطراز</span><div>Axpert MAX 7200-48-230</div></div>
    <div><span className="muted">القدرة</span><div>7200 <span className="unit">W</span></div></div>
