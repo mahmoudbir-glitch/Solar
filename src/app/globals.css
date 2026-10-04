@@ -24,14 +24,14 @@ button,input,select{font:inherit}
 .energy-flow{position:relative;min-height:330px;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;align-items:center;gap:8px;isolation:isolate;overflow:hidden}
 .flow-svg{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible}
 .flow-path{fill:none;stroke-width:.7;stroke-linecap:round;stroke-dasharray:3 4;opacity:.32}
-.solar-path{stroke:#f59e0b}.home-path{stroke:#29b6f6}.battery-path{stroke:#26a69a}.grid-path{stroke:#ab47bc}
+.solar-path{stroke:url(#solarFlow)}.home-path{stroke:url(#homeFlow)}.battery-path{stroke:url(#batteryFlow)}.grid-path{stroke:url(#gridFlow)}
 .flow-node{z-index:2;width:116px;justify-self:center;text-align:center}.flow-node-icon{width:56px;height:56px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;margin:0 auto 6px;background:color-mix(in srgb,var(--node-color) 10%,white);color:var(--node-color);border:1px solid color-mix(in srgb,var(--node-color) 18%,white);box-shadow:0 5px 18px color-mix(in srgb,var(--node-color) 12%,transparent);transition:transform .25s ease,filter .25s ease}
 .flow-node-title{font-size:11px;color:#60727b}.flow-node-value{font-size:15px;font-weight:800;direction:ltr}.flow-node-value small{font-size:8px;color:#90a4ae;font-weight:600}
 .flow-node-top{grid-column:2;grid-row:1}.flow-node-right{grid-column:3;grid-row:2}.flow-node-bottom{grid-column:2;grid-row:3}.flow-node-left{grid-column:1;grid-row:2}
 .flow-center{z-index:3;grid-column:2;grid-row:2;justify-self:center;width:112px;height:112px;border-radius:50%;display:grid;place-items:center;background:#fff8eb;border:2px solid #ffd27a;color:#f59e0b;box-shadow:0 8px 25px rgba(245,158,11,.12);position:relative}
 .flow-center-inner{text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}.flow-center-inner strong{font-size:11px;color:#8b7b62}.flow-center-inner span{font-size:8px;color:#90a4ae}
 .flow-ring{position:absolute;inset:-7px;border:2px solid rgba(245,158,11,.18);border-radius:50%}
-.energy-flow.is-online .flow-node-icon{animation:nodePulse var(--pulse-duration,2.8s) ease-in-out infinite}.energy-flow.is-online .flow-ring{animation:ringPulse 2.8s ease-in-out infinite}.energy-flow.is-online .flow-path{animation:energyFlow 1.5s linear infinite;opacity:.82}
+.energy-flow.is-online .flow-node-icon{animation:nodePulse var(--pulse-duration,2.8s) ease-in-out infinite}.energy-flow.is-online .flow-ring{animation:ringPulse 2.8s ease-in-out infinite}.energy-flow.is-online .flow-path{animation:energyFlow 1.5s linear infinite;opacity:.9}
 .energy-flow.is-offline .flow-node-icon{filter:grayscale(1);background:#f1f3f3;color:#aeb8bb;border-color:#e0e5e5;box-shadow:none}.energy-flow.is-offline .flow-path{stroke:#cbd3d5;opacity:.58}.energy-flow.is-offline .flow-center{color:#aeb8bb;background:#f7f8f8;border-color:#dfe5e5;box-shadow:none}.energy-flow.is-offline .flow-ring{border-color:#e1e6e6}
 @keyframes nodePulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 transparent)}50%{transform:scale(1.05);filter:drop-shadow(0 0 9px color-mix(in srgb,var(--node-color) 28%,transparent))}}
 @keyframes energyFlow{to{stroke-dashoffset:-28}}
