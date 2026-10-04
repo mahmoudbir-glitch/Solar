@@ -1,5 +1,39 @@
+'use client';
 import Link from 'next/link';
-import {Battery, Gauge, Home, Settings, Zap} from 'lucide-react';
-const items=[['/','الرئيسية',Home],['/battery','البطارية',Battery],['/inverter','الإنفرتر',Gauge],['/energy','الطاقة',Zap],['/settings','الإعدادات',Settings]] as const;
-export function Nav(){return <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-[#1b3028] bg-[#07100df2] backdrop-blur"><div className="mx-auto flex max-w-5xl justify-around px-2 py-3">{items.map(([href,label,Icon])=><Link key={href} href={href} className="flex min-w-16 flex-col items-center gap-1 text-xs text-emerald-100/70"><Icon size={21}/><span>{label}</span></Link>)}</div></nav>}
-export function Header(){return <header className="mb-6 flex items-center justify-between"><div><div className="text-xs font-semibold tracking-widest text-emerald-400">FELICITY ENERGY MONITOR</div><h1 className="mt-1 text-2xl font-extrabold">مراقبة منظومة الطاقة</h1></div><div className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">حالة الاتصال تُقرأ من Gateway</div></header>}
+import {usePathname} from 'next/navigation';
+import {Battery, Home, Settings, Sun, Wallet, Zap, LogOut, Circle} from 'lucide-react';
+
+const items=[
+ ['/','الرئيسية',Sun,'solar'],
+ ['/home','المنزل',Home,'home'],
+ ['/battery','البطارية',Battery,'battery'],
+ ['/energy','الطاقة',Zap,'energy'],
+ ['/money','المال',Wallet,'money'],
+ ['/settings','الإعدادات',Settings,'settings'],
+] as const;
+
+const colors:{[key:string]:string}={solar:'#F59E0B',home:'#29B6F6',battery:'#26A69A',energy:'#FBC02D',money:'#AB47BC',settings:'#64748B'};
+
+export function Header(){
+ const pathname=usePathname();
+ return <header className="app-header">
+  <div className="brand">
+   <div className="brand-mark"><Sun size={24} strokeWidth={2.4}/></div>
+   <div><div className="brand-name">شمسك</div><div className="brand-tag">الشمس تعمل من أجلك</div></div>
+  </div>
+  <div className="header-actions">
+   <div className="live-badge"><Circle size={8} fill="currentColor"/><span>غير متصل</span><small>آخر قراءة —</small></div>
+   <button className="icon-button" aria-label="تسجيل الخروج"><LogOut size={18}/></button>
+  </div>
+ </header>
+}
+
+export function Nav(){
+ const pathname=usePathname();
+ return <nav className="bottom-nav"><div className="nav-inner">{items.map(([href,label,Icon,key])=>{
+  const active=pathname===href;
+  return <Link key={href} href={href} className={`nav-item ${active?'active':''}`} style={{'--accent':colors[key]} as React.CSSProperties}>
+   <span className="nav-icon"><Icon size={20}/></span><span>{label}</span>
+  </Link>
+ })}</div></nav>
+}
