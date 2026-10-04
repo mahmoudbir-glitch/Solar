@@ -1,6 +1,8 @@
 import asyncio
 import os
 import re
+import threading
+from contextlib import suppress
 from datetime import datetime, timezone
 from typing import Any
 
@@ -8,6 +10,8 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="Solar Gateway", version="0.4.0")
+SERIAL_LOCK = threading.Lock()
+poll_task: asyncio.Task[None] | None = None
 
 TOKEN = os.getenv("GATEWAY_TOKEN", "")
 DEFAULT_SERIAL_PORT = os.getenv("INVERTER_SERIAL_PORT", "")
@@ -258,6 +262,41 @@ def refresh_from_serial(port_name: str, baudrate: int, timeout_ms: int) -> dict[
     return data
 
 
+def refresh_serial_locked(port_name: str, baudrate: int, timeout_ms: int) -> dict[str, Any]:
+    with SERIAL_LOCK:
+        return refresh_from_serial(port_name, baudrate, timeout_ms)
+
+
+async def poll_serial_gateway() -> None:
+    while True:
+        try:
+            data = await asyncio.to_thread(
+                refresh_serial_locked,
+                DEFAULT_SERIAL_PORT,
+                DEFAULT_BAUDRATE,
+                DEFAULT_TIMEOUT_MS,
+            )
+            latest.update(data)
+        except Exception:
+            latest.update({"source": "none", "timestamp": now_iso()})
+        await asyncio.sleep(5)
+
+
+@app.on_event("startup")
+async def start_serial_polling() -> None:
+    global poll_task
+    if DEFAULT_SERIAL_PORT:
+        poll_task = asyncio.create_task(poll_serial_gateway())
+
+
+@app.on_event("shutdown")
+async def stop_serial_polling() -> None:
+    if poll_task is not None:
+        poll_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await poll_task
+
+
 @app.get("/api/device")
 def device(x_gateway_token: str | None = Header(default=None)):
     auth(x_gateway_token)
@@ -289,7 +328,8 @@ def connection_test(request: ConnectionTestRequest, x_gateway_token: str | None 
     if not port_name:
         raise HTTPException(400, "serial_port مطلوب لاتصال Axpert عبر RS232")
     try:
-        response = serial_query(port_name, request.baudrate, request.timeout_ms, "QMOD")
+        with SERIAL_LOCK:
+            response = serial_query(port_name, request.baudrate, request.timeout_ms, "QMOD")
         mode = parse_qmod(response)
         return {
             "ok": True,
@@ -318,7 +358,7 @@ def refresh(request: RefreshRequest, x_gateway_token: str | None = Header(defaul
     if not port_name:
         return {"ok": False, "message": "لم يتم تحديد منفذ RS232 في Gateway"}
     try:
-        data = refresh_from_serial(port_name, request.baudrate, request.timeout_ms)
+        data = refresh_serial_locked(port_name, request.baudrate, request.timeout_ms)
         latest.update(data)
         return {"ok": True, "message": "تم تحديث البيانات من الإنفرتر الحقيقي", "telemetry": latest}
     except Exception as exc:
