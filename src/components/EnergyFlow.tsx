@@ -1,6 +1,7 @@
 'use client';
 
 import {Battery, Grid3X3, Home, Zap, Gauge} from 'lucide-react';
+import type {CSSProperties} from 'react';
 import type {Telemetry} from '@/lib/types';
 
 type Props={telemetry:Telemetry};
@@ -20,7 +21,7 @@ export function EnergyFlow({telemetry}:Props){
   <div className="flow-lines" aria-hidden="true">
    <span className="flow-line flow-line-v"/><span className="flow-line flow-line-h"/>
   </div>
-  {nodes.map(({key,title,icon:Icon,color,position})=><div key={key} className={`flow-node flow-node-${position}`} style={{'--node-color':color} as React.CSSProperties}>
+  {nodes.map(({key,title,icon:Icon,color,position})=><div key={key} className={`flow-node flow-node-${position}`} style={{'--node-color':color} as CSSProperties}>
    <div className="flow-node-icon"><Icon size={22}/></div>
    <div className="flow-node-title">{title}</div>
    <div className="flow-node-value">{key==='solar'?kw(telemetry.solarPowerW):key==='home'?kw(telemetry.loadPowerW):key==='battery'?kw(telemetry.batteryPowerW):'--'} <small>kW</small></div>
