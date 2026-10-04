@@ -15,14 +15,13 @@ const items=[
 const colors:{[key:string]:string}={solar:'#F59E0B',home:'#29B6F6',battery:'#26A69A',energy:'#FBC02D',money:'#AB47BC',settings:'#64748B'};
 
 export function Header(){
- const pathname=usePathname();
  return <header className="app-header">
   <div className="brand">
    <div className="brand-mark"><Sun size={24} strokeWidth={2.4}/></div>
    <div><div className="brand-name">شمسك</div><div className="brand-tag">الشمس تعمل من أجلك</div></div>
   </div>
   <div className="header-actions">
-   <div className="live-badge"><Circle size={8} fill="currentColor"/><span>غير متصل</span><small>آخر قراءة —</small></div>
+   <div className="live-badge"><Circle size={8} fill="currentColor"/><span>غير متصل</span><small>آخر قراءة --</small></div>
    <button className="icon-button" aria-label="تسجيل الخروج"><LogOut size={18}/></button>
   </div>
  </header>
