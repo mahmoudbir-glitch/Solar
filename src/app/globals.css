@@ -1,0 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#07100d;color:#edf7f1;font-family:Cairo,Arial,sans-serif}a{text-decoration:none;color:inherit}.card{background:#0d1915;border:1px solid #1b3028;border-radius:18px}.muted{color:#8da79a}.value{font-variant-numeric:tabular-nums}
