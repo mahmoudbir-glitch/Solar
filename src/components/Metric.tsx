@@ -1,0 +1,1 @@
+export function Metric({title,value,unit}:{title:string,value:number|string|null,unit?:string}){return <div className="card p-4"><div className="muted text-sm">{title}</div><div className="mt-2 text-2xl font-extrabold value">{value===null?'—':value} <span className="text-sm font-semibold text-emerald-400">{unit}</span></div></div>}
