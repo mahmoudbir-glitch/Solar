@@ -1,0 +1,1 @@
+import {Header} from '@/components/Nav';export default function Energy(){return <><Header/><h2 className="mb-4 text-xl font-bold">الطاقة</h2><div className="card p-5"><p className="font-bold">سجل الطاقة</p><p className="mt-2 muted">سيتم احتساب اليومي والشهري من القراءات الحقيقية المحفوظة في قاعدة البيانات بعد ربط Supabase وGateway.</p></div></>}
