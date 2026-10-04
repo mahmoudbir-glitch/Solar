@@ -1,3 +1,3 @@
-import './globals.css';import {Nav} from '@/components/Nav';
-export const metadata={title:'Solar',description:'مراقبة منظومة Felicitysolar'};
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="ar" dir="rtl"><body><main className="mx-auto min-h-screen max-w-5xl px-4 pb-24 pt-6">{children}</main><Nav/></body></html>}
+import './globals.css';import {Nav,Header} from '@/components/Nav';
+export const metadata={title:'شمسك | Solar',description:'مراقبة منظومة الطاقة الشمسية'};
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="ar" dir="rtl"><body><div className="shell"><Header/><main>{children}</main></div><Nav/></body></html>}
