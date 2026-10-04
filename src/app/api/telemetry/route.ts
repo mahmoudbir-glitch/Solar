@@ -1,0 +1,1 @@
+import {NextResponse} from 'next/server';import {getGatewayTelemetry} from '@/lib/gateway';export async function GET(){return NextResponse.json(await getGatewayTelemetry(),{headers:{'Cache-Control':'no-store'}})}
