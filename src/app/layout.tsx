@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './modern-theme.css';
 import { AppShell } from '@/components/AppShell';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 
@@ -19,7 +20,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#D4A373',
+  themeColor: '#F8FAFC',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
