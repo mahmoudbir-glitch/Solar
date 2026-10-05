@@ -7,10 +7,10 @@ import type {Telemetry} from '@/lib/types';
 type Props={telemetry:Telemetry};
 
 const nodes=[
- {key:'solar',title:'الطاقة الشمسية',icon:Zap,color:'#f59e0b',position:'top'},
- {key:'home',title:'المنزل',icon:Home,color:'#29b6f6',position:'right'},
- {key:'battery',title:'البطارية',icon:Battery,color:'#26a69a',position:'bottom'},
- {key:'grid',title:'الشبكة',icon:Grid3X3,color:'#ab47bc',position:'left'},
+ {key:'solar',title:'الطاقة الشمسية',icon:Zap,color:'#D99A2B',position:'top'},
+ {key:'home',title:'المنزل',icon:Home,color:'#B56D4D',position:'right'},
+ {key:'battery',title:'البطارية',icon:Battery,color:'#16866A',position:'bottom'},
+ {key:'grid',title:'الشبكة',icon:Grid3X3,color:'#765643',position:'left'},
 ] as const;
 
 function kw(w:number|null){return w===null?'--':(w/1000).toFixed(2)}
@@ -22,16 +22,12 @@ function pulseDuration(w:number|null){
 }
 
 export function EnergyFlow({telemetry}:Props){
- const online=telemetry.source==='gateway' && Boolean(telemetry.timestamp);
+ // Animation is intentionally tied to a real gateway reading only.
+ // Missing/stale/non-gateway data keeps the diagram completely static.
+ const dataValid=telemetry.source==='gateway' && Boolean(telemetry.timestamp);
  const solarDuration=pulseDuration(telemetry.solarPowerW);
- return <div className={`energy-flow ${online?'is-online':'is-offline'}`} aria-label="مخطط تدفق الطاقة">
+ return <div className={`energy-flow ${dataValid?'is-online':'is-offline'}`} aria-label="مخطط تدفق الطاقة">
   <svg className="flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-   <defs>
-    <linearGradient id="solarFlow" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stopColor="#f59e0b" stopOpacity=".15"/><stop offset="100%" stopColor="#f59e0b"/></linearGradient>
-    <linearGradient id="homeFlow" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#29b6f6"/><stop offset="100%" stopColor="#29b6f6" stopOpacity=".15"/></linearGradient>
-    <linearGradient id="batteryFlow" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#26a69a" stopOpacity=".15"/><stop offset="100%" stopColor="#26a69a"/></linearGradient>
-    <linearGradient id="gridFlow" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#ab47bc"/><stop offset="100%" stopColor="#ab47bc" stopOpacity=".15"/></linearGradient>
-   </defs>
    <line className="flow-path solar-path" x1="50" y1="18" x2="50" y2="40"/>
    <line className="flow-path home-path" x1="60" y1="50" x2="82" y2="50"/>
    <line className="flow-path battery-path" x1="50" y1="60" x2="50" y2="82"/>
@@ -48,7 +44,7 @@ export function EnergyFlow({telemetry}:Props){
   })}
   <div className="flow-center">
    <div className="flow-ring"/>
-   <div className="flow-center-inner"><Gauge size={28}/><strong>الإنفرتر</strong><span>{online?telemetry.inverterState||'متصل':'--'}</span></div>
+   <div className="flow-center-inner"><Gauge size={28}/><strong>الإنفرتر</strong><span>{dataValid?telemetry.inverterState||'متصل':'--'}</span></div>
   </div>
  </div>
 }
