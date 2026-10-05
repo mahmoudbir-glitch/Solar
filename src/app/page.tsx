@@ -19,6 +19,9 @@ import { dailyEnergy } from '@/lib/energy';
 type History = { timestamp: string; solarPowerW: number | null; loadPowerW: number | null };
 type Tab = 'home' | 'house' | 'battery' | 'energy' | 'money' | 'settings';
 
+type IconComponent = typeof Sun;
+type PageData = { title: string; subtitle: string; Icon: IconComponent; color: string };
+
 function amp(value: number | null) {
   return value === null ? '--' : Math.abs(value).toFixed(1);
 }
@@ -28,7 +31,7 @@ function derivedAmp(powerW: number | null, voltageV: number | null) {
   return Math.abs(powerW / voltageV);
 }
 
-const navItems: { id: Tab; label: string; icon: typeof Sun; color: string }[] = [
+const navItems: { id: Tab; label: string; icon: IconComponent; color: string }[] = [
   { id: 'home', label: 'الرئيسية', icon: Grid2X2, color: '#8B5CF6' },
   { id: 'house', label: 'المنزل', icon: HomeIcon, color: '#0EA5E9' },
   { id: 'battery', label: 'البطارية', icon: BatteryCharging, color: '#10B981' },
@@ -46,7 +49,7 @@ function Node({
 }: {
   type: 'solar' | 'home' | 'grid' | 'battery';
   title: string;
-  icon: typeof Sun;
+  icon: IconComponent;
   value: string;
   current: string;
 }) {
@@ -91,7 +94,7 @@ function Flow({ telemetry, online }: { telemetry: Telemetry; online: boolean }) 
   );
 }
 
-function MetricCard({ type, icon: Icon, title, value, unit, secondary }: { type: string; icon: typeof Sun; title: string; value: string; unit: string; secondary: string }) {
+function MetricCard({ type, icon: Icon, title, value, unit, secondary }: { type: string; icon: IconComponent; title: string; value: string; unit: string; secondary: string }) {
   return (
     <div className={`solar-metric solar-metric-${type}`}>
       <div className="solar-metric-icon"><Icon size={21} /></div>
@@ -103,16 +106,16 @@ function MetricCard({ type, icon: Icon, title, value, unit, secondary }: { type:
 }
 
 function Page({ tab, telemetry }: { tab: Tab; telemetry: Telemetry }) {
-  const data = {
-    house: ['استهلاك المنزل', 'مراقبة استهلاك الطاقة داخل المنزل', HomeIcon, '#0EA5E9'],
-    battery: ['حالة البطارية', 'مستوى الشحن وحالة البطارية', BatteryCharging, '#10B981'],
-    energy: ['توقعات الطاقة', 'توقع إنتاج الطاقة للأيام القادمة', Sun, '#F59E0B'],
-    money: ['التحليل المالي', 'مصادر الكهرباء والتوفير', Wallet, '#14B8A6'],
-    settings: ['الإعدادات', 'إعدادات المنظومة والاتصال', Settings, '#E11D48'],
-  }[tab as Exclude<Tab, 'home'>];
+  const data: Record<Exclude<Tab, 'home'>, PageData> = {
+    house: { title: 'استهلاك المنزل', subtitle: 'مراقبة استهلاك الطاقة داخل المنزل', Icon: HomeIcon, color: '#0EA5E9' },
+    battery: { title: 'حالة البطارية', subtitle: 'مستوى الشحن وحالة البطارية', Icon: BatteryCharging, color: '#10B981' },
+    energy: { title: 'توقعات الطاقة', subtitle: 'توقع إنتاج الطاقة للأيام القادمة', Icon: Sun, color: '#F59E0B' },
+    money: { title: 'التحليل المالي', subtitle: 'مصادر الكهرباء والتوفير', Icon: Wallet, color: '#14B8A6' },
+    settings: { title: 'الإعدادات', subtitle: 'إعدادات المنظومة والاتصال', Icon: Settings, color: '#E11D48' },
+  };
 
-  if (!data) return null;
-  const [title, subtitle, Icon, color] = data;
+  if (tab === 'home') return null;
+  const { title, subtitle, Icon, color } = data[tab];
 
   return (
     <section className="solar-page-card">
