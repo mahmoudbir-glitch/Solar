@@ -1,23 +1,202 @@
 'use client';
-import {useEffect,useState} from 'react';
-import {Battery,Home,Sun,Wifi,Zap} from 'lucide-react';
-import {EnergyFlow} from '@/components/EnergyFlow';
-import type {Telemetry} from '@/lib/types';
-import {emptyTelemetry} from '@/lib/types';
-import {dailyEnergy} from '@/lib/energy';
-type History={timestamp:string;solarPowerW:number|null;loadPowerW:number|null};
-type DashboardProps={title?:string;subtitle?:string};
 
-function amp(value:number|null){return value===null?'--':Math.abs(value).toFixed(1)}
-function derivedAmp(powerW:number|null,voltageV:number|null){
- if(powerW===null||voltageV===null||voltageV<=0)return null;
- return Math.abs(powerW/voltageV);
+import { useEffect, useState } from 'react';
+import {
+  BatteryCharging,
+  Grid2X2,
+  Home as HomeIcon,
+  LogOut,
+  Settings,
+  Sun,
+  Wallet,
+  Zap,
+} from 'lucide-react';
+import { EnergyFlow } from '@/components/EnergyFlow';
+import type { Telemetry } from '@/lib/types';
+import { emptyTelemetry } from '@/lib/types';
+import { dailyEnergy } from '@/lib/energy';
+
+type History = { timestamp: string; solarPowerW: number | null; loadPowerW: number | null };
+type Tab = 'home' | 'house' | 'battery' | 'energy' | 'money' | 'settings';
+
+function amp(value: number | null) {
+  return value === null ? '--' : Math.abs(value).toFixed(1);
 }
 
-export default function Dashboard({title='الرئيسية',subtitle='نظرة واضحة على طاقة منظومتك الآن'}:DashboardProps){
- const [telemetry,setTelemetry]=useState<Telemetry>(emptyTelemetry);const [history,setHistory]=useState<History[]>([]);
- useEffect(()=>{let active=true;const load=async()=>{try{const[a,b]=await Promise.all([fetch('/api/telemetry',{cache:'no-store'}),fetch('/api/history?hours=24',{cache:'no-store'})]);if(a.ok&&active)setTelemetry(await a.json());if(b.ok&&active){const d=await b.json();setHistory(Array.isArray(d.items)?d.items:[])}}catch{}};load();const id=window.setInterval(load,10000);return()=>{active=false;window.clearInterval(id)}},[]);
- const online=telemetry.source==='gateway'&&Boolean(telemetry.timestamp);const energy=dailyEnergy(history);const hasEnergy=history.length>1&&(energy.solarKwh>0||energy.loadKwh>0);const solar=telemetry.solarPowerW===null?'--':(telemetry.solarPowerW/1000).toFixed(2);const load=telemetry.loadPowerW===null?'--':(telemetry.loadPowerW/1000).toFixed(2);const batt=telemetry.batterySoc===null?'--':telemetry.batterySoc.toFixed(0);
- const solarCurrent=telemetry.pvCurrentA;const homeCurrent=telemetry.outputApparentPowerVA!==null&&telemetry.outputVoltageV!==null&&telemetry.outputVoltageV>0?derivedAmp(telemetry.outputApparentPowerVA,telemetry.outputVoltageV):derivedAmp(telemetry.loadPowerW,telemetry.outputVoltageV);const batteryCurrent=telemetry.batteryCurrentA;
- return <><h1 className="page-title">{title}</h1><p className="page-subtitle">{subtitle}</p><div className={`offline-banner ${online?'online-banner':''}`}><Wifi size={15}/><span>{online?'القراءة الحية متاحة من المنظومة':'لا توجد قراءة حية متاحة حالياً. تحقق من اتصال الإنفرتر وإرسال بيانات القياس.'}</span></div><div className="card" style={{marginBottom:12}}><EnergyFlow telemetry={telemetry}/></div><div className="grid-3" style={{marginBottom:12}}><div className="metric-card"><div className="metric-head"><Sun size={15}/> الشمس</div><div className="metric-value-stack"><div className="metric-value" style={{color:online?'#F59E0B':'#94A3B8'}}>{solar} <small>kW</small></div><div className="metric-current"><strong>{amp(solarCurrent)}</strong> A</div></div></div><div className="metric-card"><div className="metric-head"><Home size={15}/> المنزل</div><div className="metric-value-stack"><div className="metric-value" style={{color:online?'#0EA5E9':'#94A3B8'}}>{load} <small>kW</small></div><div className="metric-current"><strong>{amp(homeCurrent)}</strong> A</div></div></div><div className="metric-card"><div className="metric-head"><Battery size={15}/> البطارية</div><div className="metric-value-stack"><div className="metric-value" style={{color:online?'#10B981':'#94A3B8'}}>{batt} <small>%</small></div><div className="metric-current"><strong>{amp(batteryCurrent)}</strong> A</div></div></div></div><div className="card" style={{marginBottom:12}}><h2 className="section-title">ملخص اليوم</h2><div className="grid-3"><div><div className="muted">إنتاج اليوم</div><strong className="value">{hasEnergy?energy.solarKwh.toFixed(2):'--'} <span className="unit">kWh</span></strong></div><div><div className="muted">استهلاك اليوم</div><strong className="value">{hasEnergy?energy.loadKwh.toFixed(2):'--'} <span className="unit">kWh</span></strong></div><div><div className="muted">وفر اليوم</div><strong className="value">-- <span className="unit">ل.س</span></strong></div></div></div><div className="card"><h2 className="section-title"><Zap size={17} color="#F59E0B"/> حالة الإنفرتر</h2><div className="grid-3"><div><span className="muted">المصدر</span><div>{online&&telemetry.inverterState?telemetry.inverterState:'--'}</div></div><div><span className="muted">الحمل</span><div>{telemetry.loadPowerW===null?'--':`${(telemetry.loadPowerW/8200*100).toFixed(0)}%`}</div></div><div><span className="muted">الحرارة</span><div>{telemetry.inverterTemperatureC===null?'--':`${telemetry.inverterTemperatureC.toFixed(0)}°C`}</div></div></div><div className="muted" style={{fontSize:11,marginTop:10}}>أولوية المصدر: شمس → بطارية → شبكة (SBU)</div></div></>;
+function derivedAmp(powerW: number | null, voltageV: number | null) {
+  if (powerW === null || voltageV === null || voltageV <= 0) return null;
+  return Math.abs(powerW / voltageV);
+}
+
+const navItems: { id: Tab; label: string; icon: typeof Sun; color: string }[] = [
+  { id: 'home', label: 'الرئيسية', icon: Grid2X2, color: '#8B5CF6' },
+  { id: 'house', label: 'المنزل', icon: HomeIcon, color: '#0EA5E9' },
+  { id: 'battery', label: 'البطارية', icon: BatteryCharging, color: '#10B981' },
+  { id: 'energy', label: 'الطاقة', icon: Sun, color: '#F59E0B' },
+  { id: 'money', label: 'المال', icon: Wallet, color: '#14B8A6' },
+  { id: 'settings', label: 'الإعدادات', icon: Settings, color: '#E11D48' },
+];
+
+function Node({
+  type,
+  title,
+  icon: Icon,
+  value,
+  current,
+}: {
+  type: 'solar' | 'home' | 'grid' | 'battery';
+  title: string;
+  icon: typeof Sun;
+  value: string;
+  current: string;
+}) {
+  return (
+    <div className={`solar-node solar-node-${type}`}>
+      <div className="solar-node-icon"><Icon size={27} strokeWidth={1.9} /></div>
+      <div className="solar-node-title">{title}</div>
+      <div className="solar-node-value">{value} <small>kW</small></div>
+      <div className="solar-node-current">{current} A</div>
+    </div>
+  );
+}
+
+function Flow({ telemetry, online }: { telemetry: Telemetry; online: boolean }) {
+  const solar = telemetry.solarPowerW === null ? '--' : (telemetry.solarPowerW / 1000).toFixed(2);
+  const load = telemetry.loadPowerW === null ? '--' : (telemetry.loadPowerW / 1000).toFixed(2);
+  const battery = telemetry.batteryPowerW === null ? '--' : (Math.abs(telemetry.batteryPowerW) / 1000).toFixed(2);
+  const homeCurrent = telemetry.outputApparentPowerVA !== null && telemetry.outputVoltageV !== null
+    ? derivedAmp(telemetry.outputApparentPowerVA, telemetry.outputVoltageV)
+    : derivedAmp(telemetry.loadPowerW, telemetry.outputVoltageV);
+
+  return (
+    <div className={`solar-flow ${online ? 'is-online' : 'is-offline'}`}>
+      <svg className="solar-flow-svg" viewBox="0 0 700 430" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M350 100 C350 145 350 155 350 190" className="solar-flow-path solar-flow-solar" />
+        <path d="M175 215 C235 215 270 215 305 215" className="solar-flow-path solar-flow-grid" />
+        <path d="M395 215 C455 215 475 215 525 215" className="solar-flow-path solar-flow-home" />
+        <path d="M350 240 C350 285 350 300 350 335" className="solar-flow-path solar-flow-battery" />
+      </svg>
+
+      <Node type="solar" title="الطاقة الشمسية" icon={Sun} value={solar} current={amp(telemetry.pvCurrentA)} />
+      <Node type="grid" title="الشبكة" icon={Zap} value="--" current="--" />
+      <Node type="home" title="المنزل" icon={HomeIcon} value={load} current={amp(homeCurrent)} />
+      <Node type="battery" title="البطارية" icon={BatteryCharging} value={battery} current={amp(telemetry.batteryCurrentA)} />
+
+      <div className="solar-inverter">
+        <div className="solar-inverter-core"><Zap size={27} /></div>
+        <strong>الإنفرتر</strong>
+        <span>{online ? 'متصل' : 'غير متصل'}</span>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ type, icon: Icon, title, value, unit, secondary }: { type: string; icon: typeof Sun; title: string; value: string; unit: string; secondary: string }) {
+  return (
+    <div className={`solar-metric solar-metric-${type}`}>
+      <div className="solar-metric-icon"><Icon size={21} /></div>
+      <div className="solar-metric-title">{title}</div>
+      <div className="solar-metric-value">{value} <small>{unit}</small></div>
+      <div className="solar-metric-secondary">{secondary}</div>
+    </div>
+  );
+}
+
+function Page({ tab, telemetry }: { tab: Tab; telemetry: Telemetry }) {
+  const data = {
+    house: ['استهلاك المنزل', 'مراقبة استهلاك الطاقة داخل المنزل', HomeIcon, '#0EA5E9'],
+    battery: ['حالة البطارية', 'مستوى الشحن وحالة البطارية', BatteryCharging, '#10B981'],
+    energy: ['توقعات الطاقة', 'توقع إنتاج الطاقة للأيام القادمة', Sun, '#F59E0B'],
+    money: ['التحليل المالي', 'مصادر الكهرباء والتوفير', Wallet, '#14B8A6'],
+    settings: ['الإعدادات', 'إعدادات المنظومة والاتصال', Settings, '#E11D48'],
+  }[tab as Exclude<Tab, 'home'>];
+
+  if (!data) return null;
+  const [title, subtitle, Icon, color] = data;
+
+  return (
+    <section className="solar-page-card">
+      <div className="solar-page-heading">
+        <div className="solar-page-icon" style={{ color, background: `${color}12` }}><Icon size={26} /></div>
+        <div><h1>{title}</h1><p>{subtitle}</p></div>
+      </div>
+
+      {tab === 'battery' && (
+        <div className="solar-battery-wrap">
+          <div className="solar-progress" style={{ '--progress': `${telemetry.batterySoc ?? 0}%` } as React.CSSProperties}>
+            <div><strong>{telemetry.batterySoc === null ? '--' : telemetry.batterySoc.toFixed(0)}%</strong><span>مستوى البطارية</span></div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'house' && <div className="solar-placeholder-chart"><div className="solar-bars">{[42,58,46,74,62,82,68,77,53,69,84,61].map((h, i) => <i key={i} style={{ height: `${h}%` }} />)}</div><strong>{telemetry.loadPowerW === null ? '--' : (telemetry.loadPowerW / 1000).toFixed(2)} kW</strong></div>}
+
+      {tab === 'energy' && <div className="solar-day-grid">{['اليوم', 'غداً', 'بعد غد', 'اليوم الرابع'].map((day, i) => <div key={day}><Sun size={27}/><b>{day}</b><strong>{telemetry.solarPowerW === null ? '--' : `${(Number(telemetry.solarPowerW) / 1000 + i * 0.2).toFixed(1)} kWh`}</strong></div>)}</div>}
+
+      {tab === 'money' && <div className="solar-summary-grid"><div><span>الطاقة الشمسية</span><strong>--</strong><small>% من المصادر</small></div><div><span>الشبكة</span><strong>--</strong><small>% من المصادر</small></div><div><span>التوفير</span><strong>--</strong><small>ل.س</small></div></div>}
+
+      {tab === 'settings' && <div className="solar-settings-list">{['إعدادات المنظومة','إعدادات الإنفرتر','Wi-Fi Plug Pro','اتصال البوابة المحلية','التنبيهات'].map(item => <button key={item}>{item}<span>‹</span></button>)}</div>}
+    </section>
+  );
+}
+
+export default function Dashboard({ title = 'الرئيسية', subtitle = 'نظرة واضحة على طاقة منظومتك الآن' }: { title?: string; subtitle?: string }) {
+  const [telemetry, setTelemetry] = useState<Telemetry>(emptyTelemetry);
+  const [history, setHistory] = useState<History[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>('home');
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const [a, b] = await Promise.all([
+          fetch('/api/telemetry', { cache: 'no-store' }),
+          fetch('/api/history?hours=24', { cache: 'no-store' }),
+        ]);
+        if (a.ok && active) setTelemetry(await a.json());
+        if (b.ok && active) {
+          const d = await b.json();
+          setHistory(Array.isArray(d.items) ? d.items : []);
+        }
+      } catch {}
+    };
+    load();
+    const id = window.setInterval(load, 10000);
+    return () => { active = false; window.clearInterval(id); };
+  }, []);
+
+  const online = telemetry.source === 'gateway' && Boolean(telemetry.timestamp);
+  const energy = dailyEnergy(history);
+  const solar = telemetry.solarPowerW === null ? '--' : (telemetry.solarPowerW / 1000).toFixed(2);
+  const load = telemetry.loadPowerW === null ? '--' : (telemetry.loadPowerW / 1000).toFixed(2);
+  const battery = telemetry.batterySoc === null ? '--' : telemetry.batterySoc.toFixed(0);
+
+  return (
+    <main dir="rtl" className="solar-app">
+      <div className="solar-shell">
+        <header className="solar-header">
+          <div className="solar-brand">
+            <div className="solar-brand-mark"><Sun size={27} /></div>
+            <div><div className="solar-brand-name">Solar</div><div className="solar-brand-tag">الشمس تعمل من أجلك</div><div className={`solar-live ${online ? 'live' : ''}`}><span />{online ? 'مباشر' : 'غير متصل'}{online && telemetry.timestamp ? ` - آخر قراءة ${new Date(telemetry.timestamp).toLocaleTimeString('ar-LB', { hour: '2-digit', minute: '2-digit' })}` : ''}</div></div>
+          </div>
+          <button className="solar-logout" type="button"><LogOut size={17}/> <span>تسجيل الخروج</span></button>
+        </header>
+
+        {activeTab === 'home' ? (
+          <>
+            <div className="solar-title-row"><div><h1>{title}</h1><p>{subtitle}</p></div><span className={`solar-status ${online ? 'ok' : ''}`}>{online ? 'النظام يعمل' : 'لا توجد قراءة حية'}</span></div>
+            <section className="solar-card solar-flow-card"><Flow telemetry={telemetry} online={online}/></section>
+            <section className="solar-metrics">
+              <MetricCard type="battery" title="البطارية" icon={BatteryCharging} value={battery} unit="%" secondary={`${amp(telemetry.batteryCurrentA)} A`} />
+              <MetricCard type="home" title="استهلاك المنزل" icon={HomeIcon} value={load} unit="kW" secondary={`${amp(derivedAmp(telemetry.loadPowerW, telemetry.outputVoltageV))} A`} />
+              <MetricCard type="solar" title="الطاقة الشمسية" icon={Sun} value={solar} unit="kW" secondary={`${amp(telemetry.pvCurrentA)} A`} />
+            </section>
+            <section className="solar-card solar-summary"><h2>ملخص اليوم</h2><div><div><span>إنتاج اليوم</span><strong>{history.length > 1 ? energy.solarKwh.toFixed(2) : '--'} <small>kWh</small></strong></div><div><span>استهلاك اليوم</span><strong>{history.length > 1 ? energy.loadKwh.toFixed(2) : '--'} <small>kWh</small></strong></div><div><span>التوفير</span><strong>-- <small>ل.س</small></strong></div></div></section>
+          </>
+        ) : <Page tab={activeTab} telemetry={telemetry} />}
+      </div>
+
+      <nav className="solar-nav"><div>{navItems.map(item => { const Icon = item.icon; const active = activeTab === item.id; return <button key={item.id} type="button" className={active ? 'active' : ''} style={{ '--accent': item.color } as React.CSSProperties} onClick={() => setActiveTab(item.id)}><Icon size={21}/><span>{item.label}</span></button>; })}</div></nav>
+    </main>
+  );
 }
