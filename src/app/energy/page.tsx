@@ -1,32 +1,3 @@
-import {Sun, CloudSun, Cloud, Moon} from 'lucide-react';
-import {EmptyState} from '@/components/EmptyState';
-
-export default function Energy(){
- return <>
-  <h1 className="page-title">الطاقة</h1><p className="page-subtitle">توقعات الطاقة وأفضل أوقات الاستخدام</p>
-  <div className="card" style={{marginBottom:12}}>
-   <h2 className="section-title">توقعات الإنتاج</h2>
-   <div className="weather-row">
-    {[['اليوم',Sun,'#f59e0b'],['غداً',CloudSun,'#f59e0b'],['بعد غد',Cloud,'#90a4ae']].map(([d,I,c]:any)=>
-     <div className="weather" key={d}><div>{d}</div><I className="weather-icon" size={24} color={c}/><div className="temp">--</div><small className="muted">kWh</small></div>
-    )}
-   </div>
-  </div>
-  <div className="card" style={{marginBottom:12,borderRight:'4px solid #ef5350'}}>
-   <h2 className="section-title"><Moon size={17} color="#ef5350"/> حالة الليلة</h2>
-   <div style={{fontWeight:700}}>لا يمكن التنبؤ بالتغطية قبل وصول قراءة حقيقية.</div>
-   <p className="muted" style={{fontSize:11}}>التغطية المتوقعة: -- %</p>
-  </div>
-  <div className="card" style={{marginBottom:12}}>
-   <h2 className="section-title">أفضل وقت لاستخدام الشمس</h2>
-   <div className="empty-state" style={{minHeight:74}}>لا توجد قراءة إنتاج كافية لتحديد الوقت الأفضل.</div>
-   <p className="suggestion-note">اقتراحات استخدام فقط، وليست أزرار تحكم.</p>
-   <div className="grid-3"><div className="suggestion-item">غسالة</div><div className="suggestion-item">سخان</div><div className="suggestion-item">مكيف</div></div>
-  </div>
-  <div className="card">
-   <h2 className="section-title">توزيع الطاقة الشمسية</h2>
-   <div className="segment empty-segment"/>
-   <div className="legend"><span>للمنزل -- %</span><span>للبطارية -- %</span><span>فائض -- %</span></div>
-  </div>
- </>
-}
+'use client';
+import {Sun,CloudSun,Cloud,Moon,Clock,Washer,Wind,Heater,RefreshCw} from 'lucide-react';
+export default function Energy(){return <><h1 className="page-title">الطاقة</h1><p className="page-subtitle">التوقعات، كفاية الليل، وأفضل وقت لاستخدام الفائض</p><div className="card" style={{marginBottom:12}}><h2 className="section-title">توقعات الطاقة</h2><div className="weather-row">{[['اليوم',Sun],['غداً',CloudSun],['بعد غد',Cloud],['الخميس',Sun]].map(([d,I]:any)=><div className="weather" key={d}><div>{d}</div><I className="weather-icon" size={24} color="#f59e0b"/><div className="temp">--</div><small className="muted">kWh</small></div>)}</div></div><div className="card" style={{marginBottom:12,borderRight:'4px solid #ef5350'}}><h2 className="section-title"><Moon size={17} color="#ef5350"/> كفاية الليل</h2><div className="grid-2"><div className="metric-card"><div className="metric-head">الليلة القادمة</div><strong>--</strong><div className="muted" style={{fontSize:10}}>التغطية --% · عند الشروق --%</div></div><div className="metric-card"><div className="metric-head">ليلة الغد</div><strong>--</strong><div className="muted" style={{fontSize:10}}>التغطية --%</div></div></div></div><div className="card" style={{marginBottom:12}}><h2 className="section-title"><Clock size={17} color="#f59e0b"/> أفضل وقت لاستخدام الشمس</h2><div className="empty-state" style={{minHeight:80}}>نحتاج قراءات إنتاج حقيقية كافية لتحديد نافذة الفائض.</div><p className="suggestion-note">اقتراحات استخدام فقط، وليست أزرار تحكم.</p><div className="grid-2"><div className="suggestion-item"><Washer size={16}/> غسالة · -- kWh</div><div className="suggestion-item"><Wind size={16}/> مكيف · -- kWh</div><div className="suggestion-item"><Heater size={16}/> سخان ماء · -- kWh</div><div className="suggestion-item"><RefreshCw size={16}/> مضخة مياه · -- kWh</div></div></div><div className="card"><h2 className="section-title">توزيع الطاقة الشمسية اليومية</h2><div className="segment empty-segment"/><div className="legend"><span>للمنزل --%</span><span>للبطارية --%</span><span>فائض --%</span></div></div></>}
