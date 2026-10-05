@@ -2,11 +2,10 @@
 
 import {FormEvent, useState} from 'react';
 import {LockKeyhole, LogIn, Sun, UserRound} from 'lucide-react';
-import {useRouter, useSearchParams} from 'next/navigation';
+import {useRouter} from 'next/navigation';
 
 export default function LoginPage(){
  const router=useRouter();
- const searchParams=useSearchParams();
  const [username,setUsername]=useState('');
  const [password,setPassword]=useState('');
  const [error,setError]=useState('');
@@ -20,7 +19,7 @@ export default function LoginPage(){
    const response=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
    const data=await response.json();
    if(!response.ok){setError(data.error ?? 'تعذر تسجيل الدخول.');return;}
-   const next=searchParams.get('next');
+   const next=new URLSearchParams(window.location.search).get('next');
    router.replace(next?.startsWith('/') ? next : '/');
    router.refresh();
   }catch{
