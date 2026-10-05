@@ -7,10 +7,10 @@ import type {Telemetry} from '@/lib/types';
 type Props={telemetry:Telemetry};
 
 const nodes=[
- {key:'solar',title:'الطاقة الشمسية',icon:Zap,color:'#D99A2B',position:'top'},
- {key:'home',title:'المنزل',icon:Home,color:'#B56D4D',position:'right'},
- {key:'battery',title:'البطارية',icon:Battery,color:'#16866A',position:'bottom'},
- {key:'grid',title:'الشبكة',icon:Grid3X3,color:'#765643',position:'left'},
+ {key:'solar',title:'الطاقة الشمسية',icon:Zap,color:'#F59E0B',position:'top'},
+ {key:'home',title:'المنزل',icon:Home,color:'#0EA5E9',position:'right'},
+ {key:'battery',title:'البطارية',icon:Battery,color:'#10B981',position:'bottom'},
+ {key:'grid',title:'الشبكة',icon:Grid3X3,color:'#8B5CF6',position:'left'},
 ] as const;
 
 function kw(w:number|null){return w===null?'--':(w/1000).toFixed(2)}
@@ -26,8 +26,6 @@ function pulseDuration(w:number|null){
 }
 
 export function EnergyFlow({telemetry}:Props){
- // Animation is intentionally tied to a real gateway reading only.
- // Missing/stale/non-gateway data keeps the diagram completely static.
  const dataValid=telemetry.source==='gateway' && Boolean(telemetry.timestamp);
  const solarDuration=pulseDuration(telemetry.solarPowerW);
  const solarCurrent=telemetry.pvCurrentA;
