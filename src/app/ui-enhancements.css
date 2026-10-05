@@ -1,0 +1,29 @@
+/* Solar UI enhancements: current/ampere metrics + header logout */
+
+.app-header[dir='rtl']{direction:rtl}
+.app-header[dir='rtl'] .brand{order:1}
+.app-header[dir='rtl'] .header-actions{order:2;margin-inline-start:auto}
+
+.logout-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 12px;border:1px solid var(--line,#e2e8f0);background:#fff;color:var(--text-secondary,#475569);font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px)}
+.logout-button svg{flex:none}
+.logout-button:hover{background:#f8fafc;color:#334155;border-color:#cbd5e1}
+.logout-button:active{transform:scale(.96)}
+
+/* Two-line power/current values. No fake current is generated: unavailable values stay -- A. */
+.flow-node-value{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.1;min-height:40px}
+.flow-node-value .power-value{font-weight:800}
+.flow-node-current{font-size:10px;font-weight:700;color:var(--text-secondary,#475569);direction:ltr;white-space:nowrap}
+.flow-node-current .current-number{font-weight:800;color:var(--node-color,currentColor)}
+
+.metric-value-stack{display:flex;flex-direction:column;align-items:flex-start;gap:3px;line-height:1.08}
+.metric-current{font-size:11px;font-weight:700;color:var(--text-secondary,#475569);direction:ltr;white-space:nowrap}
+.metric-current strong{color:inherit}
+
+@media (max-width:640px){
+  .logout-button{min-height:36px;padding:7px 9px;font-size:10px;gap:5px}
+  .logout-button svg{width:16px;height:16px}
+  .header-actions{gap:6px}
+  .flow-node-current{font-size:9px}
+  .metric-current{font-size:10px}
+  .metric-value-stack{gap:2px}
+}
