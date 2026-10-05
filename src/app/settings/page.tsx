@@ -1,24 +1,38 @@
 'use client';
-import {useState} from 'react';
-import {ChevronDown, Sun, Gauge, Battery, Wifi, Bell, Database} from 'lucide-react';
+import {useEffect,useState} from 'react';
+import {ChevronDown,Sun,Gauge,Battery,Wifi,Bell,Database,PlugZap} from 'lucide-react';
 
-const Section=({icon,title,children}:{icon:React.ReactNode,title:string,children:React.ReactNode})=>
- <details className="accordion" style={{marginBottom:10}}>
-  <summary><span className="section-summary"><span className="section-summary-main">{icon}<span>{title}</span></span><ChevronDown size={16} style={{color:'#90a4ae'}}/></span></summary>
-  <div className="accordion-content">{children}</div>
- </details>;
+const Section=({icon,title,children}:{icon:React.ReactNode,title:string,children:React.ReactNode})=><details className="accordion" style={{marginBottom:10}}><summary><span className="section-summary"><span className="section-summary-main">{icon}<span>{title}</span></span><ChevronDown size={16} style={{color:'#90a4ae'}}/></span></summary><div className="accordion-content">{children}</div></details>;
+
+type SettingsData={panels:string;model:string;serial:string;protocol:string;batteryType:string;batteryCapacity:string;reserve:string;gatewayUrl:string;gatewayToken:string;low:string;critical:string;offline:string;retention:string};
+const defaults:SettingsData={panels:'',model:'Axpert MAX 7200-48-230',serial:'92932009104508',protocol:'PI30',batteryType:'',batteryCapacity:'',reserve:'20%',gatewayUrl:'',gatewayToken:'',low:'20%',critical:'10%',offline:'10 دقائق',retention:'365'};
 
 export default function Settings(){
+ const [data,setData]=useState<SettingsData>(defaults);
  const [saved,setSaved]=useState(false);
+ const [testing,setTesting]=useState(false);
+ const [testMessage,setTestMessage]=useState('');
+ useEffect(()=>{try{const raw=localStorage.getItem('solar_settings');if(raw)setData({...defaults,...JSON.parse(raw)})}catch{}},[]);
+ const set=(key:keyof SettingsData,value:string)=>{setData(current=>({...current,[key]:value}));setSaved(false)};
+ function save(){localStorage.setItem('solar_settings',JSON.stringify(data));setSaved(true);}
+ async function testConnection(){
+  setTesting(true);setTestMessage('');
+  try{
+   const response=await fetch('/api/connection/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial_port:data.serial,baudrate:2400,timeout_ms:2000})});
+   const result=await response.json().catch(()=>({message:'تعذر قراءة نتيجة الاختبار'}));
+   setTestMessage(result.message??(result.ok?'تم الاتصال':'فشل الاتصال'));
+  }catch{setTestMessage('تعذر الوصول إلى خدمة الاتصال.');}finally{setTesting(false)}
+ }
  return <>
   <h1 className="page-title">الإعدادات</h1><p className="page-subtitle">تهيئة المنظومة والاتصال والتنبيهات</p>
-  <Section icon={<Sun size={18} color="#f59e0b"/>} title="الألواح الشمسية"><div className="field"><span>إجمالي قدرة الألواح</span><input placeholder="مثال: 6 kW"/></div></Section>
-  <Section icon={<Gauge size={18} color="#f59e0b"/>} title="الإنفرتر"><div className="field"><span>الطراز</span><input defaultValue="Axpert MAX 7200-48-230"/></div><div className="field"><span>الرقم التسلسلي SN</span><input defaultValue="92932009104508"/></div><div className="field"><span>البروتوكول</span><select defaultValue="PI30"><option>PI30</option><option>Modbus RTU</option></select></div></Section>
-  <Section icon={<Battery size={18} color="#26a69a"/>} title="البطارية"><div className="field"><span>نوع البطارية</span><select><option>-- غير محدد</option><option>LiFePO4</option><option>ليثيوم</option><option>جل</option><option>رصاص</option></select></div><div className="field"><span>السعة</span><input placeholder="kWh"/></div><div className="field"><span>حد الاحتياطي</span><input defaultValue="20%"/></div></Section>
-  <Section icon={<Wifi size={18} color="#29b6f6"/>} title="الاتصال والبوابة"><div className="field"><span>وضع الاتصال</span><select><option>بوابة محلية</option><option>غير متصل</option></select></div><div className="field"><span>Gateway URL</span><input placeholder="http://192.168.1.50:8787"/></div><div className="field"><span>Gateway Token</span><input type="password" placeholder="••••••••"/></div></Section>
-  <Section icon={<Bell size={18} color="#ef5350"/>} title="التنبيهات"><div className="grid-2"><div className="field"><span>بطارية منخفضة</span><input defaultValue="20%"/></div><div className="field"><span>حرج</span><input defaultValue="10%"/></div></div><div className="field"><span>انقطاع الاتصال</span><input defaultValue="10 دقائق"/></div></Section>
-  <Section icon={<Database size={18} color="#ab47bc"/>} title="البيانات"><div className="field"><span>مدة حفظ البيانات</span><select defaultValue="365"><option value="365">365 يوم</option><option value="180">180 يوم</option><option value="90">90 يوم</option></select></div></Section>
-  <button className="primary-btn" onClick={()=>setSaved(true)}>{saved?'تم حفظ الإعدادات ✓':'حفظ الإعدادات'}</button>
-  {saved&&<p style={{textAlign:'center',fontSize:11,color:'#26a69a'}}>تم حفظ النموذج محليًا في الواجهة.</p>}
+  <Section icon={<Sun size={18} color="#f59e0b"/>} title="الألواح الشمسية"><div className="field"><span>إجمالي قدرة الألواح</span><input value={data.panels} onChange={e=>set('panels',e.target.value)} placeholder="مثال: 6 kW"/></div></Section>
+  <Section icon={<Gauge size={18} color="#f59e0b"/>} title="الإنفرتر"><div className="field"><span>الطراز</span><input value={data.model} onChange={e=>set('model',e.target.value)}/></div><div className="field"><span>الرقم التسلسلي SN</span><input value={data.serial} onChange={e=>set('serial',e.target.value)} inputMode="numeric"/></div><div className="field"><span>البروتوكول</span><select value={data.protocol} onChange={e=>set('protocol',e.target.value)}><option>PI30</option></select></div></Section>
+  <Section icon={<Battery size={18} color="#26a69a"/>} title="البطارية"><div className="field"><span>نوع البطارية</span><select value={data.batteryType} onChange={e=>set('batteryType',e.target.value)}><option value="">-- غير محدد</option><option>LiFePO4</option><option>ليثيوم</option><option>جل</option><option>رصاص</option></select></div><div className="field"><span>السعة</span><input value={data.batteryCapacity} onChange={e=>set('batteryCapacity',e.target.value)} placeholder="مثال: 4.8 kWh"/></div><div className="field"><span>حد الاحتياطي</span><input value={data.reserve} onChange={e=>set('reserve',e.target.value)}/></div></Section>
+  <Section icon={<Wifi size={18} color="#29b6f6"/>} title="الاتصال والبوابة"><div className="field"><span>وضع الاتصال</span><select defaultValue="local"><option value="local">بوابة محلية</option><option value="offline">غير متصل</option></select></div><div className="field"><span>Gateway URL</span><input value={data.gatewayUrl} onChange={e=>set('gatewayUrl',e.target.value)} placeholder="مثال: http://192.168.1.50:8787"/></div><div className="field"><span>Gateway Token</span><input type="password" value={data.gatewayToken} onChange={e=>set('gatewayToken',e.target.value)} placeholder="••••••••"/></div></Section>
+  <Section icon={<PlugZap size={18} color="#26a69a"/>} title="اختبار الاتصال"><p className="muted" style={{fontSize:11}}>الاختبار يرسل طلب PI30 حقيقياً إلى البوابة ولا يولّد بيانات وهمية.</p><button className="primary-btn" onClick={testConnection} disabled={testing}>{testing?'جارٍ اختبار الاتصال...':'اختبار الاتصال بالإنفرتر'}</button>{testMessage&&<p style={{fontSize:11,textAlign:'center',color:testMessage.includes('بنجاح')?'#28724b':'#8b6500'}}>{testMessage}</p>}</Section>
+  <Section icon={<Bell size={18} color="#ef5350"/>} title="التنبيهات"><div className="grid-2"><div className="field"><span>بطارية منخفضة</span><input value={data.low} onChange={e=>set('low',e.target.value)}/></div><div className="field"><span>حرج</span><input value={data.critical} onChange={e=>set('critical',e.target.value)}/></div></div><div className="field"><span>انقطاع الاتصال</span><input value={data.offline} onChange={e=>set('offline',e.target.value)}/></div></Section>
+  <Section icon={<Database size={18} color="#ab47bc"/>} title="البيانات"><div className="field"><span>مدة حفظ البيانات</span><select value={data.retention} onChange={e=>set('retention',e.target.value)}><option value="365">365 يوم</option><option value="180">180 يوم</option><option value="90">90 يوم</option></select></div></Section>
+  <button className="primary-btn" onClick={save}>{saved?'تم حفظ الإعدادات ✓':'حفظ الإعدادات'}</button>
+  {saved&&<p style={{textAlign:'center',fontSize:11,color:'#26a69a'}}>تم حفظ الإعدادات على هذا الجهاز.</p>}
  </>
 }
