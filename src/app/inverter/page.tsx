@@ -4,11 +4,15 @@ import {useEffect,useState} from 'react';
 import type {Telemetry} from '@/lib/types';
 import {emptyTelemetry} from '@/lib/types';
 
+type MetricColor = string;
+type MetricValue = number | null;
+type InverterMetric = [title:string, unit:string, value:MetricValue, color:MetricColor];
+
 export default function Inverter(){
  const [telemetry,setTelemetry]=useState<Telemetry>(emptyTelemetry);
  useEffect(()=>{let active=true;const load=async()=>{try{const r=await fetch('/api/telemetry',{cache:'no-store'});if(r.ok&&active)setTelemetry(await r.json())}catch{}};load();const id=window.setInterval(load,5000);return()=>{active=false;window.clearInterval(id)}},[]);
  const online=telemetry.source==='gateway'&&Boolean(telemetry.timestamp);
- const values=[
+ const values:InverterMetric[]=[
   ['PV Voltage','V',telemetry.pvVoltageV,'#f59e0b'],
   ['PV Current','A',telemetry.pvCurrentA,'#f59e0b'],
   ['AC Output','V',telemetry.outputVoltageV,'#29b6f6'],
