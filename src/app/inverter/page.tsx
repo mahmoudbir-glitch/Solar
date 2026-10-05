@@ -21,14 +21,18 @@ export default function Inverter(){
   ['Load','kW',telemetry.loadPowerW===null?null:telemetry.loadPowerW/1000,'#26a69a']
  ];
  return <>
-  <h1 className="page-title">الإنفرتر</h1><p className="page-subtitle">Axpert MAX 7200-48-230 · قراءة حقيقية عند الاتصال بالبوابة</p>
+  <h1 className="page-title">الإنفرتر</h1><p className="page-subtitle">Victor Max-8.2KWM · قراءة حقيقية عند الاتصال بالبوابة</p>
   <div className={"offline-banner "+(online?'online-banner':'')}><span>{online?'النظام متصل — قراءة حقيقية':'النظام غير متصل — لا توجد قراءة حقيقية'}</span></div>
   <div className="grid-2">{values.map(([t,u,v,c])=><div className="metric-card" key={t}><div className="metric-head">{t}</div><div className="metric-value" style={{color:online?c:'#aeb8bb'}}>{v===null?'--':Number(v).toFixed(online&&typeof v==='number'&&t==='Load'?2:1)} <small>{u}</small></div></div>)}</div>
   <div className="card" style={{marginTop:12}}><h2 className="section-title">معلومات الجهاز</h2><div className="grid-2">
-   <div><span className="muted">الطراز</span><div>Axpert MAX 7200-48-230</div></div>
-   <div><span className="muted">القدرة</span><div>7200 <span className="unit">W</span></div></div>
-   <div><span className="muted">الرقم التسلسلي</span><div><bdi dir="ltr">92932009104508</bdi></div></div>
+   <div><span className="muted">الطراز</span><div>Victor Max-8.2KWM</div></div>
+   <div><span className="muted">القدرة</span><div>8200 <span className="unit">W</span> / 8200 <span className="unit">VA</span></div></div>
+   <div><span className="muted">الرقم التسلسلي</span><div><bdi dir="ltr">92085230517098</bdi></div></div>
    <div><span className="muted">البروتوكول</span><div>PI30</div></div>
+   <div><span className="muted">دخل PV الأقصى</span><div>8200 <span className="unit">W</span></div></div>
+   <div><span className="muted">جهد PV الأقصى</span><div>500 <span className="unit">VDC</span></div></div>
+   <div><span className="muted">مدى MPPT</span><div>360–450 <span className="unit">VDC</span></div></div>
+   <div><span className="muted">نطاق البطارية</span><div>40–63 <span className="unit">VDC</span></div></div>
   </div></div>
  </>;
 }
