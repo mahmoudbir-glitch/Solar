@@ -1,47 +1,14 @@
 'use client';
-
-import {useEffect, useState} from 'react';
-import {CircleAlert} from 'lucide-react';
+import {useEffect,useState} from 'react';
+import {Battery,Home,Sun,Wifi,Zap} from 'lucide-react';
 import {EnergyFlow} from '@/components/EnergyFlow';
 import type {Telemetry} from '@/lib/types';
 import {emptyTelemetry} from '@/lib/types';
 import {dailyEnergy} from '@/lib/energy';
-
 type History={timestamp:string;solarPowerW:number|null;loadPowerW:number|null};
-
 export default function Dashboard(){
- const [telemetry,setTelemetry]=useState<Telemetry>(emptyTelemetry);
- const [history,setHistory]=useState<History[]>([]);
- useEffect(()=>{
-  let active=true;
-  const load=async()=>{
-   try{
-    const [telemetryResponse,historyResponse]=await Promise.all([
-     fetch('/api/telemetry',{cache:'no-store'}),
-     fetch('/api/history?hours=24',{cache:'no-store'})
-    ]);
-    if(telemetryResponse.ok&&active)setTelemetry(await telemetryResponse.json());
-    if(historyResponse.ok&&active){const data=await historyResponse.json();setHistory(Array.isArray(data.items)?data.items:[])}
-   }catch{}
-  };
-  load();
-  const id=window.setInterval(load,10000);
-  return()=>{active=false;window.clearInterval(id)};
- },[]);
- const online=telemetry.source==='gateway' && Boolean(telemetry.timestamp);
- const energy=dailyEnergy(history);
- const hasEnergy=history.length>1&&(energy.solarKwh>0||energy.loadKwh>0);
- return <>
-  <h1 className="page-title">الرئيسية</h1>
-  <p className="page-subtitle">نظرة مباشرة على منظومة الطاقة</p>
-  <div className={`offline-banner ${online?'online-banner':''}`}>
-   <CircleAlert size={16}/>
-   <span>{online?'النظام متصل — بيانات حقيقية من البوابة':'النظام غير متصل — لا توجد قراءات حقيقية حالياً'}</span>
-  </div>
-  <div className="card"><EnergyFlow telemetry={telemetry}/></div>
-  <div className="grid-2" style={{marginTop:12}}>
-   <div className="metric-card"><div className="metric-head">إنتاج اليوم</div><div className="metric-value" style={{color:hasEnergy?'#f59e0b':'#aeb8bb'}}>{hasEnergy?energy.solarKwh.toFixed(2):'--'} <small>kWh</small></div></div>
-   <div className="metric-card"><div className="metric-head">استهلاك اليوم</div><div className="metric-value" style={{color:hasEnergy?'#29b6f6':'#aeb8bb'}}>{hasEnergy?energy.loadKwh.toFixed(2):'--'} <small>kWh</small></div></div>
-  </div>
- </>;
+ const [telemetry,setTelemetry]=useState<Telemetry>(emptyTelemetry);const [history,setHistory]=useState<History[]>([]);
+ useEffect(()=>{let active=true;const load=async()=>{try{const[a,b]=await Promise.all([fetch('/api/telemetry',{cache:'no-store'}),fetch('/api/history?hours=24',{cache:'no-store'})]);if(a.ok&&active)setTelemetry(await a.json());if(b.ok&&active){const d=await b.json();setHistory(Array.isArray(d.items)?d.items:[])}}catch{}};load();const id=window.setInterval(load,10000);return()=>{active=false;window.clearInterval(id)}},[]);
+ const online=telemetry.source==='gateway'&&Boolean(telemetry.timestamp);const energy=dailyEnergy(history);const hasEnergy=history.length>1&&(energy.solarKwh>0||energy.loadKwh>0);const solar=telemetry.solarPowerW===null?'--':(telemetry.solarPowerW/1000).toFixed(2);const load=telemetry.loadPowerW===null?'--':(telemetry.loadPowerW/1000).toFixed(2);const batt=telemetry.batterySoc===null?'--':telemetry.batterySoc.toFixed(0);
+ return <><h1 className="page-title">المنزل</h1><p className="page-subtitle">نظرة واضحة على طاقة منزلك الآن</p><div className={`offline-banner ${online?'online-banner':''}`}><Wifi size={15}/><span>{online?'القراءة الحية متاحة من المنظومة':'لا توجد قراءة حية متاحة حالياً. تحقق من اتصال الإنفرتر وإرسال بيانات القياس.'}</span></div><div className="card" style={{marginBottom:12}}><EnergyFlow telemetry={telemetry}/></div><div className="grid-3" style={{marginBottom:12}}><div className="metric-card"><div className="metric-head"><Sun size={15}/> الشمس</div><div className="metric-value" style={{color:online?'#f59e0b':'#aeb8bb'}}>{solar} <small>kW</small></div></div><div className="metric-card"><div className="metric-head"><Home size={15}/> المنزل</div><div className="metric-value" style={{color:online?'#29b6f6':'#aeb8bb'}}>{load} <small>kW</small></div></div><div className="metric-card"><div className="metric-head"><Battery size={15}/> البطارية</div><div className="metric-value" style={{color:online?'#26a69a':'#aeb8bb'}}>{batt} <small>%</small></div></div></div><div className="card" style={{marginBottom:12}}><h2 className="section-title">ملخص اليوم</h2><div className="grid-3"><div><div className="muted">إنتاج اليوم</div><strong className="value">{hasEnergy?energy.solarKwh.toFixed(2):'--'} <span className="unit">kWh</span></strong></div><div><div className="muted">استهلاك اليوم</div><strong className="value">{hasEnergy?energy.loadKwh.toFixed(2):'--'} <span className="unit">kWh</span></strong></div><div><div className="muted">وفر اليوم</div><strong className="value">-- <span className="unit">ل.س</span></strong></div></div></div><div className="card"><h2 className="section-title"><Zap size={17} color="#f59e0b"/> حالة الإنفرتر</h2><div className="grid-3"><div><span className="muted">المصدر</span><div>{online&&telemetry.inverterState?telemetry.inverterState:'--'}</div></div><div><span className="muted">الحمل</span><div>{telemetry.loadPowerW===null?'--':`${(telemetry.loadPowerW/8200*100).toFixed(0)}%`}</div></div><div><span className="muted">الحرارة</span><div>{telemetry.inverterTemperatureC===null?'--':`${telemetry.inverterTemperatureC.toFixed(0)}°C`}</div></div></div><div className="muted" style={{fontSize:11,marginTop:10}}>أولوية المصدر: شمس → بطارية → شبكة (SBU)</div></div></>;
 }
