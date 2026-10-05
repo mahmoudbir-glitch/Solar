@@ -1,5 +1,5 @@
 import Dashboard from '../page';
 
 export default function HomePage(){
-  return <Dashboard/>;
+  return <Dashboard title="المنزل" subtitle="نظرة واضحة على طاقة منزلك الآن"/>;
 }
