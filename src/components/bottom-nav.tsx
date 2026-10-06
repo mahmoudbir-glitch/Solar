@@ -7,14 +7,14 @@ import { usePathname } from 'next/navigation';
 /* Idle tabs are a calm grey; on the phone the open tab is a solid pill in the colour of what it is about (the same colours its page
  * header and numbers use): overview indigo, home sky, battery emerald, solar
  * energy amber, money teal, settings rose. Full class strings for Tailwind. */
-type NavTone = { icon: string; active: string; desktop: string };
+type NavTone = { icon: string; idle: string; active: string; desktop: string };
 const TONES: Record<string, NavTone> = {
-  indigo: { icon: 'text-indigo-500', active: 'bg-indigo-500 text-white ring-indigo-500', desktop: 'text-indigo-700 ring-indigo-200/80' },
-  sky: { icon: 'text-sky-500', active: 'bg-sky-500 text-white ring-sky-500', desktop: 'text-sky-700 ring-sky-200/80' },
-  emerald: { icon: 'text-emerald-500', active: 'bg-emerald-600 text-white ring-emerald-600', desktop: 'text-emerald-700 ring-emerald-200/80' },
-  amber: { icon: 'text-amber-500', active: 'bg-amber-500 text-white ring-amber-500', desktop: 'text-amber-700 ring-amber-200/80' },
-  teal: { icon: 'text-teal-500', active: 'bg-teal-500 text-white ring-teal-500', desktop: 'text-teal-700 ring-teal-200/80' },
-  rose: { icon: 'text-rose-500', active: 'bg-rose-500 text-white ring-rose-500', desktop: 'text-rose-600 ring-rose-200/80' },
+  indigo: { icon: 'text-indigo-500', idle: 'hover:bg-indigo-50 active:bg-indigo-100', active: 'bg-indigo-500 text-white ring-indigo-500', desktop: 'bg-indigo-50 text-indigo-700 ring-indigo-200/80' },
+  sky: { icon: 'text-sky-500', idle: 'hover:bg-sky-50 active:bg-sky-100', active: 'bg-sky-500 text-white ring-sky-500', desktop: 'bg-sky-50 text-sky-700 ring-sky-200/80' },
+  emerald: { icon: 'text-emerald-500', idle: 'hover:bg-emerald-50 active:bg-emerald-100', active: 'bg-emerald-600 text-white ring-emerald-600', desktop: 'bg-emerald-50 text-emerald-700 ring-emerald-200/80' },
+  amber: { icon: 'text-amber-500', idle: 'hover:bg-amber-50 active:bg-amber-100', active: 'bg-amber-500 text-white ring-amber-500', desktop: 'bg-amber-50 text-amber-700 ring-amber-200/80' },
+  teal: { icon: 'text-teal-500', idle: 'hover:bg-teal-50 active:bg-teal-100', active: 'bg-teal-500 text-white ring-teal-500', desktop: 'bg-teal-50 text-teal-700 ring-teal-200/80' },
+  rose: { icon: 'text-rose-500', idle: 'hover:bg-rose-50 active:bg-rose-100', active: 'bg-rose-500 text-white ring-rose-500', desktop: 'bg-rose-50 text-rose-600 ring-rose-200/80' },
 };
 
 export const navItems: { href: string; label: string; Icon: typeof LayoutGrid; tone: keyof typeof TONES }[] = [
@@ -55,11 +55,11 @@ export function DesktopNav() {
               className={
                 'flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-extrabold transition-all ' +
                 (active
-                  ? 'bg-white shadow-sm ring-1 ' + t.desktop
-                  : 'text-slate-500 hover:bg-white hover:text-slate-800')
+                  ? 'shadow-sm ring-1 ' + t.desktop
+                  : 'text-slate-600 ' + t.idle)
               }
             >
-              <Icon size={21} strokeWidth={active ? 2.7 : 2.2} aria-hidden="true" className={active ? undefined : 'text-slate-400'} />
+              <Icon size={21} strokeWidth={active ? 2.7 : 2.2} aria-hidden="true" className={active ? undefined : t.icon} />
               <span>{label}</span>
             </Link>
           );
@@ -90,12 +90,12 @@ export function BottomNav() {
               className={
                 'group flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-full px-1 text-[10px] font-extrabold transition-all active:scale-95 ' +
                 (active
-                  ? 'ring-1 ' + t.active
-                  : 'text-slate-500 hover:bg-slate-50')
+                  ? 'shadow-md ring-1 ' + t.active
+                  : 'text-slate-600 ' + t.idle)
               }
             >
               <span className="flex h-7 w-10 items-center justify-center">
-                <Icon size={21} strokeWidth={active ? 2.6 : 2.1} aria-hidden="true" className={active ? undefined : 'text-slate-400'} />
+                <Icon size={21} strokeWidth={active ? 2.6 : 2.1} aria-hidden="true" className={active ? undefined : t.icon} />
               </span>
               <span className="leading-none">{label}</span>
             </Link>

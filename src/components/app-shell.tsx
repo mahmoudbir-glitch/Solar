@@ -65,7 +65,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isLogin) return <>{children}</>;
 
   return (
-    <div className="min-h-screen w-full bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_48%,#f8fafc_100%)]">
+    <div className="min-h-screen w-full bg-[linear-gradient(165deg,#eef0ff_0%,#f4f6fc_38%,#f5efff_70%,#fff8e5_100%)]">
       <header className="sticky top-[calc(env(safe-area-inset-top)+0.5rem)] z-50 mx-2 mt-2 overflow-hidden rounded-[1.75rem] border border-slate-200/70 bg-white/90 shadow-[0_8px_28px_rgba(82,55,38,0.08)] backdrop-blur-xl sm:mx-auto sm:max-w-5xl lg:max-w-6xl">
         <div className="mx-auto flex max-w-5xl items-center lg:max-w-6xl justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3" aria-label="Solar">

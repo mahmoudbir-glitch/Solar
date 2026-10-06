@@ -220,7 +220,7 @@ export default function MoneyDashboard() {
                       <span className={"h-2.5 w-2.5 rounded-full " + row.color} />
                       <span className={"text-xs font-black " + row.text}>{row.name}</span>
                     </div>
-                    <strong className="text-sm font-black text-slate-900">{row.pct}%</strong>
+                    <strong className={"text-sm font-black " + row.text}>{row.pct}%</strong>
                   </div>
                   <div className="mt-1 flex items-center gap-2 text-[11px] font-bold text-slate-500"><bdi dir="ltr">{formatNumber(row.kwh)} kWh</bdi> <AmpPill tone={row.key === "solar" ? "amber" : row.key === "battery" ? "emerald" : "violet"} unit="Ah" amps={acAmpHours(row.kwh)} /></div>
                 </div>
@@ -258,7 +258,7 @@ export default function MoneyDashboard() {
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
                 <span className="text-[11px] font-bold text-slate-600">بلا النظام الشمسي</span>
-                <strong className="mt-1 block text-lg font-black text-slate-800">
+                <strong className="mt-1 block text-lg font-black text-violet-700">
                   <bdi dir="ltr">{currency} {money(hypotheticalCost)}</bdi>
                 </strong>
                 <span className="mt-1.5 block text-[10px] font-semibold text-slate-500">تكلفة افتراضية من الشبكة</span>

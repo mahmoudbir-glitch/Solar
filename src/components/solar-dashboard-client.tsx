@@ -100,14 +100,14 @@ export default function SolarDashboardClient() {
           <div className="mt-3 grid grid-cols-2 gap-2.5">
             <div className="rounded-2xl bg-slate-50 p-3">
               <span className="text-[11px] font-bold text-slate-500">الحمل من قدرته</span>
-              <strong className="mt-0.5 block text-lg font-black text-slate-900"><bdi dir="ltr">{snapshot.loadPercent !== undefined ? `${Math.round(snapshot.loadPercent)}%` : "—"}</bdi></strong>
+              <strong className="mt-0.5 block text-lg font-black text-sky-700"><bdi dir="ltr">{snapshot.loadPercent !== undefined ? `${Math.round(snapshot.loadPercent)}%` : "—"}</bdi></strong>
               {snapshot.loadPercent !== undefined && (
                 <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-slate-200"><span className="block h-full rounded-full bg-sky-500" style={{ width: `${Math.min(100, Math.max(2, snapshot.loadPercent))}%` }} /></span>
               )}
             </div>
             <div className={"rounded-2xl p-3 " + ((snapshot.inverterTemperature ?? 0) >= 60 ? "bg-rose-50" : "bg-slate-50")}>
               <span className="text-[11px] font-bold text-slate-500">الحرارة</span>
-              <strong className={"mt-0.5 block text-lg font-black " + ((snapshot.inverterTemperature ?? 0) >= 60 ? "text-rose-600" : "text-slate-900")}><bdi dir="ltr">{snapshot.inverterTemperature !== undefined ? `${Math.round(snapshot.inverterTemperature)} °C` : "—"}</bdi></strong>
+              <strong className={"mt-0.5 block text-lg font-black " + ((snapshot.inverterTemperature ?? 0) >= 60 ? "text-rose-600" : "text-amber-600")}><bdi dir="ltr">{snapshot.inverterTemperature !== undefined ? `${Math.round(snapshot.inverterTemperature)} °C` : "—"}</bdi></strong>
             </div>
           </div>
 
@@ -119,7 +119,7 @@ export default function SolarDashboardClient() {
             ].map(([label, value]) => (
               <div key={label} className="flex items-start justify-between gap-3 py-2">
                 <dt className="shrink-0 font-bold text-slate-500">{label}</dt>
-                <dd className="text-left font-black text-slate-800">{value}</dd>
+                <dd className="text-left font-black text-indigo-700"><bdi>{value}</bdi></dd>
               </div>
             ))}
           </dl>

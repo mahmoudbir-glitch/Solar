@@ -24,7 +24,7 @@ export default function LoginPage() {
   return (
     <div dir="rtl" className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-slate-50 px-4 py-10">
       {/* geometric backdrop: a faint dot grid with a warm sun glow above and a cool glow below */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(181,163,147,0.16)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_35%,transparent_75%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(150,161,192,0.16)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_35%,transparent_75%)]" />
       <div className="pointer-events-none absolute left-1/2 top-[-10rem] h-80 w-80 -translate-x-1/2 rounded-full bg-amber-100/50 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-10rem] left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-sky-100/50 blur-3xl" />
 

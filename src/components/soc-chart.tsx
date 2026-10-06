@@ -10,10 +10,10 @@ const HOUR = 3_600_000;
 const W = 640;
 const H = 200;
 const PAD = { top: 10, right: 6, bottom: 26, left: 36 };
-const OK = "#249377"; // emerald: the app's battery colour
-const LOW = "#d99a2b"; // amber: close to the reserve
-const CRITICAL = "#cc4f40"; // rose: below the reserve
-const TRACK = "#f7f1e8";
+const OK = "#10ab5a"; // emerald: the app's battery colour
+const LOW = "#f59c00"; // amber: close to the reserve
+const CRITICAL = "#ee2d5f"; // rose: below the reserve
+const TRACK = "#eaeef8";
 
 type Bucket = { start: number; soc: number | null; min: number; max: number; powerW: number | null };
 
@@ -88,8 +88,8 @@ export function SocChart({ points, timeZone, now, reservePct }: { points: LoadPo
         <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full touch-none select-none" role="img" aria-label="نسبة شحن البطارية لكل ساعة خلال آخر 24 ساعة" onPointerLeave={() => setActive(null)}>
           {[0, 50, 100].map((v) => (
             <g key={v}>
-              <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="#f7f1e8" strokeWidth={1} />
-              <text x={PAD.left - 6} y={y(v) + 4} textAnchor="end" fontSize={11} fill="#b5a393">{v}%</text>
+              <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="#eaeef8" strokeWidth={1} />
+              <text x={PAD.left - 6} y={y(v) + 4} textAnchor="end" fontSize={11} fill="#96a1c0">{v}%</text>
             </g>
           ))}
 
@@ -100,9 +100,9 @@ export function SocChart({ points, timeZone, now, reservePct }: { points: LoadPo
             const r = Math.min(4, cellW / 2);
             return (
               <g key={b.start}>
-                {active === i && <rect x={x0 + 1} y={PAD.top - 2} width={slot - 2} height={plotH + 4} rx={5} fill="#fdfbf7" stroke="#ecdfd0" />}
+                {active === i && <rect x={x0 + 1} y={PAD.top - 2} width={slot - 2} height={plotH + 4} rx={5} fill="#f4f6fc" stroke="#dbe1f0" />}
                 {b.soc === null ? (
-                  <line x1={x0 + slot / 2 - 3} x2={x0 + slot / 2 + 3} y1={base - 2} y2={base - 2} stroke="#dccbb7" strokeWidth={2} strokeLinecap="round" />
+                  <line x1={x0 + slot / 2 - 3} x2={x0 + slot / 2 + 3} y1={base - 2} y2={base - 2} stroke="#c2cbe1" strokeWidth={2} strokeLinecap="round" />
                 ) : (
                   <>
                     {/* the empty cell */}
@@ -114,7 +114,7 @@ export function SocChart({ points, timeZone, now, reservePct }: { points: LoadPo
                   </>
                 )}
                 {hour % 6 === 0 && (
-                  <text x={x0 + slot / 2} y={H - 8} textAnchor="middle" fontSize={11} fill="#b5a393">{String(hour).padStart(2, "0")}:00</text>
+                  <text x={x0 + slot / 2} y={H - 8} textAnchor="middle" fontSize={11} fill="#96a1c0">{String(hour).padStart(2, "0")}:00</text>
                 )}
                 <rect x={x0} y={PAD.top} width={slot} height={plotH + PAD.bottom} fill="transparent" onPointerEnter={() => setActive(i)} onPointerDown={() => setActive(i)} />
               </g>
@@ -123,7 +123,7 @@ export function SocChart({ points, timeZone, now, reservePct }: { points: LoadPo
 
           {/* reserve line drawn over the cells so it stays visible */}
           <line x1={PAD.left} x2={W - PAD.right} y1={y(reservePct)} y2={y(reservePct)} stroke={LOW} strokeDasharray="5 4" strokeWidth={1.25} pointerEvents="none" />
-          <line x1={PAD.left} x2={W - PAD.right} y1={base} y2={base} stroke="#ecdfd0" strokeWidth={1} />
+          <line x1={PAD.left} x2={W - PAD.right} y1={base} y2={base} stroke="#dbe1f0" strokeWidth={1} />
         </svg>
 
         {shown && active !== null && (

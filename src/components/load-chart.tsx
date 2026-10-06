@@ -11,8 +11,8 @@ const HOUR = 3_600_000;
 const W = 640;
 const H = 200;
 const PAD = { top: 10, right: 6, bottom: 26, left: 46 };
-const SOLAR = "#d99a2b"; // amber: the app's solar colour
-const HOME = "#c8795a"; // sky: the app's home colour
+const SOLAR = "#f59c00"; // amber: the app's solar colour
+const HOME = "#2077f0"; // sky: the app's home colour
 
 type Bucket = { start: number; homeW: number | null; solarW: number | null; samples: number };
 
@@ -117,8 +117,8 @@ export function LoadChart({ points, timeZone, now }: { points: LoadPoint[]; time
         >
           {yTicks.map((v) => (
             <g key={v}>
-              <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="#f7f1e8" strokeWidth={1} />
-              <text x={PAD.left - 6} y={y(v) + 4} textAnchor="end" fontSize={11} fill="#b5a393">{v === 0 ? "0" : `${+(v / 1000).toFixed(1)} kW`}</text>
+              <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="#eaeef8" strokeWidth={1} />
+              <text x={PAD.left - 6} y={y(v) + 4} textAnchor="end" fontSize={11} fill="#96a1c0">{v === 0 ? "0" : `${+(v / 1000).toFixed(1)} kW`}</text>
             </g>
           ))}
 
@@ -129,12 +129,12 @@ export function LoadChart({ points, timeZone, now }: { points: LoadPoint[]; time
             const isActive = active === i;
             return (
               <g key={b.start}>
-                {isActive && <rect x={x0 + 1} y={PAD.top - 2} width={slot - 2} height={plotH + 4} rx={5} fill="#fdfbf7" stroke="#ecdfd0" />}
+                {isActive && <rect x={x0 + 1} y={PAD.top - 2} width={slot - 2} height={plotH + 4} rx={5} fill="#f4f6fc" stroke="#dbe1f0" />}
                 {b.homeW === null ? (
-                  <line x1={center - 3} x2={center + 3} y1={PAD.top + plotH - 2} y2={PAD.top + plotH - 2} stroke="#dccbb7" strokeWidth={2} strokeLinecap="round" />
+                  <line x1={center - 3} x2={center + 3} y1={PAD.top + plotH - 2} y2={PAD.top + plotH - 2} stroke="#c2cbe1" strokeWidth={2} strokeLinecap="round" />
                 ) : (
                   <>
-                    <rect x={center - cellW / 2} y={PAD.top} width={cellW} height={plotH} rx={cellR} fill="#f7f1e8" />
+                    <rect x={center - cellW / 2} y={PAD.top} width={cellW} height={plotH} rx={cellR} fill="#eaeef8" />
                     {(b.solarW ?? 0) >= b.homeW ? (
                       <>
                         {bar(center - cellW / 2, b.solarW ?? 0, SOLAR, "s", false)}
@@ -149,7 +149,7 @@ export function LoadChart({ points, timeZone, now }: { points: LoadPoint[]; time
                   </>
                 )}
                 {hour % 6 === 0 && (
-                  <text x={center} y={H - 8} textAnchor="middle" fontSize={11} fill="#b5a393">{String(hour).padStart(2, "0")}:00</text>
+                  <text x={center} y={H - 8} textAnchor="middle" fontSize={11} fill="#96a1c0">{String(hour).padStart(2, "0")}:00</text>
                 )}
                 {/* Hit target bigger than the bars */}
                 <rect
@@ -164,7 +164,7 @@ export function LoadChart({ points, timeZone, now }: { points: LoadPoint[]; time
               </g>
             );
           })}
-          <line x1={PAD.left} x2={W - PAD.right} y1={PAD.top + plotH} y2={PAD.top + plotH} stroke="#ecdfd0" strokeWidth={1} />
+          <line x1={PAD.left} x2={W - PAD.right} y1={PAD.top + plotH} y2={PAD.top + plotH} stroke="#dbe1f0" strokeWidth={1} />
         </svg>
 
         {shown && active !== null && (

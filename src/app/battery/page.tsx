@@ -38,9 +38,17 @@ const METRIC_TONES = {
   sky: "bg-sky-50 text-sky-600",
   slate: "bg-slate-100 text-slate-500",
 } as const;
+/** A metric's number takes its icon's colour. */
+const METRIC_VALUE_TONES = {
+  amber: "text-amber-600",
+  emerald: "text-emerald-700",
+  rose: "text-rose-600",
+  sky: "text-sky-700",
+  slate: "text-slate-900",
+} as const;
 
 /** بطاقة قياس: أيقونة ملوّنة واسم القياس في الأعلى، ثم القيمة وتحتها ملاحظة صغيرة. كل البطاقات بنفس الارتفاع. */
-function Metric({ icon: Icon, label, value, unit, hint, tone = "slate", valueClass = "text-slate-900", pill }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; unit?: string; hint?: string; tone?: keyof typeof METRIC_TONES; valueClass?: string; pill?: React.ReactNode }) {
+function Metric({ icon: Icon, label, value, unit, hint, tone = "slate", valueClass = METRIC_VALUE_TONES[tone], pill }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; unit?: string; hint?: string; tone?: keyof typeof METRIC_TONES; valueClass?: string; pill?: React.ReactNode }) {
   return (
     <div className="energy-card flex h-full flex-col p-4">
       <div className="flex items-center gap-2">
@@ -165,10 +173,10 @@ export default function BatteryPage() {
         <section className="energy-card desktop-wide p-4">
           <h2 className="text-sm font-black text-slate-900">مواصفات البطارية</h2>
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <dt className="text-slate-500">النوع</dt><dd className="text-left font-black text-slate-800" dir="ltr">{settings.batteryChemistry || "—"}</dd>
-            <dt className="text-slate-500">السعة</dt><dd className="text-left font-black text-slate-800" dir="ltr">{(settings.batteryCapacityWh / 1000).toFixed(2)} kWh <AmpPill tone="emerald" unit="Ah" amps={batteryAmpHours(settings.batteryCapacityWh / 1000, settings.batteryNominalVoltage)} className="ml-1 align-middle" /></dd>
-            <dt className="text-slate-500">الجهد الاسمي</dt><dd className="text-left font-black text-slate-800" dir="ltr">{settings.batteryNominalVoltage ? `${settings.batteryNominalVoltage} V` : "—"}</dd>
-            <dt className="text-slate-500">حد الاحتياطي</dt><dd className="text-left font-black text-slate-800" dir="ltr">{settings.batteryMinReservePct}%</dd>
+            <dt className="text-slate-500">النوع</dt><dd className="text-left font-black text-emerald-700" dir="ltr">{settings.batteryChemistry || "—"}</dd>
+            <dt className="text-slate-500">السعة</dt><dd className="text-left font-black text-emerald-700" dir="ltr">{(settings.batteryCapacityWh / 1000).toFixed(2)} kWh <AmpPill tone="emerald" unit="Ah" amps={batteryAmpHours(settings.batteryCapacityWh / 1000, settings.batteryNominalVoltage)} className="ml-1 align-middle" /></dd>
+            <dt className="text-slate-500">الجهد الاسمي</dt><dd className="text-left font-black text-emerald-700" dir="ltr">{settings.batteryNominalVoltage ? `${settings.batteryNominalVoltage} V` : "—"}</dd>
+            <dt className="text-slate-500">حد الاحتياطي</dt><dd className="text-left font-black text-emerald-700" dir="ltr">{settings.batteryMinReservePct}%</dd>
           </dl>
           <p className="mt-2 text-[11px] font-semibold text-slate-400">تُعدَّل من الإعدادات ← مواصفات العتاد.</p>
         </section>
