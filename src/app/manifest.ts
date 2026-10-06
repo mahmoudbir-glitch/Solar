@@ -5,6 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Solar | إدارة ومراقبة الطاقة الشمسية",
     short_name: "Solar",
     description: "إدارة ومراقبة الطاقة الشمسية في منزلك",
+    id: "/",
     start_url: "/",
     display: "standalone",
     dir: "rtl",
@@ -12,6 +13,9 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#f4f6fc",
     theme_color: "#7d82fb",
     icons: [
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
       { src: "/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml", purpose: "any" },
       { src: "/icons/icon-512.svg", sizes: "512x512", type: "image/svg+xml", purpose: "any" },
     ],
