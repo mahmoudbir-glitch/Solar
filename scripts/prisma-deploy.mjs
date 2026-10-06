@@ -48,7 +48,11 @@ if (!databaseUrl) {
 
 // Run the Prisma CLI with this Node directly: spawning npx.cmd fails on Windows.
 const prismaCli = resolve("node_modules/prisma/build/index.js");
-const env = { ...process.env, DATABASE_URL: databaseUrl };
+// Neon's pooled connections (PgBouncer) cannot hold the session-level
+// advisory lock Prisma takes before migrating, so the build stalled for 10 s
+// and failed with P1002. Only production builds migrate, and Vercel runs them
+// one at a time, so the lock is not needed.
+const env = { ...process.env, DATABASE_URL: databaseUrl, PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK: "1" };
 
 function prisma(args, { capture = false } = {}) {
   return spawnSync(process.execPath, [prismaCli, ...args], {
@@ -68,12 +72,21 @@ function deploy(capture) {
   return result;
 }
 
-const first = deploy(true);
+let first = deploy(true);
 if (first.status === 0) {
   process.exit(0);
 }
 
-const output = `${first.stdout ?? ""}${first.stderr ?? ""}`;
+let output = `${first.stdout ?? ""}${first.stderr ?? ""}`;
+
+// P1002: the database was reached but timed out (often a sleeping Neon compute
+// waking up). Try once more before giving up.
+if (output.includes("P1002")) {
+  console.error("[solar] Database timed out (P1002); retrying once.");
+  first = deploy(true);
+  if (first.status === 0) process.exit(0);
+  output = `${first.stdout ?? ""}${first.stderr ?? ""}`;
+}
 
 if (!output.includes("P3009")) {
   console.error("[solar] migrate deploy failed for a reason other than P3009.");

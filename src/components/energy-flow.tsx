@@ -226,9 +226,9 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
           </div>
           <div className="pointer-events-none absolute left-1/2 top-full mt-1.5 w-[7.5rem] -translate-x-1/2 text-center">
             <div className="text-xs font-black text-slate-700">الشبكة</div>
-            {/* Power from the grid in kW, like the other nodes; the state goes under it. */}
-            <div className={gridImporting || gridExporting ? "text-sm font-black text-violet-600" : "text-sm font-black text-slate-500"}>{formatKw(isLive ? gridKw : 0)}</div>
+            {/* Grid state first, then its power in kW, then the current. */}
             <div className={gridConnected === true && !inverterOffGrid ? "text-[11px] font-bold text-violet-500" : "text-[11px] font-bold text-slate-400"}>{gridConnected == null ? "غير معروفة" : !gridConnected ? "مقطوعة" : gridImporting ? "تسحب منها" : gridExporting ? "تصدير" : inverterOffGrid ? "غير مستخدمة" : "جهد متوفر"}</div>
+            <div className={gridImporting || gridExporting ? "text-sm font-black text-violet-600" : "text-sm font-black text-slate-500"}>{formatKw(isLive ? gridKw : 0)}</div>
             <div className="mt-1"><AmpPill tone="violet" amps={isLive ? gridAmps : null} muted={!gridImporting && !gridExporting} /></div>
           </div>
         </button>

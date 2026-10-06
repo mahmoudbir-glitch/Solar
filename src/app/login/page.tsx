@@ -33,7 +33,7 @@ export default function LoginPage() {
           {/* logo: Solar's sun badge */}
           <SolarMark large />
           <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-900">Solar</h1>
-          <p className="mt-1 text-sm font-semibold text-slate-500">الشمس تعمل من أجلك</p>
+          <p className="mt-1 text-sm font-semibold text-slate-500">الطاقة البديلة</p>
           <div className="mt-5 flex w-full items-center gap-3 text-[11px] font-bold text-slate-400">
             <span className="h-px flex-1 bg-slate-200" />
             مراقبة أنظمة الطاقة الشمسية

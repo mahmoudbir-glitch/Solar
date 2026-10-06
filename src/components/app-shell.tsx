@@ -78,7 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </span>
               </div>
               <div className="mt-0.5 truncate text-[11px] font-black text-black sm:text-xs">
-                الشمس تعمل من أجلك
+                الطاقة البديلة
               </div>
             </div>
           </div>
