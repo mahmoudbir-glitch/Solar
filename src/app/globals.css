@@ -18,14 +18,19 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 }
 .energy-card { border: 1px solid rgba(219,225,240,.9); border-radius: 1.15rem; background: rgba(255,255,255,.96); box-shadow: 0 14px 40px rgba(77,71,224,.07); }
 .page-title { font-size: 1.5rem; line-height: 2rem; font-weight: 900; color: #181f3f; }
-/* Solar's sun badge breathes slowly. */
-@keyframes solar-mark-glow {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.08) drop-shadow(0 0 8px rgba(255, 182, 28, 0.55)); }
+/* Solar's logo blinks gently, and its sun flares as it does. */
+@keyframes solar-mark-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
-.solar-mark { animation: solar-mark-glow 3.2s ease-in-out infinite; }
+@keyframes solar-mark-flare {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 182, 28, 0)); }
+  50% { filter: drop-shadow(0 0 10px rgba(255, 182, 28, 0.9)); }
+}
+.solar-mark { animation: solar-mark-blink 1.6s ease-in-out infinite; }
+.solar-mark-sun { animation: solar-mark-flare 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .solar-mark { animation: none; }
+  .solar-mark, .solar-mark-sun { animation: none; }
 }
 
 /* Computer screens (1024px and wider): a page lays its cards out in two columns
