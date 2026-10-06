@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   description: "الطاقة البديلة — مراقبة منظومة الطاقة الشمسية",
   applicationName: "Solar",
   appleWebApp: { capable: true, title: "Solar", statusBarStyle: "default" },
-  icons: { icon: [{ url: "/icons/icon-192.svg?v=2", sizes: "192x192", type: "image/svg+xml" }, { url: "/icons/icon-512.svg?v=2", sizes: "512x512", type: "image/svg+xml" }], apple: [{ url: "/icons/icon-192.png?v=2", sizes: "192x192" }] },
+  icons: { icon: [{ url: "/icons/icon-192.svg?v=3", sizes: "192x192", type: "image/svg+xml" }, { url: "/icons/icon-512.svg?v=3", sizes: "512x512", type: "image/svg+xml" }], apple: [{ url: "/icons/icon-192.png?v=3", sizes: "192x192" }] },
   robots: { index: false, follow: false },
   openGraph: {
     title: "Solar",
