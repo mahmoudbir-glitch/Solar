@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Solar | إدارة ومراقبة الطاقة الشمسية",
-    short_name: "Solar | إدارة ومراقبة الطاقة الشمسية",
+    short_name: "Solar",
     description: "إدارة ومراقبة الطاقة الشمسية في منزلك",
     start_url: "/",
     display: "standalone",

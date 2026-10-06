@@ -14,6 +14,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "Solar | مراقبة الطاقة الشمسية",
   description: "الطاقة البديلة — مراقبة منظومة الطاقة الشمسية",
+  applicationName: "Solar",
+  appleWebApp: { capable: true, title: "Solar", statusBarStyle: "default" },
   icons: { icon: [{ url: "/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml" }, { url: "/icons/icon-512.svg", sizes: "512x512", type: "image/svg+xml" }] },
   robots: { index: false, follow: false },
   openGraph: {
