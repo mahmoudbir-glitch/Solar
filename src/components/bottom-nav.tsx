@@ -43,7 +43,7 @@ export function DesktopNav() {
 
   return (
     <nav aria-label="التنقل الرئيسي" className="hidden md:block">
-      <div className="mx-auto flex max-w-3xl items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-1.5 shadow-sm backdrop-blur">
+      <div className="mx-auto flex max-w-3xl items-center gap-1.5 lg:max-w-4xl rounded-2xl border border-slate-200/80 bg-slate-50/80 p-1.5 shadow-sm backdrop-blur">
         {navItems.map(({ href, label, Icon, tone }) => {
           const active = isNavActive(path, href);
           const t = TONES[tone];

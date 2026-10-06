@@ -27,3 +27,13 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 @media (prefers-reduced-motion: reduce) {
   .solar-mark { animation: none; }
 }
+
+/* Computer screens (1024px and wider): a page lays its cards out in two columns
+ * instead of one phone-width column. Headers, notes, collapsible blocks and
+ * anything marked .desktop-wide span both columns. Phones are not affected. */
+@media (min-width: 1024px) {
+  .desktop-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+  .desktop-grid > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+  .desktop-grid > header, .desktop-grid > p, .desktop-grid > details, .desktop-grid > button,
+  .desktop-grid > [role="status"], .desktop-grid > [role="alert"], .desktop-grid > .desktop-wide { grid-column: 1 / -1; }
+}

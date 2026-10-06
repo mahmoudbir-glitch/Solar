@@ -79,7 +79,7 @@ export default function HomeConsumptionPage() {
   const peakPct = history?.peak && history.inverterRatedKw ? Math.round((history.peak.w / (history.inverterRatedKw * 1000)) * 100) : null;
 
   return (
-    <div className="w-full space-y-3 pb-4 text-right" dir="rtl">
+    <div className="desktop-grid w-full space-y-3 pb-4 text-right" dir="rtl">
       <PageHeader
         icon={Lightbulb}
         tone="sky"

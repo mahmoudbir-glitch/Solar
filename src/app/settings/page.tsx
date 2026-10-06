@@ -316,7 +316,7 @@ export default function SettingsPage() {
   if (loading) return <div dir="rtl" className="p-6 text-center font-black text-slate-600">جاري تحميل الإعدادات…</div>;
 
   return (
-    <div dir="rtl" className="w-full space-y-3 overflow-x-hidden pb-4 text-right">
+    <div dir="rtl" className="w-full space-y-3 overflow-x-hidden pb-4 text-right lg:mx-auto lg:max-w-3xl">
       <PageHeader icon={SettingsIcon} tone="rose" eyebrow="Solar • الإعدادات" title="إعدادات المنظومة" subtitle="الاتصال، العتاد، التنبيهات والبيانات." />
 
       {/* نظرة سريعة على المنظومة */}

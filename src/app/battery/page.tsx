@@ -94,7 +94,7 @@ export default function BatteryPage() {
   const eta = snapshot ? estimate(soc, powerW, settings) : null;
 
   return (
-    <div className="w-full space-y-3 pb-4 text-right" dir="rtl">
+    <div className="desktop-grid w-full space-y-3 pb-4 text-right" dir="rtl">
       <PageHeader icon={BatteryFull} tone="emerald" eyebrow="Solar • البطارية" title="حالة البطارية" subtitle="الشحن والجهد والحرارة والوقت المتوقع." />
 
       {/* مؤشر دائري كبير لنسبة الشحن */}
@@ -162,7 +162,7 @@ export default function BatteryPage() {
 
       {/* مواصفات البطارية من الإعدادات */}
       {settings && (
-        <section className="energy-card p-4">
+        <section className="energy-card desktop-wide p-4">
           <h2 className="text-sm font-black text-slate-900">مواصفات البطارية</h2>
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <dt className="text-slate-500">النوع</dt><dd className="text-left font-black text-slate-800" dir="ltr">{settings.batteryChemistry || "—"}</dd>
@@ -175,7 +175,7 @@ export default function BatteryPage() {
       )}
 
       {!snapshot && !loading && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">لا توجد قراءة حية متاحة حاليًا.</div>
+        <div className="desktop-wide rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">لا توجد قراءة حية متاحة حاليًا.</div>
       )}
     </div>
   );

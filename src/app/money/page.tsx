@@ -167,15 +167,15 @@ export default function MoneyDashboard() {
   const selectClass = inputClass + " appearance-auto";
 
   return (
-    <div className="w-full space-y-3 pb-4 text-right" dir="rtl">
+    <div className="desktop-grid w-full space-y-3 pb-4 text-right" dir="rtl">
       <PageHeader icon={Coins} tone="teal" eyebrow="Solar • المال" title="التحليل المالي ومصادر الكهرباء" subtitle={data?.periodDays ? `مصادر الكهرباء والوفر خلال ${lastDays(data.periodDays)}.` : "مصادر الكهرباء والوفر من قراءات منظومتك."} />
 
       {loading ? (
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <section className="desktop-wide rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm">
           <div className="text-sm font-black text-slate-600">جاري تجهيز التحليل…</div>
         </section>
       ) : !data || !data.periodDays ? (
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <section className="desktop-wide rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-xl">📊</div>
           <h2 className="mt-3 text-base font-black text-slate-900">لا توجد بيانات كافية بعد</h2>
           <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
@@ -185,7 +185,7 @@ export default function MoneyDashboard() {
       ) : (
         <>
           {/* Totals for the period; how the house was covered is in the sources card below. */}
-          <section className="grid grid-cols-2 gap-3">
+          <section className="desktop-wide grid grid-cols-2 gap-3">
             <StatTile card big tone="amber" label="إنتاج الألواح" value={formatNumber(data.totals.solarKWh)} unit="kWh" ampTone="amber" ampUnit="Ah" amps={acAmpHours(data.totals.solarKWh)} />
             <StatTile card big tone="sky" label="استهلاك المنزل" value={formatNumber(data.totals.homeKWh)} unit="kWh" ampTone="sky" ampUnit="Ah" amps={acAmpHours(data.totals.homeKWh)} />
           </section>

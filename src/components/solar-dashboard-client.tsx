@@ -56,7 +56,7 @@ export default function SolarDashboardClient() {
   })();
 
   return (
-    <div className="w-full space-y-3 text-right" dir="rtl">
+    <div className="desktop-grid w-full space-y-3 text-right" dir="rtl">
       <EnergyFlow
         solarKw={(snapshot?.solarPowerW ?? 0) / 1000}
         homeKw={(snapshot?.homePowerW ?? 0) / 1000}
@@ -74,6 +74,8 @@ export default function SolarDashboardClient() {
         savingsCurrency={snapshot?.currency ? `${snapshot.currency} ` : undefined}
       />
 
+      {/* On a computer these cards sit beside the flow diagram. */}
+      <div className="space-y-3 lg:space-y-4">
       {/* الليلة: جواب مباشر من القراءة الحالية، والتفاصيل في قسم الليل بصفحة الطاقة */}
       <Link href="/energy#night" className="energy-card flex items-center gap-3 p-4 transition hover:border-indigo-200 hover:shadow-md">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500"><Moon className="h-5 w-5" aria-hidden="true" /></span>
@@ -123,6 +125,7 @@ export default function SolarDashboardClient() {
           </dl>
         </section>
       )}
+      </div>
     </div>
   );
 }

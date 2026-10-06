@@ -165,7 +165,7 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
   const loadW = snapshot?.homePowerW ?? 0;
 
   return (
-    <section dir="rtl" className="relative space-y-4">
+    <section dir="rtl" className="desktop-grid relative space-y-4">
       {toast && (
         <div role="status" aria-live="polite" className="fixed left-1/2 top-4 z-[80] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800 shadow-xl">
           {toast}
