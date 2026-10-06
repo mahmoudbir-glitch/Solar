@@ -11,10 +11,12 @@ export const maxDuration = 60;
 // are recorded even while nobody has the app open. It is protected by
 // CRON_SECRET, sent as "Authorization: Bearer <secret>" or "?key=<secret>".
 function authorized(request: NextRequest) {
-  const expected = process.env.CRON_SECRET;
+  // A value pasted into the hosting dashboard often carries a trailing line
+  // break; without trimming, the key that was copied never matches it.
+  const expected = process.env.CRON_SECRET?.trim();
   if (!expected || expected.length < 16) return false;
   const header = request.headers.get("authorization") ?? "";
-  const given = header.startsWith("Bearer ") ? header.slice(7) : request.nextUrl.searchParams.get("key") ?? "";
+  const given = (header.startsWith("Bearer ") ? header.slice(7) : request.nextUrl.searchParams.get("key") ?? "").trim();
   // Compare digests so the lengths always match and timing reveals nothing.
   const a = createHash("sha256").update(given).digest();
   const b = createHash("sha256").update(expected).digest();
@@ -22,7 +24,7 @@ function authorized(request: NextRequest) {
 }
 
 async function handle(request: NextRequest) {
-  if (!process.env.CRON_SECRET) return NextResponse.json({ error: "cron_not_configured" }, { status: 503 });
+  if (!process.env.CRON_SECRET?.trim()) return NextResponse.json({ error: "cron_not_configured" }, { status: 503 });
   if (!authorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const result = await syncSmartEss();
   // Right after sunset, once per evening: will the battery last the night?
