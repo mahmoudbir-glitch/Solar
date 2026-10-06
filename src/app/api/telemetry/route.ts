@@ -3,7 +3,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import { telemetryInputSchema, telemetryToSnapshot } from "@/lib/telemetry";
-import { ingestSample, loadSettings, localDayStart } from "@/lib/telemetry-store";
+import { ingestSample, loadSettings, localDayStart, effectiveGridW } from "@/lib/telemetry-store";
 import { syncSmartEss } from "@/lib/smartess-sync";
 
 export const runtime = "nodejs";
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
         timestamp: row.timestamp.toISOString(),
         solarPowerW: row.pvPowerW,
         homePowerW: row.loadPowerW,
-        gridPowerW: row.gridPowerW ?? 0,
+        gridPowerW: effectiveGridW(row),
         batteryPowerW: row.batteryPowerW,
         batterySoc: row.batterySoc,
         batteryVoltage: row.batteryVoltage ?? undefined,

@@ -57,13 +57,14 @@ export async function GET(request: NextRequest) {
       },
     );
 
-    const coveredKWh = totals.solarKWh + totals.batteryDischargeKWh + totals.gridImportKWh;
-    const solarToHome = Math.min(totals.homeKWh, totals.solarKWh);
-    const batteryToHome = Math.min(
-      Math.max(0, totals.homeKWh - solarToHome),
-      totals.batteryDischargeKWh,
-    );
-    const gridToHome = Math.max(0, totals.homeKWh - solarToHome - batteryToHome);
+    // Where the house's energy came from, each kWh counted once and by the same
+    // rule as the money page: what was bought from the grid first, then what
+    // the battery gave back, and the rest came straight from the panels.
+    // (Sun-first counted the solar energy stored in the battery twice.)
+    const home = Math.max(0, totals.homeKWh);
+    const gridToHome = Math.min(home, Math.max(0, totals.gridImportKWh));
+    const batteryToHome = Math.min(home - gridToHome, Math.max(0, totals.batteryDischargeKWh));
+    const solarToHome = Math.max(0, home - gridToHome - batteryToHome);
 
     return NextResponse.json(
       {
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
         })),
         totals: {
           ...totals,
-          coveragePct: coveredKWh > 0 ? Math.round(((solarToHome + batteryToHome) / coveredKWh) * 100) : null,
+          coveragePct: home > 0 ? Math.round(((solarToHome + batteryToHome) / home) * 100) : null,
           sources: {
             solarKWh: solarToHome,
             batteryKWh: batteryToHome,

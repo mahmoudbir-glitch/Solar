@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { estimateBatteryNight, powerSourceShares, solarSurplus } from "@/lib/predictive";
+import { effectiveGridW } from "@/lib/telemetry-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       timestamp: telemetry.timestamp.toISOString(),
       solarPowerW: telemetry.pvPowerW,
       homePowerW: telemetry.loadPowerW,
-      gridPowerW: telemetry.gridPowerW ?? 0,
+      gridPowerW: effectiveGridW(telemetry),
       batteryPowerW: telemetry.batteryPowerW,
       batterySoc: telemetry.batterySoc,
       batteryVoltage: telemetry.batteryVoltage ?? undefined,

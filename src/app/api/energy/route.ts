@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { effectiveGridW } from "@/lib/telemetry-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export async function GET() {
           home_consumption: row.loadPowerW,
           battery_level: row.batterySoc,
           grid_status: row.gridConnected == null ? "غير معروفة" : row.gridConnected ? "متصلة" : "مقطوعة",
-          grid_power: row.gridPowerW ?? 0,
+          grid_power: effectiveGridW(row),
           battery_power: row.batteryPowerW,
           timestamp: row.timestamp.toISOString(),
         },

@@ -84,8 +84,11 @@ async function updateDailySummary(
 
   const tariff = settings?.gridTariff ?? 0;
   const exportTariff = settings?.exportTariff ?? 0;
-  // What the house used minus what it actually took from the grid.
-  const avoidedGridKWh = Math.max(0, homeKWh - gridImportKWh);
+  // What the house would have cost on the grid, minus what was really bought.
+  // Signed on purpose: while the grid charges the battery this is negative,
+  // and it comes back when the battery later feeds the house. Clamping each
+  // interval at zero counted that grid energy as saved.
+  const avoidedGridKWh = homeKWh - gridImportKWh;
   const savings = avoidedGridKWh * tariff + gridExportKWh * exportTariff;
   const day = localDayStart(timestamp, settings?.timezone);
 
