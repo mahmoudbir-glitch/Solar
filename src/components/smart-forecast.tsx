@@ -111,6 +111,7 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
   }, [toast]);
 
   const selected = forecasts[selectedIndex];
+  const todayAfterSunset = selectedIndex === 0 && (selected?.sunset ? Date.now() > new Date(selected.sunset).getTime() : false);
   const current = weather?.current;
 
   // Arriving from the home card ("/energy#night"): the section only exists
@@ -266,10 +267,13 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
               <span className="text-xs font-bold text-slate-500">🔋 البطارية</span>
               <span className="text-sm font-black text-slate-900">
                 <span className="text-slate-400">{selectedIndex === 0 && Date.now() > new Date(selected.sunrise).getTime() ? "الآن" : "الشروق"}</span> <bdi dir="ltr">{selected.chargeAtSunrisePct}%</bdi>
+                {/* After today's sunset the "sunset" value would only repeat the current level. */}
+                {!todayAfterSunset && <>
                 <span className="mx-2 text-slate-300">←</span>
                 <span className="text-slate-400">الغروب</span> <bdi dir="ltr" className="text-emerald-700">{selected.chargeAtSunsetPct}%</bdi>
+                </>}
               </span>
-              <span className="w-full text-[11px] font-bold text-slate-500">{selected.fullChargeTime ? <>تمتلئ نحو <bdi dir="ltr" className="font-black text-emerald-700">{formatHour(selected.fullChargeTime)}</bdi></> : "لا يُتوقع أن تمتلئ هذا اليوم"}</span>
+              <span className="w-full text-[11px] font-bold text-slate-500">{todayAfterSunset ? "غابت الشمس. اختر يوم الغد لترى شحن البطارية." : selected.fullChargeTime ? <>تمتلئ نحو <bdi dir="ltr" className="font-black text-emerald-700">{formatHour(selected.fullChargeTime)}</bdi></> : "لا يُتوقع أن تمتلئ هذا اليوم"}</span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-indigo-50/70 p-4">

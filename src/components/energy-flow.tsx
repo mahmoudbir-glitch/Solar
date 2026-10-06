@@ -64,6 +64,8 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   const solarToneClass = solarText(solarKw);
   const homeToneClass = homeText(homeKw);
   const batteryToneClass = batteryText(batteryPercentage);
+  // No reading yet: a dash, not "0%" (an empty battery).
+  const batterySocText = Number.isFinite(batteryPercentage) ? batteryPercentage.toFixed(0) + '%' : '—';
 
   const solarActive = liveFlowActive && solarKw > FLOW_THRESHOLD;
   const homeActive = liveFlowActive && homeKw > FLOW_THRESHOLD;
@@ -227,8 +229,8 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
           <div className="pointer-events-none absolute left-1/2 top-full mt-1.5 w-[7.5rem] -translate-x-1/2 text-center">
             <div className="text-xs font-black text-slate-700">الشبكة</div>
             {/* Grid state first, then its power in kW, then the current. */}
-            <div className={gridConnected === true && !inverterOffGrid ? "text-[11px] font-bold text-violet-500" : "text-[11px] font-bold text-slate-400"}>{gridConnected == null ? "غير معروفة" : !gridConnected ? "مقطوعة" : gridImporting ? "تسحب منها" : gridExporting ? "تصدير" : inverterOffGrid ? "غير مستخدمة" : "جهد متوفر"}</div>
-            <div className={gridImporting || gridExporting ? "text-sm font-black text-violet-600" : "text-sm font-black text-slate-500"}>{formatKw(isLive ? gridKw : 0)}</div>
+            <div className={isLive && gridConnected === true && !inverterOffGrid ? "text-[11px] font-bold text-violet-500" : "text-[11px] font-bold text-slate-400"}>{gridConnected == null || !isLive ? "غير معروفة" : !gridConnected ? "مقطوعة" : gridImporting ? "تسحب منها" : gridExporting ? "تصدير" : inverterOffGrid ? "غير مستخدمة" : "جهد متوفر"}</div>
+            <div className={gridImporting || gridExporting ? "text-sm font-black text-violet-600" : "text-sm font-black text-slate-500"}>{formatKw(gridKw)}</div>
             <div className="mt-1"><AmpPill tone="violet" amps={isLive ? gridAmps : null} muted={!gridImporting && !gridExporting} /></div>
           </div>
         </button>
@@ -254,11 +256,11 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
           >
             <div className="relative flex h-11 w-11 items-center justify-center rounded-full border-[3px] border-white/70 bg-white">
               <BatteryCharging className="absolute h-4 w-4 -translate-y-2.5 text-emerald-500" strokeWidth={2.3} />
-              <span className={"mt-2 text-xs font-black " + batteryToneClass}>{batteryPercentage.toFixed(0)}%</span>
+              <span className={"mt-2 text-xs font-black " + batteryToneClass}>{batterySocText}</span>
             </div>
           </div>
           <div className="pointer-events-none absolute left-1/2 top-full mt-1.5 w-[7.5rem] -translate-x-1/2 text-center">
-            <div className="text-xs font-black text-slate-700">البطارية <span className="font-bold text-slate-400">· {batteryCharging ? "تشحن" : batteryDischarging ? "تفرغ" : "ثابتة"}</span></div>
+            <div className="text-xs font-black text-slate-700">البطارية {isLive && <span className="font-bold text-slate-400">· {batteryCharging ? "تشحن" : batteryDischarging ? "تفرغ" : "ثابتة"}</span>}</div>
             <div className={"text-sm font-black " + batteryToneClass}>{formatKw(batteryKw)}</div>
             <div className="mt-1"><AmpPill tone="emerald" amps={isLive ? batteryAmps : null} muted={!batteryCharging && !batteryDischarging} /></div>
           </div>
@@ -300,7 +302,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
               )}
               {activeNode === "battery" && (
                 <>
-                  <div className="rounded-xl bg-slate-50 p-3"><div className="font-bold text-slate-500">حالة الشحن</div><div className={"mt-1 font-black " + batteryToneClass}>{batteryPercentage.toFixed(0)}%</div></div>
+                  <div className="rounded-xl bg-slate-50 p-3"><div className="font-bold text-slate-500">حالة الشحن</div><div className={"mt-1 font-black " + batteryToneClass}>{batterySocText}</div></div>
                   <div className="rounded-xl bg-slate-50 p-3"><div className="font-bold text-slate-500">القدرة</div><div className="mt-1 font-black text-slate-800">{formatKw(batteryKw)}</div><div className="mt-1.5"><AmpPill tone="emerald" amps={isLive ? batteryAmps : null} /></div></div>
                 </>
               )}
