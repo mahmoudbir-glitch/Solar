@@ -8,7 +8,7 @@ import AppShell from "@/components/app-shell";
 export const metadata: Metadata = {
   metadataBase: new URL("https://solar-ten-tau.vercel.app"),
   title: "Solar | مراقبة الطاقة الشمسية",
-  description: "الشمس تعمل من أجلك — مراقبة منظومة الطاقة الشمسية",
+  description: "الطاقة البديلة — مراقبة منظومة الطاقة الشمسية",
   icons: { icon: [{ url: "/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml" }, { url: "/icons/icon-512.svg", sizes: "512x512", type: "image/svg+xml" }] },
   robots: { index: false, follow: false },
   openGraph: {

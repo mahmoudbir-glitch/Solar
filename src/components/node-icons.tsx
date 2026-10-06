@@ -70,14 +70,15 @@ export function HouseIcon({ className = "h-10 w-10" }: { className?: string }) {
   );
 }
 
-/** The inverter as the wall unit it is: a case with the AC wave on its screen. */
+/** The inverter as the wall unit it is: a case with a charging bolt on its screen. */
 export function InverterIcon({ active = true, className = "h-10 w-10" }: { active?: boolean; className?: string }) {
   const edge = active ? "#a87044" : "#b5a393";
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden="true" strokeLinecap="round" strokeLinejoin="round">
       <rect x="9" y="5" width="30" height="38" rx="6" fill={active ? "#fbf3e8" : "#f7f1e8"} stroke={edge} strokeWidth="2.2" />
       <rect x="13.5" y="10" width="21" height="14" rx="3" fill={active ? "#594338" : "#dccbb7"} />
-      <path d="M16.5 17 q3.75 -7 7.5 0 t7.5 0" fill="none" stroke={active ? "#ecc35f" : "#f7f1e8"} strokeWidth="2.2" />
+      {/* charging bolt */}
+      <path d="M25.8 11.6 L19.6 18.2 H23.6 L22.2 22.4 L28.4 15.8 H24.4 Z" fill={active ? "#ecc35f" : "#f7f1e8"} stroke={active ? "#ecc35f" : "#f7f1e8"} strokeWidth="0.8" />
       <circle cx="17" cy="33" r="2.3" fill={active ? "#16866a" : "#b5a393"} />
       <path d="M23.5 31 H33 M23.5 35.5 H30" fill="none" stroke={edge} strokeWidth="2" />
     </svg>
