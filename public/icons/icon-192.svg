@@ -1,1 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#FDFBF7"/><path d="M96 30l9 25 25 9-25 9-9 25-9-25-25-9 25-9z" fill="#D4A373"/><circle cx="96" cy="96" r="38" fill="#fff" stroke="#765643" stroke-width="6"/><path d="M96 69v27l20 15" fill="none" stroke="#C8795A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M50 139h92" stroke="#D4A373" stroke-width="8" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a8ffc"/><stop offset="1" stop-color="#4b4fd1"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.4" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#ffb21e"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f3a8a"/><stop offset="1" stop-color="#0f1f55"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="106" fill="url(#bg)"/><g transform="translate(0.0 0.0) scale(1.0)">
+  <!-- sun -->
+  <g transform="translate(256 190)">
+    <g stroke="#ffd34d" stroke-width="18" stroke-linecap="round">
+      <line x1="0" y1="-118" x2="0" y2="-90"/>
+      <line x1="83" y1="-83" x2="64" y2="-64"/>
+      <line x1="-83" y1="-83" x2="-64" y2="-64"/>
+      <line x1="118" y1="0" x2="90" y2="0"/>
+      <line x1="-118" y1="0" x2="-90" y2="0"/>
+    </g>
+    <circle r="66" fill="url(#sun)"/>
+  </g>
+  <!-- panel stand -->
+  <path d="M256 392 L256 430" stroke="#e8eaff" stroke-width="16" stroke-linecap="round"/>
+  <path d="M206 432 H306" stroke="#e8eaff" stroke-width="16" stroke-linecap="round"/>
+  <!-- solar panel (perspective) -->
+  <path d="M150 262 H362 L404 396 H108 Z" fill="url(#panel)" stroke="#ffffff" stroke-width="10" stroke-linejoin="round"/>
+  <g stroke="#7ea6ff" stroke-width="5" fill="none">
+    <path d="M136 307 H376"/><path d="M122 352 H390"/>
+    <path d="M203 262 L182 396"/><path d="M256 262 V396"/><path d="M309 262 L330 396"/>
+  </g>
+</g></svg>
