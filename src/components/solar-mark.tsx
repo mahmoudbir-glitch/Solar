@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-/** Solar's logo: the app icon's sun over a solar panel, with no background. It blinks gently. */
+/** Solar's logo: the app icon's sun over a solar panel, with no background. Only the sun blinks. */
 export function SolarMark({ large = false }: { large?: boolean }) {
   const id = useId().replace(/:/g, "");
   const sun = `solar-mark-sun-${id}`;
