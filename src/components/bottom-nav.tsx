@@ -88,7 +88,7 @@ export function BottomNav() {
               href={href}
               aria-current={active ? 'page' : undefined}
               className={
-                'group flex aspect-square w-full max-w-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-extrabold transition-all active:scale-95 ' +
+                'group flex aspect-square w-full max-w-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-extrabold transition-all active:scale-95 ' +
                 (active
                   ? 'shadow-md ring-1 ' + t.active
                   : 'text-slate-600 ' + t.idle)
