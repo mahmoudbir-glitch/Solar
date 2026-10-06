@@ -134,20 +134,17 @@ export default function MoneyDashboard() {
     };
   }, [period]);
 
-  const savedAmount = useMemo(() => {
-    if (!data) return 0;
-    return (
-      data.sources.solarKWh * tariff +
-      data.sources.batteryKWh * tariff +
-      data.totals.gridExportKWh * exportTariff
-    );
-  }, [data, tariff, exportTariff]);
-
-  const gridCost = data ? data.totals.gridImportKWh * tariff : 0;
-  const savedTone = moneyTone(savedAmount);
+  // What the house used, priced at the grid tariff: the bill without the system.
   const hypotheticalCost = data
     ? (data.sources.solarKWh + data.sources.batteryKWh + data.sources.gridKWh) * tariff
     : 0;
+  const gridCost = data ? data.totals.gridImportKWh * tariff : 0;
+  const exportIncome = data ? data.totals.gridExportKWh * exportTariff : 0;
+  // Saving = the bill without the system − what was really paid + export income.
+  // Pricing the battery's share as saved counted grid energy twice whenever the
+  // grid charged the battery (paid once on import, "saved" again on discharge).
+  const savedAmount = useMemo(() => hypotheticalCost - gridCost + exportIncome, [hypotheticalCost, gridCost, exportIncome]);
+  const savedTone = moneyTone(savedAmount);
 
   const sourceRows = data
     ? sourceStyles.map((style) => {
@@ -287,7 +284,7 @@ export default function MoneyDashboard() {
                 <strong className={"mt-1 block text-3xl font-black " + semanticText[savedTone]}>
                   <bdi dir="ltr">{currency} {money(savedAmount)}</bdi>
                 </strong>
-                <span className="mt-1 block text-[10px] font-semibold opacity-75">من الشمس والبطارية والتصدير</span>
+                <span className="mt-1 block text-[10px] font-semibold opacity-75">ما لم تدفعه للشبكة بفضل النظام</span>
               </div>
 
               <div className="rounded-2xl border border-violet-100 bg-violet-50 p-3.5">
@@ -319,6 +316,12 @@ export default function MoneyDashboard() {
                 </div>
               )}
             </div>
+
+            {tariff > 0 && (
+              <p className="mt-3 rounded-xl bg-teal-50/60 px-3 py-2 text-[11px] font-bold leading-5 text-slate-600">
+                الحساب: <bdi dir="ltr">{money(hypotheticalCost)}</bdi> بلا النظام − <bdi dir="ltr">{money(gridCost)}</bdi> دفعت للشبكة{exportIncome > 0 ? <> + <bdi dir="ltr">{money(exportIncome)}</bdi> من التصدير</> : null} = <bdi dir="ltr">{money(savedAmount)}</bdi> {currency}
+              </p>
+            )}
 
             <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-[10px] font-semibold leading-5 text-slate-500">
               ملاحظة: الأرقام تقديرية وتعتمد على الطاقة المسجلة وتعرفة الشراء والتصدير التي تضبطها في الإعدادات.

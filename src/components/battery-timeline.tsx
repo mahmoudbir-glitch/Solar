@@ -2,119 +2,142 @@
 
 import { useMemo } from "react";
 import { useSharedSmartEnergy } from "@/components/smart-energy-provider";
-import type { HourlySolarPoint } from "@/lib/smart-forecast";
+import { weatherIcon } from "@/lib/smart-forecast";
 
-/** "2026-10-06T18:31" → hour key "2026-10-06T18" and minute 31 (site-local strings, no Date parsing). */
-function splitTime(time: string) {
-  return { hourKey: time.slice(0, 13), minute: Number(time.slice(14, 16)) || 0 };
+function formatHour(time: string) {
+  // Forecast times are already site-local ("2026-10-06T18:31"): read the clock straight from the string.
+  return time.slice(11, 16);
 }
 
+/** One hour after a site-local "YYYY-MM-DDTHH:00" key, as "HH:00". */
+function hourEnd(time: string) {
+  const hour = (Number(time.slice(11, 13)) + 1) % 24;
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
+type DayRow = {
+  date: string;
+  label: string;
+  weatherCode: number;
+  fullAt: string | null;
+  sunsetPct: number;
+  /** Level at the next sunrise; null for the last forecast day. */
+  morningPct: number | null;
+  /** Lowest level during the night after this day. */
+  nightMinPct: number | null;
+  /** When the battery reaches the reserve that night, if it does. */
+  reserveAt: string | null;
+};
+
 /**
- * The modelled battery level over the coming days on one line: shaded bands
- * are the nights, a green dot marks when the battery should be full, and the
- * dashed line is the reserve the owner saved.
+ * The coming days as one row each, answering the two questions that matter:
+ * does the battery fill, and does it last the night after. The bar shows the
+ * night's range: from the level at sunset down to the morning level.
  */
 export function BatteryTimeline() {
-  const { forecasts, snapshot, reservePct, loading } = useSharedSmartEnergy();
+  const { forecasts, reservePct, loading } = useSharedSmartEnergy();
 
-  const model = useMemo(() => {
-    // Only hours the forecast actually simulated carry a level (today's past
-    // hours do not), so the line starts now.
-    const points: HourlySolarPoint[] = forecasts.flatMap((day) => day.hourly.filter((point) => typeof point.socPct === "number"));
-    if (points.length < 6) return null;
-    const total = points.length;
-    const indexByHour = new Map(points.map((point, index) => [point.time.slice(0, 13), index]));
+  const rows = useMemo<DayRow[]>(() => {
+    // Every simulated hour across the week, in order; each carries the level at its end.
+    const hours = forecasts.flatMap((day) => day.hourly.filter((point) => typeof point.socPct === "number"));
+    const now = Date.now();
 
-    /** Position on the line (0 = now, total = end of the last day) of a site-local time, or null when outside it. */
-    const xOf = (time?: string | null) => {
-      if (!time) return null;
-      const { hourKey, minute } = splitTime(time);
-      const index = indexByHour.get(hourKey);
-      return index === undefined ? null : Math.min(total, index + minute / 60);
-    };
-
-    const startSoc = typeof snapshot?.batterySoc === "number" ? snapshot.batterySoc : points[0].socPct!;
-    const line = [{ x: 0, soc: startSoc }, ...points.map((point, index) => ({ x: index + 1, soc: point.socPct! }))];
-
-    // Night bands: before today's sunrise if we are still in last night, then
-    // each sunset to the next sunrise, and the last sunset to the end.
-    const nights: { from: number; to: number }[] = [];
-    const firstSunrise = xOf(forecasts[0]?.sunrise);
-    if (firstSunrise !== null && firstSunrise > 0) nights.push({ from: 0, to: firstSunrise });
-    forecasts.forEach((day, index) => {
-      const from = xOf(day.sunset) ?? (day.sunset && day.sunset.slice(0, 13) < points[0].time.slice(0, 13) && index === 0 ? 0 : null);
-      if (from === null) return;
-      const nextSunrise = xOf(forecasts[index + 1]?.sunrise);
-      nights.push({ from, to: nextSunrise ?? total });
-    });
-
-    const fulls = forecasts
-      .map((day) => xOf(day.fullChargeTime))
-      .filter((x): x is number => x !== null);
-
-    // A day label sits over the middle of its hours, when there is room for it.
-    const days = forecasts
-      .map((day) => {
-        const indexes = points.map((point, index) => (point.time.startsWith(day.date) ? index : -1)).filter((index) => index >= 0);
-        if (indexes.length < 5) return null;
-        return { label: day.label, x: (indexes[0] + indexes[indexes.length - 1] + 1) / 2 };
+    return forecasts
+      .map((day, index): DayRow | null => {
+        // Tonight already has its own card at the top of the page.
+        if (index === 0 && Number.isFinite(new Date(day.sunset).getTime()) && now > new Date(day.sunset).getTime()) return null;
+        const next = forecasts[index + 1];
+        let nightMinPct: number | null = null;
+        let reserveAt: string | null = null;
+        if (next) {
+          const from = day.sunset.slice(0, 13);
+          const to = next.sunrise.slice(0, 13);
+          const night = hours.filter((point) => point.time.slice(0, 13) >= from && point.time.slice(0, 13) < to);
+          for (const point of night) {
+            const level = point.socPct!;
+            nightMinPct = nightMinPct === null ? level : Math.min(nightMinPct, level);
+            if (!reserveAt && level <= reservePct + 0.5) reserveAt = hourEnd(point.time);
+          }
+        }
+        return {
+          date: day.date,
+          label: day.label,
+          weatherCode: day.weatherCode,
+          fullAt: day.fullChargeTime,
+          sunsetPct: day.chargeAtSunsetPct,
+          morningPct: next ? next.chargeAtSunrisePct : null,
+          nightMinPct: nightMinPct === null ? null : Math.round(nightMinPct),
+          reserveAt,
+        };
       })
-      .filter((day): day is { label: string; x: number } => day !== null);
+      .filter((row): row is DayRow => row !== null);
+  }, [forecasts, reservePct]);
 
-    return { total, line, nights, fulls, days };
-  }, [forecasts, snapshot]);
-
-  if (loading || !model) return null;
-
-  const { total, line, nights, fulls, days } = model;
-  const pct = (x: number) => `${(x / total) * 100}%`;
-  const y = (soc: number) => 100 - Math.max(0, Math.min(100, soc));
-  const path = line.map((point, index) => `${index ? "L" : "M"}${point.x} ${y(point.soc)}`).join(" ");
+  if (loading || rows.length === 0) return null;
 
   return (
     <section className="energy-card p-4 sm:p-5" dir="rtl">
       <h2 className="text-lg font-black text-slate-900">🔋 البطارية خلال الأيام</h2>
-      <p className="mt-1 text-[11px] font-bold leading-5 text-slate-500">
-        <span className="ml-1 inline-block h-2 w-2 rounded-full bg-emerald-500 align-middle" />النقطة الخضراء: تمتلئ · المناطق المظللة: الليل · الخط المتقطع: الاحتياطي
+      <p className="mt-1 text-[11px] font-bold leading-5 text-slate-500">لكل يوم: متى تمتلئ، كم تبقى عند الغروب، وهل تكفي حتى الصباح.</p>
+
+      <ul className="mt-3 divide-y divide-slate-100">
+        {rows.map((row) => {
+          const lasts = row.morningPct !== null && !row.reserveAt;
+          const low = row.morningPct ?? row.sunsetPct;
+          return (
+            <li key={row.date} className="py-3 first:pt-1 last:pb-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex min-w-0 items-center gap-1.5 text-sm font-black text-slate-900">
+                  <span aria-hidden="true">{weatherIcon(row.weatherCode)}</span>
+                  <span className="truncate">{row.label}</span>
+                </span>
+                {row.morningPct === null ? (
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-500">آخر يوم في التوقع</span>
+                ) : lasts ? (
+                  <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700">✓ تكفي حتى الصباح</span>
+                ) : (
+                  <span className="shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-black text-rose-700">
+                    ⚠ تصل للاحتياطي نحو <bdi dir="ltr">{row.reserveAt}</bdi>
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl bg-emerald-50/70 px-1 py-1.5">
+                  <span className="block text-[10px] font-bold text-slate-500">تمتلئ</span>
+                  <strong className="block text-sm font-black text-emerald-700">{row.fullAt ? <bdi dir="ltr">{formatHour(row.fullAt)}</bdi> : <span className="text-xs text-slate-500">لا تمتلئ</span>}</strong>
+                </div>
+                <div className="rounded-xl bg-orange-50/70 px-1 py-1.5">
+                  <span className="block text-[10px] font-bold text-slate-500">عند الغروب</span>
+                  <strong className="block text-sm font-black text-slate-900"><bdi dir="ltr">{row.sunsetPct}%</bdi></strong>
+                </div>
+                <div className={"rounded-xl px-1 py-1.5 " + (row.morningPct === null ? "bg-slate-50" : lasts ? "bg-indigo-50/70" : "bg-rose-50")}>
+                  <span className="block text-[10px] font-bold text-slate-500">الصباح التالي</span>
+                  <strong className={"block text-sm font-black " + (row.morningPct === null ? "text-slate-400" : lasts ? "text-indigo-700" : "text-rose-700")}>
+                    {row.morningPct === null ? "—" : <bdi dir="ltr">{row.morningPct}%</bdi>}
+                  </strong>
+                </div>
+              </div>
+
+              {/* The night on a 0–100% track: from the sunset level down to the morning level, with the reserve marked. */}
+              {row.morningPct !== null && (
+                <div dir="ltr" className="relative mt-2.5 h-2 rounded-full bg-slate-100" aria-hidden="true">
+                  <div
+                    className={"absolute inset-y-0 rounded-full " + (lasts ? "bg-emerald-400" : "bg-rose-400")}
+                    style={{ left: `${Math.min(low, row.sunsetPct)}%`, width: `${Math.max(1.5, Math.abs(row.sunsetPct - low))}%` }}
+                  />
+                  <div className="absolute -top-1 h-4 w-0.5 rounded bg-rose-500" style={{ left: `${reservePct}%` }} title="الاحتياطي" />
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <p className="mt-3 flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
+        <span className="inline-block h-3 w-0.5 rounded bg-rose-500" aria-hidden="true" />
+        الخط الأحمر: حد الاحتياطي <bdi dir="ltr">{Math.round(reservePct)}%</bdi> · الشريط: نزول البطارية من الغروب إلى الصباح
       </p>
-
-      <div dir="ltr" className="relative mt-3">
-        {/* Day names over their hours. */}
-        <div className="relative h-5">
-          {days.map((day) => (
-            <span key={day.label} className="absolute -translate-x-1/2 whitespace-nowrap text-[11px] font-black text-slate-500" style={{ left: pct(day.x) }}>
-              {day.label}
-            </span>
-          ))}
-        </div>
-
-        <div className="relative mt-1 h-36 overflow-visible rounded-xl bg-slate-50/60 ring-1 ring-slate-200/60">
-          <svg viewBox={`0 0 ${total} 100`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-label="مستوى البطارية المتوقع خلال الأيام القادمة" role="img">
-            {nights.map((night, index) => (
-              <rect key={index} x={night.from} y={0} width={Math.max(0, night.to - night.from)} height={100} className="fill-slate-300/40" />
-            ))}
-            {[50].map((level) => (
-              <line key={level} x1={0} x2={total} y1={y(level)} y2={y(level)} className="stroke-slate-200" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-            ))}
-            <line x1={0} x2={total} y1={y(reservePct)} y2={y(reservePct)} className="stroke-rose-300" strokeWidth={1.5} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
-            <path d={`${path} L${total} 100 L0 100 Z`} className="fill-emerald-500/15" />
-            <path d={path} fill="none" className="stroke-emerald-600" strokeWidth={2.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-          </svg>
-
-          {fulls.map((x, index) => (
-            <span
-              key={index}
-              className="absolute top-0 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-emerald-500 shadow"
-              style={{ left: pct(x) }}
-              aria-hidden="true"
-            />
-          ))}
-
-          <span className="absolute right-1.5 top-1 text-[10px] font-bold text-slate-400">100%</span>
-          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">50%</span>
-          <span className="absolute bottom-1 left-1.5 text-[10px] font-black text-emerald-700">الآن {Math.round(line[0].soc)}%</span>
-        </div>
-      </div>
     </section>
   );
 }
