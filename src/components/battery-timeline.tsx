@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useSharedSmartEnergy } from "@/components/smart-energy-provider";
 import { weatherIcon } from "@/lib/smart-forecast";
 
@@ -73,14 +74,46 @@ export function BatteryTimeline({ anchor }: { anchor?: string } = {}) {
       .filter((row): row is DayRow => row !== null);
   }, [forecasts, reservePct]);
 
+  // Folded by default to keep the page short; opened when arriving from the
+  // home card's night link (#night) so that link still lands on the answer.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (anchor && typeof window !== "undefined" && window.location.hash === `#${anchor}`) setOpen(true);
+  }, [anchor]);
+
   if (loading || rows.length === 0) return null;
 
-  return (
-    <section id={anchor} className="energy-card scroll-mt-40 p-4" dir="rtl">
-      <h2 className="text-lg font-black text-slate-900">🔋 البطارية خلال الأيام</h2>
-      <p className="mt-1 text-[11px] font-bold leading-5 text-slate-500">لكل يوم: متى تمتلئ، كم تبقى عند الغروب، وهل تكفي حتى الصباح.</p>
+  const withNight = rows.filter((row) => row.morningPct !== null);
+  const short = withNight.filter((row) => row.reserveAt).length;
 
-      <ul className="mt-3 divide-y divide-slate-100">
+  return (
+    <details
+      id={anchor}
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      className="energy-card group scroll-mt-40 p-4"
+      dir="rtl"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0">
+          <h2 className="text-lg font-black text-slate-900">🔋 البطارية خلال الأيام</h2>
+          {/* The answer in one line, so the folded card is still useful. */}
+          <p className={"mt-0.5 text-[11px] font-black " + (short ? "text-rose-700" : "text-emerald-700")}>
+            {withNight.length === 0
+              ? "متى تمتلئ وكم تبقى عند الغروب"
+              : short === 0
+                ? `✓ تكفي حتى الصباح في كل الأيام (${withNight.length})`
+                : `⚠ تصل للاحتياطي ليلًا في ${short} من ${withNight.length} أيام`}
+          </p>
+        </div>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 ring-1 ring-slate-200/70">
+          <ChevronDown size={18} className="transition-transform group-open:rotate-180" aria-hidden="true" />
+        </span>
+      </summary>
+
+      <p className="mt-3 text-[11px] font-bold leading-5 text-slate-500">لكل يوم: متى تمتلئ، كم تبقى عند الغروب، وهل تكفي حتى الصباح.</p>
+
+      <ul className="mt-2 divide-y divide-slate-100">
         {rows.map((row) => {
           const lasts = row.morningPct !== null && !row.reserveAt;
           const low = row.morningPct ?? row.sunsetPct;
@@ -138,6 +171,6 @@ export function BatteryTimeline({ anchor }: { anchor?: string } = {}) {
         <span className="inline-block h-3 w-0.5 rounded bg-rose-500" aria-hidden="true" />
         الخط الأحمر: حد الاحتياطي <bdi dir="ltr">{Math.round(reservePct)}%</bdi> · الشريط: نزول البطارية من الغروب إلى الصباح
       </p>
-    </section>
+    </details>
   );
 }
