@@ -318,11 +318,11 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
         </section>
       )}
 
-      {/* 4 · When to use the sun, then 5 · the battery day by day. */}
+      {/* 4 · The battery day by day, then 5 · when to use the sun. */}
       {selected && (
         <>
-          {afterDay}
           <BatteryTimeline anchor={tonight ? undefined : "night"} />
+          {afterDay}
         </>
       )}
     </section>

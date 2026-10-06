@@ -4,7 +4,7 @@ import { SurplusRecommendations } from "@/components/surplus-recommendations";
 
 /**
  * الطاقة، من الأهم إلى التفاصيل: الليلة الجارية (ليلًا فقط)، ثم الأيام ويومها
- * المختار، ثم أفضل وقت لاستخدام الشمس، ثم البطارية يومًا بيوم.
+ * المختار، ثم البطارية يومًا بيوم، ثم أفضل وقت لاستخدام الشمس.
  */
 export default function EnergyPage() {
   return (

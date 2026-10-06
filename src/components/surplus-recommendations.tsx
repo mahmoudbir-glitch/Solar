@@ -84,7 +84,7 @@ export function SurplusRecommendations() {
               <div className="min-w-0">
                 <span className="block text-[11px] font-bold text-slate-500">☀️ النافذة الأفضل</span>
                 <strong className="mt-0.5 block text-2xl font-black tracking-tight text-amber-700">
-                  <bdi dir="ltr">{formatHour(best.start)} – {formatHour(addHour(best.end))}</bdi>
+                  {formatHour(best.start)} – {formatHour(addHour(best.end))}
                 </strong>
               </div>
               <div className="shrink-0 text-left">
