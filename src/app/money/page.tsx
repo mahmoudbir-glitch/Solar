@@ -8,7 +8,16 @@ import { AmpPill } from "@/components/amp-pill";
 import { StatTile } from "@/components/stat-tile";
 import { acAmpHours } from "@/lib/energy";
 
+type Period = "day" | "week" | "month";
+
+const PERIODS: { key: Period; label: string }[] = [
+  { key: "day", label: "يوم" },
+  { key: "week", label: "أسبوع" },
+  { key: "month", label: "شهر" },
+];
+
 type FinanceData = {
+  period?: Period;
   periodDays: number;
   totals: {
     solarKWh: number;
@@ -68,11 +77,17 @@ function lastDays(n: number) {
   return `آخر ${n} ${n >= 3 && n <= 10 ? "أيام" : "يوماً"}`;
 }
 
+/** The badge for the chosen period: today, or the days that really have readings. */
+function periodLabel(period: Period, days: number) {
+  return period === "day" ? "اليوم" : lastDays(days);
+}
+
 /** Money with at most two decimals (0.325 -> 0.33), Latin digits. */
 const money = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: n % 1 ? 2 : 0 });
 
 export default function MoneyDashboard() {
   const [data, setData] = useState<FinanceData | null>(null);
+  const [period, setPeriod] = useState<Period>("month");
   const [tariff, setTariff] = useState(0);
   const [exportTariff, setExportTariff] = useState(0);
   const [prefsOpen, setPrefsOpen] = useState(false);
@@ -86,28 +101,38 @@ export default function MoneyDashboard() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/settings", { cache: "no-store" }),
-      fetch("/api/finance", { cache: "no-store" }),
-    ])
-      .then(async ([settingsResponse, financeResponse]) => {
-        if (settingsResponse.ok) {
-          const settings = await settingsResponse.json();
-          setTariff(Number(settings.gridTariff || 0));
-          setExportTariff(Number(settings.exportTariff || 0));
-          setCurrency(String(settings.currency || "USD"));
-          setSettingsLoaded(true);
-        }
-
-        if (financeResponse.ok) {
-          setData(await financeResponse.json());
-        } else {
-          setData(null);
-        }
+    fetch("/api/settings", { cache: "no-store" })
+      .then(async (settingsResponse) => {
+        if (!settingsResponse.ok) return;
+        const settings = await settingsResponse.json();
+        setTariff(Number(settings.gridTariff || 0));
+        setExportTariff(Number(settings.exportTariff || 0));
+        setCurrency(String(settings.currency || "USD"));
+        setSettingsLoaded(true);
       })
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
+      .catch(() => undefined);
   }, []);
+
+  // The figures follow the chosen period; a late answer for an older choice
+  // must not replace the current one.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/finance?period=${period}`, { cache: "no-store" })
+      .then(async (financeResponse) => {
+        const next = financeResponse.ok ? ((await financeResponse.json()) as FinanceData) : null;
+        if (!cancelled) setData(next);
+      })
+      .catch(() => {
+        if (!cancelled) setData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [period]);
 
   const savedAmount = useMemo(() => {
     if (!data) return 0;
@@ -168,7 +193,25 @@ export default function MoneyDashboard() {
 
   return (
     <div className="desktop-grid w-full space-y-3 pb-4 text-right" dir="rtl">
-      <PageHeader icon={Coins} tone="teal" eyebrow="Solar • المال" title="التحليل المالي ومصادر الكهرباء" subtitle={data?.periodDays ? `مصادر الكهرباء والوفر خلال ${lastDays(data.periodDays)}.` : "مصادر الكهرباء والوفر من قراءات منظومتك."} />
+      <PageHeader icon={Coins} tone="teal" eyebrow="Solar • المال" title="التحليل المالي ومصادر الكهرباء" subtitle={data?.periodDays ? `مصادر الكهرباء والوفر خلال ${periodLabel(period, data.periodDays)}.` : "مصادر الكهرباء والوفر من قراءات منظومتك."} />
+
+      <div role="tablist" aria-label="فترة التحليل" className="grid grid-cols-3 gap-2">
+        {PERIODS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            role="tab"
+            aria-selected={period === item.key}
+            onClick={() => setPeriod(item.key)}
+            className={
+              "min-h-11 rounded-2xl border text-sm font-black transition " +
+              (period === item.key ? "border-teal-600 bg-teal-600 text-white shadow-sm" : "border-slate-200 bg-white text-slate-600")
+            }
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
       {loading ? (
         <section className="desktop-wide rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm">
@@ -177,9 +220,11 @@ export default function MoneyDashboard() {
       ) : !data || !data.periodDays ? (
         <section className="desktop-wide rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-xl">📊</div>
-          <h2 className="mt-3 text-base font-black text-slate-900">لا توجد بيانات كافية بعد</h2>
+          <h2 className="mt-3 text-base font-black text-slate-900">{period === "day" ? "لا قراءات لليوم بعد" : "لا توجد بيانات كافية بعد"}</h2>
           <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-            يُحسب الوفر ومصادر الكهرباء بعد تجمّع يوم كامل من القراءات، وستظهر هنا تلقائياً بدل الأصفار.
+            {period === "day"
+              ? "تظهر أرقام اليوم مع وصول أول قراءات منظومتك. جرّب الأسبوع أو الشهر."
+              : "يُحسب الوفر ومصادر الكهرباء بعد تجمّع يوم كامل من القراءات، وستظهر هنا تلقائياً بدل الأصفار."}
           </p>
         </section>
       ) : (
@@ -197,7 +242,7 @@ export default function MoneyDashboard() {
                 <p className="mt-0.5 text-[11px] font-semibold text-slate-500">كيف تم تغطية استهلاك المنزل؟</p>
               </div>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-600">
-                {lastDays(data.periodDays)}
+                {periodLabel(period, data.periodDays)}
               </span>
             </div>
 

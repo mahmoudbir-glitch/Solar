@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Loader2, MoonStar, RefreshCw, SunMedium } from "lucide-react";
 import { useSharedSmartEnergy } from "@/components/smart-energy-provider";
 import { calculateAutonomy, weatherIcon, weatherLabel, type LoadStability } from "@/lib/smart-forecast";
 import { InfoTip } from "@/components/info-tip";
+import { BatteryTimeline } from "@/components/battery-timeline";
 import { AmpPill } from "@/components/amp-pill";
 import { acAmpHours, acAmps } from "@/lib/energy";
 
@@ -36,8 +37,10 @@ function NightCard({
   sampleCount,
   capacityWh,
   reservePct,
+  highlight = false,
+  id,
 }: {
-  title: string;
+  title: React.ReactNode;
   startSoc: number;
   hours: number;
   loadW: number;
@@ -46,6 +49,9 @@ function NightCard({
   sampleCount: number;
   capacityWh: number;
   reservePct: number;
+  /** The night we are in right now: framed so it is the first thing seen after sunset. */
+  highlight?: boolean;
+  id?: string;
 }) {
   const effectiveLoadW = averageNightLoadW ?? loadW;
   const result = calculateAutonomy(startSoc, capacityWh, effectiveLoadW, hours, reservePct);
@@ -58,7 +64,7 @@ function NightCard({
     : "rounded-full bg-slate-100 p-3 text-slate-500";
 
   return (
-    <div className="energy-card p-4">
+    <div id={id} className={"energy-card scroll-mt-40 p-4" + (highlight ? " ring-2 ring-amber-400" : "")}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-slate-500">{title}</p>
@@ -110,6 +116,16 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  // After today's sunset there is nothing left to show for today, so open on
+  // tomorrow (once; the owner can still pick today).
+  const autoSelected = useRef(false);
+  useEffect(() => {
+    if (autoSelected.current || forecasts.length < 2) return;
+    autoSelected.current = true;
+    const sunset = new Date(forecasts[0].sunset).getTime();
+    if (Number.isFinite(sunset) && Date.now() > sunset) setSelectedIndex(1);
+  }, [forecasts]);
+
   const selected = forecasts[selectedIndex];
   const todayAfterSunset = selectedIndex === 0 && (selected?.sunset ? Date.now() > new Date(selected.sunset).getTime() : false);
   const current = weather?.current;
@@ -131,18 +147,20 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
     // After midnight and before today's sunrise we are still inside last night.
     const todaySunrise = new Date(today.sunrise).getTime();
     if (Number.isFinite(todaySunrise) && now < todaySunrise) {
-      return { inProgress: true, startSoc: snapshot?.batterySoc ?? today.chargeAtSunrisePct, hours: Math.max(0.5, (todaySunrise - now) / 3600000) };
+      return { inProgress: true, until: today.sunrise, startSoc: snapshot?.batterySoc ?? today.chargeAtSunrisePct, hours: Math.max(0.5, (todaySunrise - now) / 3600000) };
     }
     const todaySunset = new Date(today.sunset).getTime();
     if (Number.isFinite(todaySunset) && now < todaySunset) {
       return {
         inProgress: false,
+        until: tomorrow.sunrise,
         startSoc: today.chargeAtSunsetPct,
         hours: Math.max(0.5, (new Date(tomorrow.sunrise).getTime() - todaySunset) / 3600000),
       };
     }
     return {
       inProgress: true,
+      until: tomorrow.sunrise,
       startSoc: snapshot?.batterySoc ?? today.chargeAtSunsetPct,
       hours: Math.max(0.5, (new Date(tomorrow.sunrise).getTime() - now) / 3600000),
     };
@@ -213,6 +231,23 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
         {error && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">{error}.</p>}
       </header>
 
+      {/* At night the first question is whether the battery lasts until morning. */}
+      {currentNight?.inProgress && (
+        <NightCard
+          id="night"
+          highlight
+          title={<>🌙 الليلة الجارية · حتى الشروق <bdi dir="ltr">{formatHour(currentNight.until)}</bdi></>}
+          startSoc={currentNight.startSoc}
+          hours={currentNight.hours}
+          loadW={loadW}
+          averageNightLoadW={nightLoadStats.averageW}
+          confidence={nightLoadStats.confidence}
+          sampleCount={nightLoadStats.sampleCount}
+          capacityWh={batteryCapacityWh}
+          reservePct={reservePct}
+        />
+      )}
+
       {/* The day buttons sit on top of the day they open, in one card. */}
       {forecasts.length > 0 && (
         <section className="energy-card space-y-4 p-4 sm:p-5">
@@ -262,19 +297,25 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
                 <strong className={`mt-1 block text-2xl font-black ${selected.confidence === "عالية" ? "text-emerald-700" : selected.confidence === "متوسطة" ? "text-amber-700" : "text-rose-700"}`}>{selected.confidence}</strong>
               </div>
             </div>
-            {/* The selected day's battery in one line: level at sunrise/now → sunset, and when it fills. */}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-emerald-50/70 px-4 py-3">
-              <span className="text-xs font-bold text-slate-500">🔋 البطارية</span>
-              <span className="text-sm font-black text-slate-900">
-                <span className="text-slate-400">{selectedIndex === 0 && Date.now() > new Date(selected.sunrise).getTime() ? "الآن" : "الشروق"}</span> <bdi dir="ltr">{selected.chargeAtSunrisePct}%</bdi>
-                {/* After today's sunset the "sunset" value would only repeat the current level. */}
-                {!todayAfterSunset && <>
-                <span className="mx-2 text-slate-300">←</span>
-                <span className="text-slate-400">الغروب</span> <bdi dir="ltr" className="text-emerald-700">{selected.chargeAtSunsetPct}%</bdi>
-                </>}
-              </span>
-              <span className="w-full text-[11px] font-bold text-slate-500">{todayAfterSunset ? "غابت الشمس. اختر يوم الغد لترى شحن البطارية." : selected.fullChargeTime ? <>تمتلئ نحو <bdi dir="ltr" className="font-black text-emerald-700">{formatHour(selected.fullChargeTime)}</bdi></> : "لا يُتوقع أن تمتلئ هذا اليوم"}</span>
-            </div>
+            {/* The selected day's battery: level at sunrise (or now), when it fills, and what it holds at sunset. */}
+            {todayAfterSunset ? (
+              <p className="mt-3 rounded-2xl bg-emerald-50/70 px-4 py-3 text-xs font-bold text-slate-500">🔋 غابت الشمس. البطارية الآن <bdi dir="ltr" className="font-black text-slate-900">{selected.chargeAtSunrisePct}%</bdi>، واختر يوم الغد لترى شحنها.</p>
+            ) : (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200/60">
+                  <span className="block text-[11px] font-bold text-slate-500">{selectedIndex === 0 && Date.now() > new Date(selected.sunrise).getTime() ? "🔋 الآن" : "🔋 عند الشروق"}</span>
+                  <strong className="mt-1 block text-xl font-black text-slate-900"><bdi dir="ltr">{selected.chargeAtSunrisePct}%</bdi></strong>
+                </div>
+                <div className="rounded-2xl bg-emerald-50/70 p-3">
+                  <span className="block text-[11px] font-bold text-slate-500">✅ تمتلئ</span>
+                  <strong className="mt-1 block text-lg font-black text-emerald-700">{selected.fullChargeTime ? <>نحو <bdi dir="ltr">{formatHour(selected.fullChargeTime)}</bdi></> : <span className="text-sm text-slate-500">لا تمتلئ</span>}</strong>
+                </div>
+                <div className="rounded-2xl bg-orange-50/70 p-3">
+                  <span className="block text-[11px] font-bold text-slate-500">🌇 عند الغروب</span>
+                  <strong className={"mt-1 block text-xl font-black " + (selected.chargeAtSunsetPct >= 90 ? "text-emerald-700" : selected.chargeAtSunsetPct >= 50 ? "text-amber-700" : "text-rose-700")}><bdi dir="ltr">{selected.chargeAtSunsetPct}%</bdi></strong>
+                </div>
+              </div>
+            )}
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-indigo-50/70 p-4">
                 <span className="text-xs font-bold text-slate-500">🌅 الشروق</span>
@@ -293,7 +334,7 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
 
       {selected && (
         <>
-          <section id="night" className="energy-card scroll-mt-40 p-5">
+          <section id={currentNight?.inProgress ? "nights" : "night"} className="energy-card scroll-mt-40 p-5">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-black text-slate-900">🌙 كفاية الليل</h2>
               <InfoTip label="كيف نحسب كفاية الليل" title="كفاية الليل">
@@ -301,12 +342,14 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
               </InfoTip>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {currentNight && <NightCard title={currentNight.inProgress ? "الليلة الحالية" : "الليلة القادمة"} startSoc={currentNight.startSoc} hours={currentNight.hours} loadW={loadW} averageNightLoadW={nightLoadStats.averageW} confidence={nightLoadStats.confidence} sampleCount={nightLoadStats.sampleCount} capacityWh={batteryCapacityWh} reservePct={reservePct} />}
+              {currentNight && !currentNight.inProgress && <NightCard title="الليلة القادمة" startSoc={currentNight.startSoc} hours={currentNight.hours} loadW={loadW} averageNightLoadW={nightLoadStats.averageW} confidence={nightLoadStats.confidence} sampleCount={nightLoadStats.sampleCount} capacityWh={batteryCapacityWh} reservePct={reservePct} />}
               {tomorrowNight && <NightCard title="ليلة الغد" startSoc={tomorrowNight.startSoc} hours={tomorrowNight.hours} loadW={loadW} averageNightLoadW={nightLoadStats.averageW} confidence={nightLoadStats.confidence} sampleCount={nightLoadStats.sampleCount} capacityWh={batteryCapacityWh} reservePct={reservePct} />}
             </div>
           </section>
 
           {afterDay}
+
+          <BatteryTimeline />
 
           <details className="energy-card group p-5">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">

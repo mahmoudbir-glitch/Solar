@@ -44,6 +44,13 @@ export function SurplusRecommendations() {
   const dayWord = todayBest ? "اليوم" : "غدًا";
   const todayLeftKWh = (forecasts[0]?.hourly ?? []).reduce((sum, point) => sum + point.surplusKWh, 0);
 
+  // Hour by hour for the day the window belongs to: only hours still ahead
+  // (they carry a modelled battery level) and with some sun.
+  const detailHours = (forecasts[todayBest ? 0 : 1]?.hourly ?? []).filter(
+    (point) => typeof point.socPct === "number" && point.solarKWh >= 0.05,
+  );
+  const maxSolar = Math.max(0.1, ...detailHours.map((point) => point.solarKWh));
+
   // Typical household loads with a rough energy cost, so each tip says
   // whether today's surplus actually covers it.
   const surplus = best?.kwh ?? 0;
@@ -102,6 +109,38 @@ export function SurplusRecommendations() {
               </p>
             )}
           </div>
+
+          {detailHours.length > 0 && (
+            <details className="group mt-3 rounded-2xl border border-amber-100 bg-white">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-black text-amber-800 [&::-webkit-details-marker]:hidden">
+                تفصيل الساعات
+                <span className="text-xs text-amber-600 transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
+              </summary>
+              <div className="border-t border-amber-100 px-3 pb-3">
+                <div className="grid grid-cols-[4.5rem_1fr_3rem_3rem] items-center gap-x-2 py-2 text-[10px] font-black text-slate-400">
+                  <span>الساعة</span>
+                  <span>الشمس · <span className="text-amber-600">الفائض</span></span>
+                  <span className="text-center">فائض</span>
+                  <span className="text-center">🔋</span>
+                </div>
+                {detailHours.map((point) => {
+                  const inWindow = point.time >= best.start && point.time <= best.end;
+                  return (
+                    <div key={point.time} className={"grid grid-cols-[4.5rem_1fr_3rem_3rem] items-center gap-x-2 rounded-lg py-1.5 text-[11px] font-bold " + (inWindow ? "bg-amber-50" : "")}>
+                      <bdi dir="ltr" className="text-right text-slate-600">{formatHour(point.time)}</bdi>
+                      <div className="relative h-2.5 overflow-hidden rounded-full bg-slate-100" title={`الشمس ${Math.round(point.solarKWh * 10) / 10} kWh`}>
+                        <div className="absolute inset-y-0 right-0 rounded-full bg-amber-200" style={{ width: `${(point.solarKWh / maxSolar) * 100}%` }} />
+                        <div className="absolute inset-y-0 right-0 rounded-full bg-amber-500" style={{ width: `${(point.surplusKWh / maxSolar) * 100}%` }} />
+                      </div>
+                      <bdi dir="ltr" className={"text-center " + (point.surplusKWh >= 0.05 ? "font-black text-amber-700" : "text-slate-400")}>{point.surplusKWh >= 0.05 ? (Math.round(point.surplusKWh * 10) / 10).toFixed(1) : "—"}</bdi>
+                      <bdi dir="ltr" className="text-center text-emerald-700">{Math.round(point.socPct!)}%</bdi>
+                    </div>
+                  );
+                })}
+                <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">الأرقام بالـ kWh لكل ساعة. الفائض هو ما يبقى بعد البيت وشحن البطارية، و🔋 مستوى البطارية في آخر الساعة. الصفوف المظللة هي النافذة الأفضل.</p>
+              </div>
+            </details>
+          )}
 
           {/* What the surplus can run: one compact tile per appliance, no long text. */}
           {recommendations.length > 0 && (

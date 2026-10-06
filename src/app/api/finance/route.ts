@@ -1,18 +1,32 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { localDayStart } from "@/lib/telemetry-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+/** How many local days each period covers, today included. */
+const PERIOD_DAYS = { day: 1, week: 7, month: 30 } as const;
+type Period = keyof typeof PERIOD_DAYS;
+
+export async function GET(request: Request) {
   if (!(process.env.DATABASE_URL || process.env.PRISMA_DATABASE_URL || process.env.POSTGRES_URL)) {
     return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
   }
 
+  const requested = new URL(request.url).searchParams.get("period");
+  const period: Period = requested === "day" || requested === "week" ? requested : "month";
+
   try {
+    // Daily rows are keyed by the local calendar day (UTC midnight of that
+    // date), so "today" and the days before it come from the site's time zone.
+    const settings = await prisma.energySettings.findUnique({ where: { id: "default" } }).catch(() => null);
+    const today = localDayStart(new Date(), settings?.timezone);
+    const from = new Date(today.getTime() - (PERIOD_DAYS[period] - 1) * 86_400_000);
     const rows = await prisma.dailySummary.findMany({
+      where: { day: { gte: from } },
       orderBy: { day: "desc" },
-      take: 30,
+      take: PERIOD_DAYS[period],
     });
 
     const totals = rows.reduce(
@@ -39,6 +53,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
+        period,
         periodDays: rows.length,
         totals,
         sources: {
