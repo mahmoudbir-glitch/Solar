@@ -71,21 +71,20 @@ export function HouseIcon({ className = "h-10 w-10" }: { className?: string }) {
 }
 
 /**
- * The inverter by what it does: direct current (the straight and dashed lines
- * of the DC symbol) goes in at the top and comes out below as an AC wave.
+ * The inverter as an energy core: a bold amber lightning bolt for the power it
+ * handles, the same mark Shamsak uses. Grey when no power is flowing.
  */
 export function InverterIcon({ active = true, className = "h-10 w-10" }: { active?: boolean; className?: string }) {
-  const ink = active ? WHITE : IDLE;
+  const id = React.useId().replace(/:/g, "");
   return (
-    <svg viewBox="0 0 48 48" className={className} aria-hidden="true" fill="none" stroke={ink} strokeLinecap="round" strokeLinejoin="round">
-      {/* DC in */}
-      <path d="M13 10 H35" strokeWidth="3" />
-      <path d="M13 16 H35" strokeWidth="2.6" strokeDasharray="4.4 4.4" />
-      {/* converted */}
-      <path d="M24 21 V28.5" strokeWidth="2.6" />
-      <path d="M20 25.5 L24 29.5 L28 25.5" strokeWidth="2.6" />
-      {/* AC out */}
-      <path d="M11 38 q3.25 -8.5 6.5 0 t6.5 0 t6.5 0 t6.5 0" strokeWidth="3" />
+    <svg viewBox="0 0 48 48" className={className} aria-hidden="true" strokeLinecap="round" strokeLinejoin="round">
+      <defs>
+        <linearGradient id={`bolt-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={active ? "#fcd34d" : "#e2e8f0"} />
+          <stop offset="100%" stopColor={active ? "#f97316" : "#94a3b8"} />
+        </linearGradient>
+      </defs>
+      <path transform="translate(0 2)" d="M27.5 3 L12 25.5 H22.5 L19.5 41 L36 17.5 H25.5 Z" fill={`url(#bolt-${id})`} stroke={active ? "#ea580c" : "#94a3b8"} strokeWidth="1.6" />
     </svg>
   );
 }
