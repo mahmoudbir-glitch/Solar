@@ -34,7 +34,7 @@ type DayRow = {
  * does the battery fill, and does it last the night after. The bar shows the
  * night's range: from the level at sunset down to the morning level.
  */
-export function BatteryTimeline() {
+export function BatteryTimeline({ anchor }: { anchor?: string } = {}) {
   const { forecasts, reservePct, loading } = useSharedSmartEnergy();
 
   const rows = useMemo<DayRow[]>(() => {
@@ -76,7 +76,7 @@ export function BatteryTimeline() {
   if (loading || rows.length === 0) return null;
 
   return (
-    <section className="energy-card p-4 sm:p-5" dir="rtl">
+    <section id={anchor} className="energy-card scroll-mt-40 p-4" dir="rtl">
       <h2 className="text-lg font-black text-slate-900">🔋 البطارية خلال الأيام</h2>
       <p className="mt-1 text-[11px] font-bold leading-5 text-slate-500">لكل يوم: متى تمتلئ، كم تبقى عند الغروب، وهل تكفي حتى الصباح.</p>
 
