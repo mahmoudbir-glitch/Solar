@@ -1,34 +1,44 @@
-import type { Metadata, Viewport } from 'next';
-import './globals.css';
-import './ui-enhancements.css';
-import { AppShell } from '@/components/AppShell';
-import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
+import type { Metadata, Viewport } from "next";
+import React from "react";
+import { Cairo } from "next/font/google";
+import Script from "next/script";
+import "./globals.css";
+import AppShell from "@/components/app-shell";
 
 export const metadata: Metadata = {
-  title: 'Solar | مراقبة الطاقة الشمسية',
-  description: 'الشمس تعمل من أجلك — مراقبة منظومة الطاقة الشمسية',
-  manifest: '/manifest.json',
-  icons: {
-    icon: [
-      { url: '/icons/icon-192.svg', sizes: '192x192', type: 'image/svg+xml' },
-      { url: '/icons/icon-512.svg', sizes: '512x512', type: 'image/svg+xml' },
-    ],
+  metadataBase: new URL("https://solar-ten-tau.vercel.app"),
+  title: "Solar | مراقبة الطاقة الشمسية",
+  description: "الشمس تعمل من أجلك — مراقبة منظومة الطاقة الشمسية",
+  icons: { icon: [{ url: "/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml" }, { url: "/icons/icon-512.svg", sizes: "512x512", type: "image/svg+xml" }] },
+  robots: { index: false, follow: false },
+  openGraph: {
+    title: "Solar",
+    description: "إدارة ومراقبة الطاقة الشمسية في منزلك",
+    url: "https://solar-ten-tau.vercel.app",
+    siteName: "Solar",
+    locale: "ar_LB",
+    type: "website",
   },
 };
 
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  viewportFit: 'cover',
-  themeColor: '#D4A373',
-};
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#D4A373" };
+
+const INITIAL_BACKGROUND = "#fdfbf7";
+
+// خط عربي واحد للتطبيق كله (عناوين ونصوص وأرقام).
+const cairo = Cairo({ subsets: ["arabic", "latin"], weight: ["400", "600", "700", "800", "900"], display: "swap" });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ar" dir="rtl">
-      <body>
-        <ServiceWorkerRegistration />
+    <html lang="ar" dir="rtl" style={{ backgroundColor: INITIAL_BACKGROUND }}>
+      <body
+        className={cairo.className + " min-h-screen w-full bg-[#fdfbf7] text-slate-900 antialiased"}
+        style={{ backgroundColor: INITIAL_BACKGROUND }}
+      >
         <AppShell>{children}</AppShell>
+        {/* Vercel Web Analytics (enabled in the dashboard): cookieless visitor and
+         * device counts. Served by Vercel at this path; no package needed. */}
+        <Script src="/_vercel/insights/script.js" strategy="afterInteractive" />
       </body>
     </html>
   );

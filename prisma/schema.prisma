@@ -1,0 +1,212 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  OWNER
+  FAMILY_MEMBER
+  TECHNICIAN
+  LOCAL_ADMIN
+}
+enum SystemStatus {
+  NORMAL
+  ATTENTION_NEEDED
+  FAULT
+}
+
+model User {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  passwordHash String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  memberships Membership[]
+  auditLogs AuditLog[]
+}
+model Household {
+  id String @id @default(uuid())
+  name String
+  description String?
+  createdAt DateTime @default(now())
+  memberships Membership[]
+  sites Site[]
+}
+model Membership {
+  id String @id @default(uuid())
+  userId String
+  householdId String
+  role Role @default(FAMILY_MEMBER)
+  expiresAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+}
+model Site {
+  id String @id @default(uuid())
+  householdId String
+  name String
+  region String
+  installation DateTime
+  household Household @relation(fields: [householdId], references: [id])
+  systems SolarSystem[]
+}
+model SolarSystem {
+  id String @id @default(uuid())
+  siteId String
+  name String
+  capacityKw Float
+  status SystemStatus @default(NORMAL)
+  site Site @relation(fields: [siteId], references: [id])
+  readings EnergyReading[]
+}
+model EnergyReading {
+  id String @id @default(uuid())
+  systemId String
+  solarKw Float
+  consumptionKw Float
+  batteryPct Float
+  gridKw Float
+  timestamp DateTime @default(now())
+  system SolarSystem @relation(fields: [systemId], references: [id])
+}
+model TelemetryLog {
+  id String @id @default(uuid())
+  timestamp DateTime @unique
+  pvPowerW Float
+  loadPowerW Float
+  batterySoc Float
+  batteryPowerW Float
+  batteryVoltage Float?
+  batteryCurrent Float?
+  batteryTemperature Float?
+  gridConnected Boolean?
+  gridPowerW Float?
+  gridVoltage Float?
+  inverterTemperature Float?
+  loadPercent Float?
+  operatingMode String?
+  outputPriority String?
+  chargerPriority String?
+  source String @default("inverter")
+  createdAt DateTime @default(now())
+  @@index([timestamp])
+}
+model DailySummary {
+  id String @id @default(uuid())
+  day DateTime @unique
+  solarKWh Float @default(0)
+  homeKWh Float @default(0)
+  batteryChargeKWh Float @default(0)
+  batteryDischargeKWh Float @default(0)
+  gridImportKWh Float @default(0)
+  gridExportKWh Float @default(0)
+  savings Float @default(0)
+  currency String @default("USD")
+  updatedAt DateTime @updatedAt
+}
+model EnergySettings {
+  id String @id @default("default")
+  panelPowerW Float @default(6000)
+  batteryCapacityWh Float @default(4800)
+  gridTariff Float @default(1.2)
+  exportTariff Float @default(1.2)
+  currency String @default("USD")
+  gridType String @default("hybrid")
+  latitude Float @default(33.5911)
+  longitude Float @default(35.4061)
+  timezone String @default("Asia/Beirut")
+  panelTilt Float?
+  panelAzimuth Float?
+  updatedAt DateTime @updatedAt
+  batteryNominalVoltage Int @default(48)
+  batteryChemistry String? @default("LiFePO4")
+  batteryMinReservePct Float @default(20)
+  bulkChargeVoltage Float? @default(56.4)
+  floatChargeVoltage Float? @default(54.0)
+  lowDcCutoffVoltage Float? @default(44.0)
+  backToGridVoltage Float? @default(52.0)
+  maxChargeCurrentA Float? @default(50)
+  outputSourcePriority String @default("SBU")
+  chargerSourcePriority String @default("CSO")
+  batteryMaxChargeA Float?
+  batteryMaxDischargeA Float?
+  inverterRatedPowerKw Float? @default(8.2)
+  gridPhase String @default("single")
+  retentionDays Int @default(365)
+  pollIntervalSec Int @default(10)
+  lowBatteryPct Float @default(20)
+  criticalBatteryPct Float @default(10)
+  gridOutageAlert Boolean @default(true)
+  faultAlert Boolean @default(true)
+  offlineMinutes Int @default(10)
+  overloadPct Float @default(90)
+  channels String @default("in_app")
+  quietHoursStart String?
+  quietHoursEnd String?
+}
+model AuditLog {
+  id String @id @default(uuid())
+  userId String
+  action String
+  details String?
+  timestamp DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model MonitoringEvent {
+  id String @id @default(uuid())
+  username String?
+  action String
+  success Boolean @default(true)
+  details String?
+  timestamp DateTime @default(now())
+  @@index([timestamp])
+  @@index([action, timestamp])
+}
+model InverterConnection {
+  id String @id @default("default")
+  systemName String @default("منظومة Solar")
+  inverterModel String @default("NEXT - Victor Max 8.2KW")
+  serialNumber String?
+  manufacturer String?
+  dataloggerPn String?
+  dataloggerType String?
+  dataloggerFirmware String?
+  dataloggerStationName String?
+  dataloggerDeviceIdentifier String?
+  dataloggerUpdateIntervalSec Int?
+  dataloggerCloud String?
+  protocol String @default("Wi-Fi Datalogger")
+  inverterAddress String?
+  serialPort String?
+  port Int?
+  baudRate Int @default(9600)
+  dataBits Int @default(8)
+  stopBits Int @default(1)
+  parity String @default("N")
+  slaveId Int @default(1)
+  timeoutMs Int @default(1000)
+  pollingIntervalMs Int @default(10000)
+  gatewayUrl String?
+  inverterUsername String?
+  inverterLinkCode String?
+  wifiSsid String?
+  wifiPasswordCipher String?
+  enabled Boolean @default(true)
+  isPrimary Boolean @default(false)
+  connectionMode String @default("gateway")
+  gatewayName String?
+  gatewayTokenHash String?
+  gatewayTokenCipher String?
+  gatewayTokenCreatedAt DateTime?
+  lastTestResult String?
+  lastTestLatencyMs Int?
+  lastTestReason String?
+  lastStatus String @default("disconnected")
+  lastSeenAt DateTime?
+  updatedAt DateTime @updatedAt
+}

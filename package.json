@@ -1,1 +1,42 @@
-{"name":"solar","version":"0.1.0","private":true,"scripts":{"dev":"next dev","build":"next build","start":"next start","lint":"eslint ."},"dependencies":{"next":"15.5.27","react":"19.1.0","react-dom":"19.1.0","lucide-react":"^0.468.0"},"devDependencies":{"@types/node":"^22","@types/react":"^19","@types/react-dom":"^19","eslint":"^9","eslint-config-next":"15.5.27","typescript":"^5.6.3","tailwindcss":"^3.4.17","postcss":"^8.4.49","autoprefixer":"^10.4.20"}}
+{
+  "name": "solar",
+  "version": "1.2.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "node scripts/prisma-deploy.mjs && node scripts/prisma-generate.mjs && next build",
+    "build:ci": "node scripts/prisma-generate.mjs && next build",
+    "start": "next start",
+    "verify": "npm run typecheck && npm run lint && npm test",
+    "lint": "node scripts/lint.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "seed": "ts-node --project prisma/tsconfig.json prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "5.19.0",
+    "lucide-react": "0.439.0",
+    "next": "15.5.26",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "recharts": "^2.15.4",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.0",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.49",
+    "prisma": "5.19.0",
+    "tailwindcss": "3.4.17",
+    "ts-node": "10.9.2",
+    "typescript": "5.7.2"
+  }
+}

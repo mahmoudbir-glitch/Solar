@@ -1,0 +1,50 @@
+name: verify-and-lock
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # CI-only placeholders. Never commit real credentials here.
+    env:
+      DATABASE_URL: "postgresql://ci:ci@127.0.0.1:5432/solar_ci?schema=public"
+      SOLAR_AUTH_USERNAME: "ci-user"
+      SOLAR_AUTH_PASSWORD: "ci-password-only"
+      SOLAR_AUTH_SECRET: "ci-only-secret-not-used-in-production"
+      TELEMETRY_INGEST_TOKEN: "ci-telemetry-token"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies from lockfile
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npm run db:generate
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Verify
+        run: npm run verify
+
+      - name: Production build
+        run: CI=true npm run build:ci

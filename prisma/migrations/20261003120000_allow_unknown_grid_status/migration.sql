@@ -1,0 +1,1 @@
+ALTER TABLE "TelemetryLog" ALTER COLUMN "gridConnected" DROP NOT NULL;

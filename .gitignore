@@ -1,7 +1,13 @@
 node_modules
 .next
+*.log
 .env
 .env.local
-*.log
-__pycache__
-.venv
+dist
+build
+.DS_Store
+
+# Python bytecode from the local gateway
+__pycache__/
+*.pyc
+tsconfig.tsbuildinfo
