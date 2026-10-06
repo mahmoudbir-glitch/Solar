@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
 
 /**
  * Runs `prisma migrate deploy`, recovering from one specific failure mode.
@@ -23,7 +24,11 @@ import { spawnSync } from "node:child_process";
  * build fails loudly, which is the correct outcome: silently rolling back an
  * unknown migration could hide real data damage.
  */
-const RECOVERABLE = new Set(["20260930140000_enable_rls_deny_public_roles"]);
+// 0_init_baseline: its first deploy on a new database stopped at a syntax error
+// in the very first statement (a single dollar sign where dollar-quoting needs
+// two, now corrected), so nothing was created; every statement in it is
+// IF NOT EXISTS or SET DEFAULT and can be run again.
+const RECOVERABLE = new Set(["0_init_baseline", "20260930140000_enable_rls_deny_public_roles"]);
 
 // Preview deployments share the production database (same DATABASE_URL), so
 // a preview build must never change its schema. Only production builds (or
@@ -41,11 +46,12 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const runner = process.platform === "win32" ? "npx.cmd" : "npx";
+// Run the Prisma CLI with this Node directly: spawning npx.cmd fails on Windows.
+const prismaCli = resolve("node_modules/prisma/build/index.js");
 const env = { ...process.env, DATABASE_URL: databaseUrl };
 
 function prisma(args, { capture = false } = {}) {
-  return spawnSync(runner, ["prisma", ...args], {
+  return spawnSync(process.execPath, [prismaCli, ...args], {
     env,
     encoding: "utf8",
     stdio: capture ? "pipe" : "inherit",

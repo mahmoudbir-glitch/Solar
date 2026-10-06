@@ -2,12 +2,12 @@
 -- Existing Prisma-managed production tables were verified to contain 0 rows.
 -- Legacy inverter_readings is preserved intentionally.
 
-DO $ BEGIN
+DO $$ BEGIN
   CREATE TYPE "Role" AS ENUM ('OWNER','FAMILY_MEMBER','TECHNICIAN','LOCAL_ADMIN');
-EXCEPTION WHEN duplicate_object THEN NULL; END $;
-DO $ BEGIN
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
   CREATE TYPE "SystemStatus" AS ENUM ('NORMAL','ATTENTION_NEEDED','FAULT');
-EXCEPTION WHEN duplicate_object THEN NULL; END $;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS "EnergySettings" (
   "id" TEXT NOT NULL DEFAULT 'default',
