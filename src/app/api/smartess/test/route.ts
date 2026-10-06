@@ -5,1294 +5,231 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const API = "https://api.dessmonitor.com/public/";
-
 const SOURCE = "1";
 const APP_CLIENT = "web";
 const APP_ID = "shamsak";
 const APP_VERSION = "1.2.0";
-
 const DEFAULT_PN = "Q0045395318912";
-
-// Compatibility fallback used by the existing Shamsak SmartESS client.
-// Prefer SMARTESS_COMPANY_KEY when it is configured.
 const DEFAULT_COMPANY_KEY = "bnrl_frRFjEz8Mkn";
+const TIMEOUT_MS = 15000;
 
-const REQUEST_TIMEOUT_MS = 15000;
+type Json = Record<string, unknown>;
+type Auth = { token: string; secret: string };
+type Device = { pn?: string; sn?: string; devcode?: string | number; devaddr?: string | number; status?: string | number; name?: string; [key: string]: unknown };
+type Reading = { title?: string; val?: string | number; unit?: string; [key: string]: unknown };
 
-type JsonRecord = Record<string, unknown>;
+const sha1 = (value: string) => createHash("sha1").update(value, "utf8").digest("hex");
 
-type AuthResult = {
-  token: string;
-  secret: string;
-  raw: JsonRecord;
-};
-
-type Collector = {
-  pn?: string;
-  name?: string;
-  status?: number | string;
-  [key: string]: unknown;
-};
-
-type Device = {
-  pn?: string;
-  sn?: string;
-  devcode?: string | number;
-  devaddr?: string | number;
-  status?: string | number;
-  name?: string;
-  [key: string]: unknown;
-};
-
-type Reading = {
-  title?: string;
-  val?: string | number;
-  unit?: string;
-  [key: string]: unknown;
-};
-
-function sha1(value: string): string {
-  return createHash("sha1").update(value).digest("hex");
-}
-
-function actionString(
-  action: string,
-  params: Record<string, string | number | undefined> = {},
-): string {
-  const parts = [`&action=${encodeURIComponent(action)}`];
-
+function actionString(action: string, params: Record<string, string | number | undefined> = {}) {
+  let result = `&action=${encodeURIComponent(action)}`;
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null || value === "") continue;
-
-    parts.push(
-      `&${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
-    );
+    result += `&${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`;
   }
-
-  return parts.join("");
+  return result;
 }
 
-async function requestApi(
-  url: string,
-  timeoutMs = REQUEST_TIMEOUT_MS,
-): Promise<JsonRecord> {
-  const controller = new AbortController();
-
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-      cache: "no-store",
-      signal: controller.signal,
-    });
-
-    const text = await response.text();
-
-    let json: unknown;
-
-    try {
-      json = JSON.parse(text);
-    } catch {
-      throw new Error(
-        `SmartESS returned invalid JSON (HTTP ${response.status})`,
-      );
-    }
-
-    if (!json || typeof json !== "object") {
-      throw new Error("SmartESS returned an invalid response");
-    }
-
-    return json as JsonRecord;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function buildUrl(
-  params: Record<string, string | number | undefined>,
-): string {
-  const url = new URL(API);
-
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null || value === "") continue;
-    url.searchParams.set(key, String(value));
-  }
-
-  return url.toString();
-}
-
-function getData(response: JsonRecord): unknown {
-  return response.dat;
-}
-
-function getDescription(response: JsonRecord): string {
-  const desc = response.desc;
-
-  if (typeof desc === "string") return desc;
-
-  if (desc && typeof desc === "object") {
-    try {
-      return JSON.stringify(desc);
-    } catch {
-      return "";
-    }
-  }
-
-  return "";
-}
-
-function isSuccess(response: JsonRecord): boolean {
-  return response.result === 1 || response.result === "1";
-}
-
-function isRecoverableAuthError(response: JsonRecord): boolean {
-  const desc = getDescription(response).toUpperCase();
-
-  return (
-    desc.includes("NOT_FOUND_USR") ||
-    desc.includes("PASSWORD") ||
-    desc.includes("USER")
-  );
-}
-
-function usernameVariants(username: string): string[] {
-  const values = new Set<string>();
-
-  values.add(username);
-
-  if (username.length > 0) {
-    values.add(
-      username.charAt(0).toUpperCase() + username.slice(1),
-    );
-  }
-
-  values.add(username.toLowerCase());
-  values.add(username.toUpperCase());
-
-  return [...values];
-}
-
-async function authenticateExact(
-  username: string,
-  password: string,
-  companyKey: string,
-): Promise<AuthResult> {
-  const salt = Date.now().toString();
-
-  const params = {
-    usr: username,
-    "company-key": companyKey,
-    source: SOURCE,
-    _app_client_: APP_CLIENT,
-    _app_id_: APP_ID,
-    _app_version_: APP_VERSION,
-  };
-
-  const tail = actionString("authSource", params);
-
-  const sign = sha1(
-    `${salt}${sha1(password)}${tail}`,
-  );
-
-  const url = buildUrl({
-    sign,
-    salt,
-    usr: username,
-    "company-key": companyKey,
-    source: SOURCE,
-    _app_client_: APP_CLIENT,
-    _app_id_: APP_ID,
-    _app_version_: APP_VERSION,
-    action: "authSource",
-  });
-
-  const response = await requestApi(url);
-
-  if (!isSuccess(response)) {
-    throw new Error(
-      getDescription(response) || "SmartESS authentication failed",
-    );
-  }
-
-  const dat = getData(response);
-
-  if (!dat || typeof dat !== "object") {
-    throw new Error("SmartESS authentication response is invalid");
-  }
-
-  const token = (dat as JsonRecord).token;
-  const secret = (dat as JsonRecord).secret;
-
-  if (typeof token !== "string" || typeof secret !== "string") {
-    throw new Error("SmartESS token/secret missing");
-  }
-
-  return {
-    token,
-    secret,
-    raw: response,
-  };
-}
-
-async function authenticate(
-  username: string,
-  password: string,
-): Promise<AuthResult> {
-  const companyKey =
-    process.env.SMARTESS_COMPANY_KEY?.trim() ||
-    DEFAULT_COMPANY_KEY;
-
-  let lastError = "SmartESS authentication failed";
-
-  for (const candidate of usernameVariants(username)) {
-    try {
-      return await authenticateExact(
-        candidate,
-        password,
-        companyKey,
-      );
-    } catch (error) {
-      lastError =
-        error instanceof Error
-          ? error.message
-          : "SmartESS authentication failed";
-
-      const upper = lastError.toUpperCase();
-
-      if (
-        !upper.includes("NOT_FOUND_USR") &&
-        !upper.includes("PASSWORD") &&
-        !upper.includes("USER")
-      ) {
-        throw error;
-      }
-    }
-  }
-
-  throw new Error(lastError);
-}
-
-async function authedCall(
-  auth: AuthResult,
-  action: string,
-  params: Record<string, string | number | undefined> = {},
-): Promise<JsonRecord> {
-  const salt = Date.now().toString();
-
-  /*
-   * Important:
-   * After authentication Shamsak signs ONLY the actual action
-   * parameters. Do not append source/app/client/version here.
-   */
+async function callApi(action: string, params: Record<string, string | number | undefined>, auth?: Auth) {
+  const salt = String(Date.now());
   const tail = actionString(action, params);
+  const signature = auth
+    ? sha1(`${salt}${auth.secret}${auth.token}${tail}`)
+    : sha1(`${salt}${sha1(process.env.SMARTESS_PASSWORD ?? "")}${tail}`);
 
-  const sign = sha1(
-    `${salt}${auth.secret}${auth.token}${tail}`,
-  );
-
-  const url = buildUrl({
-    sign,
-    salt,
-    token: auth.token,
-    action,
-    ...params,
-  });
-
-  return requestApi(url);
-}
-
-function asArray(value: unknown): JsonRecord[] {
-  if (!Array.isArray(value)) return [];
-
-  return value.filter(
-    (item): item is JsonRecord =>
-      !!item &&
-      typeof item === "object" &&
-      !Array.isArray(item),
-  );
-}
-
-function normalizeCollector(item: JsonRecord): Collector {
-  return {
-    ...item,
-    pn:
-      typeof item.pn === "string"
-        ? item.pn
-        : typeof item.PN === "string"
-          ? item.PN
-          : undefined,
-    name:
-      typeof item.name === "string"
-        ? item.name
-        : typeof item.alias === "string"
-          ? item.alias
-          : undefined,
-    status:
-      item.status ??
-      item.online ??
-      item.state,
-  };
-}
-
-function normalizeDevice(item: JsonRecord): Device {
-  return {
-    ...item,
-
-    pn:
-      typeof item.pn === "string"
-        ? item.pn
-        : typeof item.PN === "string"
-          ? item.PN
-          : undefined,
-
-    sn:
-      typeof item.sn === "string"
-        ? item.sn
-        : typeof item.SN === "string"
-          ? item.SN
-          : undefined,
-
-    devcode:
-      item.devcode ??
-      item.devCode ??
-      item.deviceCode,
-
-    devaddr:
-      item.devaddr ??
-      item.devAddr ??
-      item.deviceAddr ??
-      item.address,
-
-    status:
-      item.status ??
-      item.online ??
-      item.state,
-
-    name:
-      typeof item.name === "string"
-        ? item.name
-        : typeof item.alias === "string"
-          ? item.alias
-          : undefined,
-  };
-}
-
-function getResultItems(response: JsonRecord): JsonRecord[] {
-  const dat = getData(response);
-
-  if (Array.isArray(dat)) {
-    return asArray(dat);
+  const url = new URL(API);
+  url.searchParams.set("sign", signature);
+  url.searchParams.set("salt", salt);
+  if (auth) url.searchParams.set("token", auth.token);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, String(value));
   }
 
-  if (dat && typeof dat === "object") {
-    const obj = dat as JsonRecord;
-
-    for (const key of [
-      "list",
-      "rows",
-      "items",
-      "records",
-      "data",
-      "devices",
-      "collectors",
-    ]) {
-      const value = obj[key];
-
-      if (Array.isArray(value)) {
-        return asArray(value);
-      }
-    }
-  }
-
-  return [];
-}
-
-async function listCollectors(
-  auth: AuthResult,
-): Promise<Collector[]> {
-  const response = await authedCall(
-    auth,
-    "webQueryCollectorsEs",
-    {
-      page: "0",
-      pagesize: "100",
-    },
-  );
-
-  if (!isSuccess(response)) {
-    return [];
-  }
-
-  return getResultItems(response).map(normalizeCollector);
-}
-
-function deviceFromSn(
-  pn: string,
-  sn: string,
-): Device | null {
-  /*
-   * Shamsak-compatible fallback:
-   *
-   * PN + 6 hexadecimal characters
-   *
-   * first 4 chars = devcode
-   * last 2 chars  = devaddr
-   */
-  if (!sn.startsWith(pn)) {
-    return null;
-  }
-
-  const suffix = sn.slice(pn.length);
-
-  if (!/^[0-9a-fA-F]{6}$/.test(suffix)) {
-    return null;
-  }
-
-  const devcode = suffix.slice(0, 4);
-  const devaddr = suffix.slice(4, 6);
-
-  return {
-    pn,
-    sn,
-    devcode,
-    devaddr,
-  };
-}
-
-async function tryDeviceAction(
-  auth: AuthResult,
-  action: string,
-  params: Record<string, string | number | undefined>,
-): Promise<Device[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await authedCall(
-      auth,
-      action,
-      params,
-    );
-
-    if (!isSuccess(response)) {
-      return [];
-    }
-
-    return getResultItems(response).map(normalizeDevice);
-  } catch {
-    return [];
+    const response = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" }, signal: controller.signal });
+    const text = await response.text();
+    let body: unknown;
+    try { body = JSON.parse(text); } catch { throw new Error(`SmartESS returned invalid JSON (HTTP ${response.status})`); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("SmartESS returned an invalid response");
+    const json = body as Json;
+    if (!response.ok) throw new Error(`SmartESS returned HTTP ${response.status}: ${description(json)}`);
+    return json;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-async function discoverDevices(
-  auth: AuthResult,
-  pn: string,
-): Promise<{
-  devices: Device[];
-  collectors: Collector[];
-  attempts: string[];
-}> {
-  const devices: Device[] = [];
-  const attempts: string[] = [];
+function description(body: Json) {
+  const value = body.desc;
+  return typeof value === "string" ? value : value ? JSON.stringify(value) : "";
+}
 
-  /*
-   * 1. Primary Shamsak discovery endpoint.
-   */
-  const first = await tryDeviceAction(
-    auth,
-    "webQueryDeviceEs",
-    {
-      page: "0",
-      pagesize: "100",
-      pn,
-    },
-  );
+function successful(body: Json) {
+  if (body.err !== undefined) return Number(body.err) === 0;
+  return body.result === 1 || body.result === "1";
+}
 
-  attempts.push(
-    `webQueryDeviceEs:${first.length}`,
-  );
+async function authenticate(username: string, password: string): Promise<Auth> {
+  const companyKey = process.env.SMARTESS_COMPANY_KEY?.trim() || DEFAULT_COMPANY_KEY;
+  const variants = [...new Set([username.trim(), username.trim().toLowerCase(), username.trim().charAt(0).toUpperCase() + username.trim().slice(1), username.trim().toUpperCase()])];
+  let last = "SmartESS authentication failed";
 
-  devices.push(...first);
-
-  /*
-   * 2. Collector list.
-   */
-  const collectors = await listCollectors(auth);
-
-  attempts.push(
-    `webQueryCollectorsEs:${collectors.length}`,
-  );
-
-  /*
-   * 3. Generic device endpoints.
-   */
-  const second = await tryDeviceAction(
-    auth,
-    "webQueryDevice",
-    {
-      page: "0",
-      pagesize: "100",
-      pn,
-    },
-  );
-
-  attempts.push(
-    `webQueryDevice:${second.length}`,
-  );
-
-  devices.push(...second);
-
-  const third = await tryDeviceAction(
-    auth,
-    "queryDevices",
-    {
-      page: "0",
-      pagesize: "100",
-      pn,
-    },
-  );
-
-  attempts.push(
-    `queryDevices:${third.length}`,
-  );
-
-  devices.push(...third);
-
-  /*
-   * 4. Collector-specific discovery.
-   */
-  for (const collector of collectors) {
-    const collectorPn =
-      typeof collector.pn === "string"
-        ? collector.pn
-        : undefined;
-
-    if (
-      collectorPn &&
-      collectorPn !== pn
-    ) {
+  for (const usr of variants) {
+    const params = { usr, "company-key": companyKey, source: SOURCE, _app_client_: APP_CLIENT, _app_id_: APP_ID, _app_version_: APP_VERSION };
+    const body = await callApi("authSource", params);
+    if (!successful(body)) {
+      last = description(body) || "SmartESS authentication failed";
+      const upper = last.toUpperCase();
+      if (!/NOT_FOUND_USR|PASSWORD|USER/.test(upper)) throw new Error(last);
       continue;
     }
-
-    const byCollector = await tryDeviceAction(
-      auth,
-      "webQueryDeviceEs",
-      {
-        pn,
-        page: "0",
-        pagesize: "100",
-      },
-    );
-
-    attempts.push(
-      `collector:webQueryDeviceEs:${byCollector.length}`,
-    );
-
-    devices.push(...byCollector);
-
-    const collectorDevices =
-      await tryDeviceAction(
-        auth,
-        "queryCollectorDevices",
-        {
-          pn,
-        },
-      );
-
-    attempts.push(
-      `queryCollectorDevices:${collectorDevices.length}`,
-    );
-
-    devices.push(...collectorDevices);
-
-    const collectorInfo =
-      await tryDeviceAction(
-        auth,
-        "queryCollectorInfo",
-        {
-          pn,
-        },
-      );
-
-    attempts.push(
-      `queryCollectorInfo:${collectorInfo.length}`,
-    );
-
-    devices.push(...collectorInfo);
+    const dat = body.dat && typeof body.dat === "object" ? body.dat as Json : {};
+    const token = typeof dat.token === "string" ? dat.token : "";
+    const secret = typeof dat.secret === "string" ? dat.secret : "";
+    if (token && secret) return { token, secret };
+    throw new Error("SmartESS authentication response did not contain token/secret");
   }
+  throw new Error(last);
+}
 
-  /*
-   * 5. Remove duplicates.
-   */
-  const unique = new Map<string, Device>();
-
-  for (const device of devices) {
-    const key = [
-      device.pn ?? "",
-      device.sn ?? "",
-      device.devcode ?? "",
-      device.devaddr ?? "",
-    ].join("|");
-
-    if (!unique.has(key)) {
-      unique.set(key, device);
-    }
-  }
-
-  /*
-   * 6. Shamsak-compatible SN fallback.
-   */
-  if (unique.size === 0) {
-    const collector = collectors.find(
-      (item) =>
-        typeof item.pn === "string" &&
-        item.pn === pn,
-    );
-
-    const possibleSn =
-      collector?.sn ??
-      collector?.SN;
-
-    if (typeof possibleSn === "string") {
-      const derived = deviceFromSn(
-        pn,
-        possibleSn,
-      );
-
-      if (derived) {
-        unique.set(
-          [
-            derived.pn ?? "",
-            derived.sn ?? "",
-            derived.devcode ?? "",
-            derived.devaddr ?? "",
-          ].join("|"),
-          derived,
-        );
-      }
-    }
-  }
-
-  return {
-    devices: [...unique.values()],
-    collectors,
-    attempts,
+function arraysFrom(body: Json): Json[] {
+  const out: Json[] = [];
+  const visit = (value: unknown, depth = 0) => {
+    if (depth > 5 || value == null) return;
+    if (Array.isArray(value)) { for (const item of value) visit(item, depth + 1); return; }
+    if (typeof value !== "object") return;
+    const item = value as Json;
+    if (typeof item.sn === "string" && item.sn && item.devcode !== undefined) { out.push(item); return; }
+    for (const child of Object.values(item)) visit(child, depth + 1);
   };
+  visit(body.dat);
+  return out;
 }
 
-function isOnline(device: Device): boolean {
-  const value = device.status;
-
-  return (
-    value === 1 ||
-    value === "1" ||
-    value === true ||
-    value === "online" ||
-    value === "ONLINE" ||
-    value === "Online"
-  );
-}
-
-function pickDevice(
-  devices: Device[],
-  pn: string,
-): Device | null {
-  if (devices.length === 0) {
-    return null;
-  }
-
-  const onlineMatching = devices.find(
-    (device) =>
-      device.pn === pn &&
-      isOnline(device),
-  );
-
-  if (onlineMatching) {
-    return onlineMatching;
-  }
-
-  const onlineAny = devices.find(
-    (device) => isOnline(device),
-  );
-
-  if (onlineAny) {
-    return onlineAny;
-  }
-
-  const matching = devices.find(
-    (device) => device.pn === pn,
-  );
-
-  if (matching) {
-    return matching;
-  }
-
-  return devices[0] ?? null;
-}
-
-function normalizeReading(
-  item: JsonRecord,
-): Reading {
+function normalizeDevice(item: Json): Device {
+  const status = item.status ?? item.online ?? item.state;
   return {
     ...item,
-
-    title:
-      typeof item.title === "string"
-        ? item.title
-        : typeof item.name === "string"
-          ? item.name
-          : undefined,
-
-    val:
-      item.val ??
-      item.value ??
-      item.v,
-
-    unit:
-      typeof item.unit === "string"
-        ? item.unit
-        : undefined,
+    pn: typeof item.pn === "string" ? item.pn : typeof item.PN === "string" ? item.PN : undefined,
+    sn: typeof item.sn === "string" ? item.sn : typeof item.SN === "string" ? item.SN : undefined,
+    devcode: item.devcode ?? item.devCode ?? item.deviceCode,
+    devaddr: item.devaddr ?? item.devAddr ?? item.deviceAddr ?? item.address,
+    status: typeof status === "string" || typeof status === "number" ? status : undefined,
+    name: typeof item.name === "string" ? item.name : typeof item.alias === "string" ? item.alias : undefined,
   };
 }
 
-function extractReadingItems(
-  response: JsonRecord,
-): Reading[] {
-  const dat = getData(response);
-
-  if (Array.isArray(dat)) {
-    return asArray(dat).map(normalizeReading);
-  }
-
-  if (dat && typeof dat === "object") {
-    const obj = dat as JsonRecord;
-
-    for (const key of [
-      "list",
-      "rows",
-      "items",
-      "records",
-      "data",
-    ]) {
-      const value = obj[key];
-
-      if (Array.isArray(value)) {
-        return asArray(value).map(
-          normalizeReading,
-        );
-      }
-    }
-  }
-
-  return [];
-}
-
-function numberValue(
-  value: unknown,
-): number | null {
-  if (
-    typeof value === "number" &&
-    Number.isFinite(value)
-  ) {
-    return value;
-  }
-
-  if (typeof value === "string") {
-    const parsed = Number(
-      value.replace(",", ".").trim(),
-    );
-
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-
-  return null;
-}
-
-function mapReadingValue(
-  readings: Reading[],
-  patterns: string[],
-): number | null {
-  for (const reading of readings) {
-    const title =
-      reading.title?.toLowerCase() ?? "";
-
-    if (
-      patterns.some((pattern) =>
-        title.includes(pattern),
-      )
-    ) {
-      const value = numberValue(
-        reading.val,
-      );
-
-      if (value !== null) {
-        return value;
-      }
-    }
-  }
-
-  return null;
-}
-
-async function readLastData(
-  auth: AuthResult,
-  device: Device,
-  pn: string,
-): Promise<{
-  readings: Reading[];
-  raw: JsonRecord;
-  telemetry: JsonRecord;
-}> {
-  const response = await authedCall(
-    auth,
-    "queryDeviceLastData",
-    {
-      page: "0",
-      pagesize: "100",
-      i18n: "en_US",
-      pn,
-      devcode:
-        device.devcode !== undefined
-          ? String(device.devcode)
-          : undefined,
-      devaddr:
-        device.devaddr !== undefined
-          ? String(device.devaddr)
-          : undefined,
-      sn:
-        typeof device.sn === "string"
-          ? device.sn
-          : undefined,
-    },
-  );
-
-  if (!isSuccess(response)) {
-    throw new Error(
-      getDescription(response) ||
-        "SmartESS last-data query failed",
-    );
-  }
-
-  const readings =
-    extractReadingItems(response);
-
-  /*
-   * We deliberately map only values that are actually
-   * returned by DessMonitor. Missing values remain null.
-   * No fabricated telemetry is generated.
-   */
-  const telemetry: JsonRecord = {
-    pvPowerW: mapReadingValue(
-      readings,
-      [
-        "pv power",
-        "solar power",
-        "pv1 power",
-        "pv2 power",
-        "pv watt",
-      ],
-    ),
-
-    pvVoltageV: mapReadingValue(
-      readings,
-      [
-        "pv voltage",
-        "pv1 voltage",
-        "pv2 voltage",
-      ],
-    ),
-
-    pvCurrentA: mapReadingValue(
-      readings,
-      [
-        "pv current",
-        "pv1 current",
-        "pv2 current",
-      ],
-    ),
-
-    batteryVoltageV: mapReadingValue(
-      readings,
-      [
-        "battery voltage",
-        "bat voltage",
-      ],
-    ),
-
-    batteryCurrentA: mapReadingValue(
-      readings,
-      [
-        "battery current",
-        "bat current",
-      ],
-    ),
-
-    batterySoc: mapReadingValue(
-      readings,
-      [
-        "battery soc",
-        "battery percentage",
-        "battery percent",
-        "soc",
-      ],
-    ),
-
-    loadPowerW: mapReadingValue(
-      readings,
-      [
-        "load power",
-        "load watt",
-        "output power",
-        "active power",
-      ],
-    ),
-
-    outputVoltageV: mapReadingValue(
-      readings,
-      [
-        "output voltage",
-        "ac output voltage",
-      ],
-    ),
-
-    gridVoltageV: mapReadingValue(
-      readings,
-      [
-        "grid voltage",
-        "ac input voltage",
-        "utility voltage",
-      ],
-    ),
-
-    gridPowerW: mapReadingValue(
-      readings,
-      [
-        "grid power",
-        "utility power",
-        "ac input power",
-      ],
-    ),
-
-    temperatureC: mapReadingValue(
-      readings,
-      [
-        "temperature",
-        "device temperature",
-        "inverter temperature",
-      ],
-    ),
-  };
-
-  return {
-    readings,
-    raw: response,
-    telemetry,
-  };
-}
-
-function safeCollector(
-  collector: Collector | undefined,
-): JsonRecord | null {
-  if (!collector) return null;
-
-  return {
-    pn: collector.pn ?? null,
-    name: collector.name ?? null,
-    status: collector.status ?? null,
-  };
-}
-
-function safeDevice(
-  device: Device | null,
-): JsonRecord | null {
-  if (!device) return null;
-
-  return {
-    pn: device.pn ?? null,
-    sn: device.sn ?? null,
-    devcode: device.devcode ?? null,
-    devaddr: device.devaddr ?? null,
-    status: device.status ?? null,
-    name: device.name ?? null,
-  };
-}
-
-function json(
-  body: JsonRecord,
-  status = 200,
-) {
-  return NextResponse.json(
-    body,
-    {
-      status,
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    },
-  );
-}
-
-export async function POST(
-  request: Request,
-) {
-  try {
-    let body: JsonRecord = {};
-
+async function discover(auth: Auth, pn: string) {
+  const devices = new Map<string, Device>();
+  const attempts: string[] = [];
+  const actions = ["webQueryDeviceEs", "webQueryDevice", "queryDevices", "queryCollectorDevices", "queryCollectorInfo"];
+  for (const action of actions) {
     try {
-      const parsed = await request.json();
-
-      if (
-        parsed &&
-        typeof parsed === "object" &&
-        !Array.isArray(parsed)
-      ) {
-        body = parsed as JsonRecord;
+      const body = await callApi(action, action === "queryCollectorDevices" || action === "queryCollectorInfo" ? { pn } : { page: 0, pagesize: 100, pn }, auth);
+      const found = arraysFrom(body).map(normalizeDevice);
+      attempts.push(`${action}:${found.length}`);
+      for (const device of found) {
+        const key = `${device.sn ?? ""}|${device.devcode ?? ""}|${device.devaddr ?? ""}`;
+        devices.set(key, device);
       }
     } catch {
-      body = {};
+      attempts.push(`${action}:error`);
     }
+  }
+  return { devices: [...devices.values()], attempts };
+}
 
-    const username =
-      process.env.SMARTESS_USERNAME?.trim();
+function online(device: Device) {
+  return device.status === 1 || device.status === "1" || device.status === "online" || device.status === "ONLINE" || device.status === "Online";
+}
 
-    const password =
-      process.env.SMARTESS_PASSWORD;
+function pick(devices: Device[], pn: string) {
+  return devices.find(d => d.pn === pn && online(d)) ?? devices.find(online) ?? devices.find(d => d.pn === pn) ?? devices[0] ?? null;
+}
 
-    const pn =
-      typeof body.pn === "string" &&
-      body.pn.trim()
-        ? body.pn.trim()
-        : process.env.SMARTESS_PN?.trim() ||
-          DEFAULT_PN;
+function readingsFrom(body: Json): Reading[] {
+  const values: unknown[] = [];
+  const visit = (value: unknown, depth = 0) => {
+    if (depth > 5 || value == null) return;
+    if (Array.isArray(value)) { values.push(...value); return; }
+    if (typeof value !== "object") return;
+    const obj = value as Json;
+    for (const key of ["list", "rows", "items", "records", "data"]) if (Array.isArray(obj[key])) values.push(...obj[key] as unknown[]);
+    if (values.length === 0) for (const child of Object.values(obj)) visit(child, depth + 1);
+  };
+  visit(body.dat);
+  return values.filter((x): x is Json => !!x && typeof x === "object" && !Array.isArray(x)).map(x => ({ ...x, title: typeof x.title === "string" ? x.title : typeof x.name === "string" ? x.name : undefined, val: x.val ?? x.value ?? x.v }));
+}
 
-    const requestedDeviceId =
-      typeof body.deviceId === "string"
-        ? body.deviceId.trim()
-        : "";
+function num(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") { const n = Number(value.replace(",", ".").trim()); return Number.isFinite(n) ? n : null; }
+  return null;
+}
+
+function find(readings: Reading[], names: string[]) {
+  for (const r of readings) {
+    const title = (r.title ?? "").toLowerCase();
+    if (names.some(n => title.includes(n))) { const n = num(r.val); if (n !== null) return n; }
+  }
+  return null;
+}
+
+async function lastData(auth: Auth, device: Device, pn: string) {
+  const body = await callApi("queryDeviceLastData", { page: 0, pagesize: 100, i18n: "en_US", pn, devcode: device.devcode !== undefined ? String(device.devcode) : undefined, devaddr: device.devaddr !== undefined ? String(device.devaddr) : undefined, sn: device.sn }, auth);
+  if (!successful(body)) throw new Error(description(body) || "SmartESS last-data query failed");
+  const readings = readingsFrom(body);
+  return {
+    readings,
+    telemetry: {
+      pvPowerW: find(readings, ["pv power", "solar power", "pv1 power", "pv2 power"]),
+      pvVoltageV: find(readings, ["pv voltage", "pv1 voltage", "pv2 voltage"]),
+      pvCurrentA: find(readings, ["pv current", "pv1 current", "pv2 current"]),
+      batteryVoltageV: find(readings, ["battery voltage", "bat voltage"]),
+      batteryCurrentA: find(readings, ["battery current", "bat current"]),
+      batterySoc: find(readings, ["battery soc", "battery percentage", "battery percent", "soc"]),
+      loadPowerW: find(readings, ["load power", "load watt", "output power", "active power"]),
+      outputVoltageV: find(readings, ["output voltage", "ac output voltage"]),
+      gridVoltageV: find(readings, ["grid voltage", "ac input voltage", "utility voltage"]),
+      gridPowerW: find(readings, ["grid power", "utility power", "ac input power"]),
+      temperatureC: find(readings, ["temperature", "device temperature", "inverter temperature"]),
+    },
+  };
+}
+
+function json(body: Json, status = 200) { return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } }); }
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json().catch(() => ({})) as Json;
+    const username = process.env.SMARTESS_USERNAME?.trim();
+    const password = process.env.SMARTESS_PASSWORD;
+    const companyKey = process.env.SMARTESS_COMPANY_KEY?.trim();
+    const pn = typeof body.pn === "string" && body.pn.trim() ? body.pn.trim() : process.env.SMARTESS_PN?.trim() || DEFAULT_PN;
+    const deviceId = typeof body.deviceId === "string" ? body.deviceId.trim() : "";
 
     const missing: string[] = [];
+    if (!username) missing.push("SMARTESS_USERNAME");
+    if (!password) missing.push("SMARTESS_PASSWORD");
+    if (!companyKey) console.warn("[SmartESS] SMARTESS_COMPANY_KEY is not configured; using compatibility key");
+    if (missing.length) return json({ ok: false, code: "MISSING_ENV", message: "يرجى إعداد بيانات SmartESS في إعدادات Vercel ثم إعادة النشر.", missing }, 503);
 
-    if (!username) {
-      missing.push("SMARTESS_USERNAME");
-    }
+    const auth = await authenticate(username!, password!);
+    const discovered = await discover(auth, pn);
+    const device = pick(discovered.devices, pn);
+    if (!device) return json({ ok: false, code: "DEVICE_NOT_FOUND", message: "تم تسجيل الدخول إلى SmartESS لكن تعذر اكتشاف الإنفرتر.", pn, deviceId: deviceId || null, attempts: discovered.attempts }, 404);
+    if (device.status !== undefined && !online(device)) return json({ ok: false, code: "DEVICE_OFFLINE", message: "الإنفرتر أو جهاز الاتصال ظاهر في SmartESS لكنه غير متصل حالياً.", pn, device: { pn: device.pn ?? null, sn: device.sn ?? null, devcode: device.devcode ?? null, devaddr: device.devaddr ?? null, status: device.status ?? null, name: device.name ?? null }, attempts: discovered.attempts }, 503);
 
-    if (!password) {
-      missing.push("SMARTESS_PASSWORD");
-    }
-
-    if (missing.length > 0) {
-      console.error(
-        "[SmartESS] Missing configuration:",
-        missing.join(", "),
-      );
-
-      return json(
-        {
-          ok: false,
-          code: "MISSING_ENV",
-          message:
-            "يرجى إعداد بيانات SmartESS في إعدادات Vercel ثم إعادة النشر.",
-          missing,
-        },
-        503,
-      );
-    }
-
-    console.log(
-      "[SmartESS] Starting connection test",
-    );
-
-    const auth = await authenticate(
-      username!,
-      password!,
-    );
-
-    console.log(
-      "[SmartESS] Authentication succeeded",
-    );
-
-    const discovered =
-      await discoverDevices(
-        auth,
-        pn,
-      );
-
-    const device = pickDevice(
-      discovered.devices,
-      pn,
-    );
-
-    const collector =
-      discovered.collectors.find(
-        (item) => item.pn === pn,
-      ) ??
-      discovered.collectors[0];
-
-    if (!device) {
-      return json(
-        {
-          ok: false,
-          code: "DEVICE_NOT_FOUND",
-          message:
-            "تم تسجيل الدخول إلى SmartESS لكن تعذر اكتشاف الإنفرتر.",
-          pn,
-          deviceId:
-            requestedDeviceId || null,
-          collector:
-            safeCollector(collector),
-          collectors:
-            discovered.collectors.map(
-              safeCollector,
-            ),
-          attempts:
-            discovered.attempts,
-        },
-        404,
-      );
-    }
-
-    if (
-      device.status !== undefined &&
-      !isOnline(device)
-    ) {
-      return json(
-        {
-          ok: false,
-          code: "DEVICE_OFFLINE",
-          message:
-            "الإنفرتر أو جهاز الاتصال ظاهر في SmartESS لكنه غير متصل حالياً.",
-          pn,
-          device: safeDevice(device),
-          collector:
-            safeCollector(collector),
-          attempts:
-            discovered.attempts,
-        },
-        503,
-      );
-    }
-
-    const lastData =
-      await readLastData(
-        auth,
-        device,
-        pn,
-      );
-
-    const timestamp =
-      new Date().toISOString();
-
-    console.log(
-      "[SmartESS] Last data received successfully",
-    );
-
-    return json(
-      {
-        ok: true,
-        code: "CONNECTED",
-        message:
-          "تم الاتصال بالإنفرتر وقراءة البيانات بنجاح.",
-        timestamp,
-
-        collector:
-          safeCollector(collector),
-
-        device:
-          safeDevice(device),
-
-        telemetry:
-          lastData.telemetry,
-
-        readings:
-          lastData.readings,
-
-        source: "smartess",
-
-        deviceId:
-          requestedDeviceId || null,
-      },
-      200,
-    );
+    const data = await lastData(auth, device, pn);
+    return json({ ok: true, code: "CONNECTED", message: "تم الاتصال بالإنفرتر وقراءة البيانات بنجاح.", timestamp: new Date().toISOString(), device: { pn: device.pn ?? null, sn: device.sn ?? null, devcode: device.devcode ?? null, devaddr: device.devaddr ?? null, status: device.status ?? null, name: device.name ?? null }, telemetry: data.telemetry, readings: data.readings, source: "smartess", deviceId: deviceId || null });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unknown SmartESS error";
-
+    const message = error instanceof Error ? error.message : "Unknown SmartESS error";
     const upper = message.toUpperCase();
-
-    /*
-     * Never return:
-     * - password
-     * - token
-     * - secret
-     * - company key
-     */
-    console.error(
-      "[SmartESS] Connection test failed:",
-      message,
-    );
-
-    if (
-      upper.includes("PASSWORD") ||
-      upper.includes("NOT_FOUND_USR") ||
-      upper.includes("USER")
-    ) {
-      return json(
-        {
-          ok: false,
-          code: "AUTH_FAILED",
-          message:
-            "تعذر تسجيل الدخول إلى SmartESS. تحقق من اسم المستخدم وكلمة المرور.",
-        },
-        401,
-      );
-    }
-
-    if (
-      upper.includes("ABORT") ||
-      upper.includes("TIMEOUT") ||
-      upper.includes("TIMED OUT")
-    ) {
-      return json(
-        {
-          ok: false,
-          code: "TIMEOUT",
-          message:
-            "انتهت مهلة الاتصال بخادم SmartESS.",
-        },
-        504,
-      );
-    }
-
-    if (
-      upper.includes("INVALID JSON") ||
-      upper.includes("SMARTESS RETURNED")
-    ) {
-      return json(
-        {
-          ok: false,
-          code: "UPSTREAM_INVALID",
-          message:
-            "خادم SmartESS أعاد استجابة غير صالحة.",
-        },
-        502,
-      );
-    }
-
-    return json(
-      {
-        ok: false,
-        code: "UPSTREAM_UNAVAILABLE",
-        message:
-          "تعذر الاتصال بخدمة SmartESS أو قراءة بيانات الإنفرتر.",
-      },
-      502,
-    );
+    console.error("[SmartESS] Connection test failed:", message);
+    if (/NOT_FOUND_USR|PASSWORD|USER|COMPANY|AUTH_SOURCE/.test(upper)) return json({ ok: false, code: "AUTH_FAILED", message: "تعذر تسجيل الدخول إلى SmartESS. تحقق من اسم المستخدم وكلمة المرور وCompany Key." }, 401);
+    if (/ABORT|TIMEOUT|TIMED OUT/.test(upper)) return json({ ok: false, code: "TIMEOUT", message: "انتهت مهلة الاتصال بخادم SmartESS." }, 504);
+    if (/INVALID JSON|SMARTESS RETURNED/.test(upper)) return json({ ok: false, code: "UPSTREAM_INVALID", message: "خادم SmartESS أعاد استجابة غير صالحة." }, 502);
+    return json({ ok: false, code: "UPSTREAM_UNAVAILABLE", message: "تعذر الاتصال بخدمة SmartESS أو قراءة بيانات الإنفرتر." }, 502);
   }
 }
