@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import type { LoadPoint } from "@/components/load-chart";
 
 const HOUR = 3_600_000;
@@ -53,6 +54,19 @@ function Legend({ items }: { items: { label: ReactNode; dot: string }[] }) {
   );
 }
 
+/** Hour lines folded away by default; tapping the bar opens them. */
+function HourFold({ children }: { children: ReactNode }) {
+  return (
+    <details className="group rounded-2xl bg-slate-50 ring-1 ring-slate-200/70" dir="rtl">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-black text-slate-700 [&::-webkit-details-marker]:hidden">
+        تفاصيل كل ساعة
+        <ChevronDown size={16} className="text-slate-500 transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="space-y-3 px-3 pb-3">{children}</div>
+    </details>
+  );
+}
+
 /**
  * The house hour by hour, one line per hour: what it used, split by where it
  * came from (sun, battery, grid), plus the spare sun on the end. The house
@@ -71,7 +85,7 @@ export function HomeHourRows({ points, timeZone, now }: { points: LoadPoint[]; t
   const maxW = Math.max(1, ...split.map((r) => r.loadW + r.spare));
 
   return (
-    <div className="space-y-3" dir="rtl">
+    <HourFold>
       <div className="space-y-1.5">
         {split.map((r) => (
           <div key={r.start} className="flex items-center gap-2">
@@ -101,7 +115,7 @@ export function HomeHourRows({ points, timeZone, now }: { points: LoadPoint[]; t
         ]}
       />
       <p className="text-[11px] font-semibold text-slate-400">كل سطر = ساعة، الأحدث فوق. الرقم = متوسط استهلاك البيت بتلك الساعة.</p>
-    </div>
+    </HourFold>
   );
 }
 
@@ -117,7 +131,7 @@ export function SocHourRows({ points, timeZone, now, reservePct }: { points: Loa
     soc < reservePct ? { bar: "bg-rose-500", text: "text-rose-700" } : soc < reservePct + 10 ? { bar: "bg-amber-400", text: "text-amber-700" } : { bar: "bg-emerald-500", text: "text-emerald-700" };
 
   return (
-    <div className="space-y-3" dir="rtl">
+    <HourFold>
       <div className="space-y-1.5">
         {rows.map((r) => {
           const t = r.soc === null ? null : tone(r.soc);
@@ -146,6 +160,6 @@ export function SocHourRows({ points, timeZone, now, reservePct }: { points: Loa
         ]}
       />
       <p className="text-[11px] font-semibold text-slate-400">كل سطر = ساعة، الأحدث فوق، معبّأ حتى نسبة الشحن بآخرها. ↑ شحن · ↓ تفريغ.</p>
-    </div>
+    </HourFold>
   );
 }
