@@ -134,10 +134,11 @@ export default function HomeConsumptionPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatTile card tone="sky" label="استهلاك اليوم" value={snapshot?.todayHomeUsageKWh !== undefined ? snapshot.todayHomeUsageKWh.toFixed(1) : "—"} unit="kWh" ampTone="sky" ampUnit="Ah" amps={acAmpHours(snapshot?.todayHomeUsageKWh)} />
+      <div className="grid auto-rows-fr grid-cols-2 gap-3">
+        <StatTile card tone="sky" label="استهلاك اليوم" value={snapshot?.todayHomeUsageKWh !== undefined ? snapshot.todayHomeUsageKWh.toFixed(1) : "—"} unit="kWh" ampTone="sky" ampUnit="Ah" amps={acAmpHours(snapshot?.todayHomeUsageKWh)} hint="منذ منتصف الليل" />
         <StatTile
           card
+          tone="sky"
           label="أعلى حمل اليوم"
           value={history?.peak ? (history.peak.w / 1000).toFixed(2) : "—"}
           unit="kW"

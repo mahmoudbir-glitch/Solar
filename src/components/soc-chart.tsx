@@ -73,15 +73,11 @@ export function SocChart({ points, timeZone, now, reservePct }: { points: LoadPo
 
   return (
     <div className="space-y-3">
-      <div className="space-y-3" dir="rtl">
-        <div className="grid grid-cols-2 gap-3">
-          <StatTile big tone={toneFor(latest)} label="الشحن الآن" value={pct(latest)} />
-          <StatTile big tone={toneFor(low)} label="أدنى نسبة" value={pct(low)} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <StatTile label="أعلى نسبة" value={pct(high)} />
-          <StatTile label="التغيّر خلال 24 ساعة" value={change === null ? "—" : `${change > 0 ? "+" : ""}${Math.round(change)}%`} />
-        </div>
+      <div className="grid auto-rows-fr grid-cols-2 gap-3" dir="rtl">
+        <StatTile big tone={toneFor(latest)} label="الشحن الآن" value={pct(latest)} />
+        <StatTile big tone={toneFor(low)} label="أدنى نسبة" value={pct(low)} />
+        <StatTile label="أعلى نسبة" value={pct(high)} />
+        <StatTile label="التغيّر خلال 24 ساعة" value={change === null ? "—" : `${change > 0 ? "+" : ""}${Math.round(change)}%`} />
       </div>
 
       <div className="relative" dir="ltr">

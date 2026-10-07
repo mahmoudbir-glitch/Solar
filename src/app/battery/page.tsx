@@ -47,17 +47,23 @@ const METRIC_VALUE_TONES = {
   slate: "text-slate-900",
 } as const;
 
-/** بطاقة قياس: أيقونة ملوّنة واسم القياس في الأعلى، ثم القيمة وتحتها ملاحظة صغيرة. كل البطاقات بنفس الارتفاع. */
-function Metric({ icon: Icon, label, value, unit, hint, tone = "slate", valueClass = METRIC_VALUE_TONES[tone], pill }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; unit?: string; hint?: string; tone?: keyof typeof METRIC_TONES; valueClass?: string; pill?: React.ReactNode }) {
+/**
+ * بطاقة قياس بثلاثة صفوف ثابتة: الأيقونة واسم القياس، ثم القيمة، ثم سطر سفلي
+ * (كبسولة الأمبير و/أو ملاحظة). صف القيمة بارتفاع واحد سواء كانت رقماً كبيراً
+ * أو عبارة (`words`) مثل مدة أو «غير متاحة»، فتتطابق البطاقات الأربع.
+ */
+function Metric({ icon: Icon, label, value, unit, hint, tone = "slate", valueClass = METRIC_VALUE_TONES[tone], pill, words = false }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; unit?: string; hint?: string; tone?: keyof typeof METRIC_TONES; valueClass?: string; pill?: React.ReactNode; words?: boolean }) {
   return (
-    <div className="energy-card flex h-full flex-col p-4">
+    <div className="energy-card flex h-full min-w-0 flex-col p-4">
       <div className="flex items-center gap-2">
         <span className={"flex h-8 w-8 shrink-0 items-center justify-center rounded-xl " + METRIC_TONES[tone]}><Icon className="h-4 w-4" /></span>
-        <span className="min-w-0 text-[11px] font-bold leading-tight text-slate-500">{label}</span>
+        <span className="min-w-0 truncate text-xs font-bold text-slate-500">{label}</span>
       </div>
-      <div className={"mt-2.5 text-lg font-black leading-snug " + valueClass}>{unit ? <bdi dir="ltr">{value}<small className="text-sm"> {unit}</small></bdi> : <bdi>{value}</bdi>}</div>
-      {pill && <div className="mt-1.5">{pill}</div>}
-      {hint && <div className="mt-0.5 text-[10px] font-bold text-slate-400">{hint}</div>}
+      <div className={"mt-2 flex min-h-10 items-center font-black " + (words ? "text-[15px] leading-5 " : "whitespace-nowrap text-2xl leading-8 ") + valueClass}>{unit ? <bdi dir="ltr">{value}<small className="text-sm"> {unit}</small></bdi> : <bdi>{value}</bdi>}</div>
+      <div className="mt-auto flex min-h-[22px] flex-wrap items-center gap-x-2 gap-y-1 pt-2">
+        {pill}
+        {hint && <span className="text-[11px] font-semibold leading-4 text-slate-400">{hint}</span>}
+      </div>
     </div>
   );
 }
@@ -128,8 +134,8 @@ export default function BatteryPage() {
       </section>
 
       {/* بطاقات القياسات */}
-      <div className="grid grid-cols-2 gap-3">
-        <Metric icon={Zap} tone="amber" label="الجهد" value={snapshot?.batteryVoltage != null ? snapshot.batteryVoltage.toFixed(1) + " V" : "—"} />
+      <div className="grid auto-rows-fr grid-cols-2 gap-3">
+        <Metric icon={Zap} tone="amber" label="الجهد" value={snapshot?.batteryVoltage != null ? snapshot.batteryVoltage.toFixed(1) : "—"} unit={snapshot?.batteryVoltage != null ? "V" : undefined} hint={settings?.batteryNominalVoltage ? `الاسمي ${settings.batteryNominalVoltage} V` : undefined} />
         <Metric
           icon={Gauge}
           tone="emerald"
@@ -140,8 +146,10 @@ export default function BatteryPage() {
           pill={snapshot ? <AmpPill tone="emerald" amps={batteryAmps(snapshot)} muted={Math.abs(powerW) < 50} /> : undefined}
           hint={snapshot && state !== "idle" ? (state === "charging" ? "شحن" : "تفريغ") : undefined}
         />
-        <Metric icon={Thermometer} tone="rose" label="حرارة البطارية" value={snapshot?.batteryTemperature != null ? snapshot.batteryTemperature.toFixed(1) + " °C" : "غير متاحة"} />
-        <Metric icon={Clock} tone="sky" label={eta ? (eta.charging ? "اكتمال الشحن بعد" : "الوقت المتبقي") : "الوقت المتوقع"} value={eta ? eta.label : "—"} hint={eta ? "تقديري" : undefined} />
+        {snapshot?.batteryTemperature != null
+          ? <Metric icon={Thermometer} tone="rose" label="حرارة البطارية" value={snapshot.batteryTemperature.toFixed(1)} unit="°C" />
+          : <Metric icon={Thermometer} tone="rose" label="حرارة البطارية" value="—" valueClass="text-slate-300" hint="غير متاحة (تحتاج BMS)" />}
+        <Metric icon={Clock} tone="sky" words={Boolean(eta)} label={eta ? (eta.charging ? "اكتمال الشحن بعد" : "الوقت المتبقي") : "الوقت المتوقع"} value={eta ? eta.label : "—"} valueClass={eta ? undefined : "text-slate-300"} hint={eta ? "تقديري" : undefined} />
       </div>
       {eta && <p className="px-1 text-[11px] font-semibold text-slate-400">التقدير تقريبي: يُحسب من السعة المحفوظة في الإعدادات والقدرة الحالية، ويتغير مع تغيّر الحمل.</p>}
       {snapshot && snapshot.batteryTemperature == null && (
