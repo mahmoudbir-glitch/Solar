@@ -47,17 +47,19 @@ const METRIC_VALUE_TONES = {
   slate: "text-slate-900",
 } as const;
 
-/** بطاقة قياس: أيقونة ملوّنة واسم القياس في الأعلى، ثم القيمة وتحتها ملاحظة صغيرة. كل البطاقات بنفس الارتفاع. */
+/** بطاقة قياس في الوسط: أيقونة ملوّنة، ثم اسم القياس، ثم القيمة، والملاحظة في الأسفل. كل البطاقات بنفس الارتفاع. */
 function Metric({ icon: Icon, label, value, unit, hint, tone = "slate", valueClass = METRIC_VALUE_TONES[tone], pill }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; unit?: string; hint?: string; tone?: keyof typeof METRIC_TONES; valueClass?: string; pill?: React.ReactNode }) {
   return (
-    <div className="energy-card flex h-full flex-col p-4">
-      <div className="flex items-center gap-2">
-        <span className={"flex h-8 w-8 shrink-0 items-center justify-center rounded-xl " + METRIC_TONES[tone]}><Icon className="h-4 w-4" /></span>
-        <span className="min-w-0 text-[11px] font-bold leading-tight text-slate-500">{label}</span>
-      </div>
-      <div className={"mt-2.5 text-lg font-black leading-snug " + valueClass}>{unit ? <bdi dir="ltr">{value}<small className="text-sm"> {unit}</small></bdi> : <bdi>{value}</bdi>}</div>
-      {pill && <div className="mt-1.5">{pill}</div>}
-      {hint && <div className="mt-0.5 text-[10px] font-bold text-slate-400">{hint}</div>}
+    <div className="energy-card flex h-full flex-col items-center px-2 py-4 text-center">
+      <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-xl " + METRIC_TONES[tone]}><Icon className="h-[18px] w-[18px]" /></span>
+      <span className="mt-2 text-[11px] font-bold leading-tight text-slate-500">{label}</span>
+      <div className={"mt-1 text-lg font-black leading-snug " + valueClass}>{unit ? <bdi dir="ltr">{value}<small className="text-sm"> {unit}</small></bdi> : <bdi>{value}</bdi>}</div>
+      {(pill || hint) && (
+        <div className="mt-auto flex flex-col items-center pt-2">
+          {pill}
+          {hint && <div className="mt-1 text-[10px] font-bold text-slate-400">{hint}</div>}
+        </div>
+      )}
     </div>
   );
 }
@@ -129,7 +131,7 @@ export default function BatteryPage() {
 
       {/* بطاقات القياسات */}
       <div className="grid grid-cols-2 gap-3">
-        <Metric icon={Zap} tone="amber" label="الجهد" value={snapshot?.batteryVoltage != null ? snapshot.batteryVoltage.toFixed(1) + " V" : "—"} />
+        <Metric icon={Zap} tone="amber" label="الجهد" value={snapshot?.batteryVoltage != null ? snapshot.batteryVoltage.toFixed(1) + " V" : "—"} hint={settings?.batteryNominalVoltage ? `الاسمي ${settings.batteryNominalVoltage} V` : undefined} />
         <Metric
           icon={Gauge}
           tone="emerald"
@@ -152,9 +154,9 @@ export default function BatteryPage() {
       <section className="energy-card p-4">
         <h2 className="text-sm font-black text-slate-900">البطارية اليوم</h2>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <div><div className="text-[11px] font-bold text-slate-500">شحن</div><div className="text-base font-black text-emerald-600"><bdi dir="ltr">{history?.batteryToday ? history.batteryToday.chargeKWh.toFixed(1) : "—"}<span className="text-[10px]"> kWh</span></bdi></div><div className="mt-1.5"><AmpPill tone="emerald" unit="Ah" amps={history?.batteryToday ? batteryAmpHours(history.batteryToday.chargeKWh, settings?.batteryNominalVoltage) : null} /></div></div>
-          <div><div className="text-[11px] font-bold text-slate-500">تفريغ</div><div className="text-base font-black text-amber-600"><bdi dir="ltr">{history?.batteryToday ? history.batteryToday.dischargeKWh.toFixed(1) : "—"}<span className="text-[10px]"> kWh</span></bdi></div><div className="mt-1.5"><AmpPill tone="amber" unit="Ah" amps={history?.batteryToday ? batteryAmpHours(history.batteryToday.dischargeKWh, settings?.batteryNominalVoltage) : null} /></div></div>
-          <div><div className="text-[11px] font-bold text-slate-500">أدنى / أعلى</div><div className="text-base font-black text-slate-800"><bdi dir="ltr">{history?.socToday ? `${Math.round(history.socToday.min)}–${Math.round(history.socToday.max)}%` : "—"}</bdi></div></div>
+          <div className="flex flex-col items-center rounded-2xl bg-emerald-50 px-1 py-3"><div className="text-[11px] font-bold text-slate-500">شحن</div><div className="mt-0.5 text-lg font-black leading-6 text-emerald-600"><bdi dir="ltr">{history?.batteryToday ? history.batteryToday.chargeKWh.toFixed(1) : "—"}<span className="text-[10px]"> kWh</span></bdi></div><div className="mt-auto pt-2"><AmpPill tone="emerald" unit="Ah" amps={history?.batteryToday ? batteryAmpHours(history.batteryToday.chargeKWh, settings?.batteryNominalVoltage) : null} /></div></div>
+          <div className="flex flex-col items-center rounded-2xl bg-amber-50 px-1 py-3"><div className="text-[11px] font-bold text-slate-500">تفريغ</div><div className="mt-0.5 text-lg font-black leading-6 text-amber-600"><bdi dir="ltr">{history?.batteryToday ? history.batteryToday.dischargeKWh.toFixed(1) : "—"}<span className="text-[10px]"> kWh</span></bdi></div><div className="mt-auto pt-2"><AmpPill tone="amber" unit="Ah" amps={history?.batteryToday ? batteryAmpHours(history.batteryToday.dischargeKWh, settings?.batteryNominalVoltage) : null} /></div></div>
+          <div className="flex flex-col items-center rounded-2xl bg-slate-50 px-1 py-3"><div className="text-[11px] font-bold text-slate-500">أدنى / أعلى</div><div className="mt-0.5 text-lg font-black leading-6 text-slate-800"><bdi dir="ltr">{history?.socToday ? `${Math.round(history.socToday.min)}–${Math.round(history.socToday.max)}%` : "—"}</bdi></div></div>
         </div>
       </section>
 
