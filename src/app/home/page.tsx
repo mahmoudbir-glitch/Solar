@@ -72,9 +72,9 @@ export default function HomeConsumptionPage() {
   const batteryPct = homeW > 0 ? Math.min(100 - solarPct, Math.round((fromBattery / homeW) * 100)) : 0;
   const gridPct = homeW > 0 ? 100 - solarPct - batteryPct : 0;
   const sources = [
-    { label: "الشمس", w: fromSolar, pct: solarPct, bar: "bg-amber-400", text: "text-amber-700", tone: "amber" as const },
-    { label: "البطارية", w: fromBattery, pct: batteryPct, bar: "bg-emerald-500", text: "text-emerald-700", tone: "emerald" as const },
-    { label: "الشبكة", w: fromGrid, pct: gridPct, bar: "bg-violet-500", text: "text-violet-700", tone: "violet" as const },
+    { label: "الشمس", w: fromSolar, pct: solarPct, bar: "bg-amber-400", text: "text-amber-700", bg: "bg-amber-50", tone: "amber" as const },
+    { label: "البطارية", w: fromBattery, pct: batteryPct, bar: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50", tone: "emerald" as const },
+    { label: "الشبكة", w: fromGrid, pct: gridPct, bar: "bg-violet-500", text: "text-violet-700", bg: "bg-violet-50", tone: "violet" as const },
   ];
 
   const timeZone = history?.timezone || "Asia/Beirut";
@@ -124,20 +124,21 @@ export default function HomeConsumptionPage() {
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
           {sources.map((source) => (
-            <div key={source.label}>
+            <div key={source.label} className={"flex flex-col items-center rounded-2xl px-1 py-3 " + source.bg}>
               <div className="text-[11px] font-bold text-slate-500">{source.label}</div>
-              <div className={"text-base font-black " + source.text}>{snapshot ? `${source.pct}%` : "—"}</div>
+              <div className={"mt-0.5 text-lg font-black leading-6 " + source.text}>{snapshot ? `${source.pct}%` : "—"}</div>
               <div className="text-[11px] font-semibold text-slate-400">{snapshot ? `${Math.round(source.w)} واط` : "—"}</div>
-              <div className="mt-1.5"><AmpPill tone={source.tone} amps={snapshot ? acAmps(source.w) : null} muted={snapshot ? source.w <= 0 : false} /></div>
+              <div className="mt-auto pt-2"><AmpPill tone={source.tone} amps={snapshot ? acAmps(source.w) : null} muted={snapshot ? source.w <= 0 : false} className="min-w-[3.1rem]" /></div>
             </div>
           ))}
         </div>
       </section>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatTile card tone="sky" label="استهلاك اليوم" value={snapshot?.todayHomeUsageKWh !== undefined ? snapshot.todayHomeUsageKWh.toFixed(1) : "—"} unit="kWh" ampTone="sky" ampUnit="Ah" amps={acAmpHours(snapshot?.todayHomeUsageKWh)} />
+        <StatTile card center tone="sky" label="استهلاك اليوم" value={snapshot?.todayHomeUsageKWh !== undefined ? snapshot.todayHomeUsageKWh.toFixed(1) : "—"} unit="kWh" ampTone="sky" ampUnit="Ah" amps={acAmpHours(snapshot?.todayHomeUsageKWh)} hint="المجموع حتى الآن" />
         <StatTile
           card
+          center
           label="أعلى حمل اليوم"
           value={history?.peak ? (history.peak.w / 1000).toFixed(2) : "—"}
           unit="kW"

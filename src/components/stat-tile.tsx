@@ -16,11 +16,13 @@ export type StatTone = keyof typeof TONES;
  * grey label and a bold value. `big` tiles (text-2xl) lead; plain slate tiles
  * (text-lg) carry the secondary numbers.
  */
-export function StatTile({ label, value, unit, tone = "slate", big = false, amps, ampTone, ampUnit = "A", hint, card = false }: { label: string; value: string; unit?: string; tone?: StatTone; big?: boolean; amps?: number | null; ampTone?: "sky" | "amber" | "emerald" | "violet"; ampUnit?: "A" | "Ah"; hint?: React.ReactNode; card?: boolean }) {
+export function StatTile({ label, value, unit, tone = "slate", big = false, amps, ampTone, ampUnit = "A", hint, card = false, center = false }: { label: string; value: string; unit?: string; tone?: StatTone; big?: boolean; amps?: number | null; ampTone?: "sky" | "amber" | "emerald" | "violet"; ampUnit?: "A" | "Ah"; hint?: React.ReactNode; card?: boolean; center?: boolean }) {
   const t = TONES[tone];
   // `card`: a standalone tile on the page background (white card), otherwise a tinted box inside a card.
+  // `center`: compact, centred tile that fills its grid cell, so a row of tiles keeps one height.
+  const layout = center ? "flex h-full flex-col items-center px-2 py-3.5 text-center" : "";
   return (
-    <div className={card ? "energy-card h-full p-4" : `rounded-2xl p-4 ${t.bg}`}>
+    <div className={(card ? `energy-card h-full ${center ? "" : "p-4"}` : `rounded-2xl ${center ? "" : "p-4"} ${t.bg}`) + " " + layout}>
       <span className="text-xs font-bold text-slate-500">{label}</span>
       <strong className={`mt-1 block whitespace-nowrap font-black ${big ? "text-2xl" : "text-lg"} ${t.text}`}>
         {unit && /^[A-Za-z]/.test(unit) ? (
