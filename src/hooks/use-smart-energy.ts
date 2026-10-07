@@ -10,6 +10,8 @@ import type { Calibration } from "@/lib/solar-core";
 type LearnedProfile = { calibration: Calibration; night: LoadStabilityResult };
 
 type WeatherResponse = {
+  /** Offset of the site's clock from UTC, for turning its local times into instants. */
+  utc_offset_seconds?: number;
   hourly?: {
     time?: string[];
     temperature_2m?: number[];
@@ -85,20 +87,15 @@ function updateNightLoadHistory(snapshot: EnergySnapshot | null): LoadStabilityR
   return calculateLoadStability(nightSamples.map((item) => item.homePowerW));
 }
 
-function readNumber(key: string, fallback: number) {
-  if (typeof window === "undefined") return fallback;
-  const value = Number(localStorage.getItem(key));
-  return Number.isFinite(value) && value > 0 ? value : fallback;
-}
-
 function dayLabel(index: number, date: string) {
   if (index === 0) return "اليوم";
   if (index === 1) return "غداً";
   if (index === 2) return "بعد غد";
+  // The date is already the site's calendar day; UTC keeps it from shifting.
   return new Intl.DateTimeFormat("ar-LB-u-nu-latn", {
-    timeZone: DEFAULT_TIMEZONE,
+    timeZone: "UTC",
     weekday: "long",
-  }).format(new Date(date + "T12:00:00"));
+  }).format(new Date(date + "T12:00:00Z"));
 }
 
 type SiteConfig = {
@@ -124,17 +121,15 @@ function currentHourKey(timeZone: string) {
 }
 
 /**
- * The forecast has to use what the owner saved in Settings. It used to read
- * localStorage keys that nothing writes, so it silently ran on 6 kW / 4.8 kWh
- * / Beirut whatever was configured. Falls back to those defaults only if the
- * settings request fails.
+ * The forecast has to use what the owner saved in Settings. Falls back to
+ * 6 kW / 4.8 kWh / Beirut only if the settings request fails.
  */
 async function loadSiteConfig(): Promise<SiteConfig> {
   const fallback: SiteConfig = {
-    panelCapacityKw: readNumber("solar_panel_capacity", 6),
-    batteryCapacityWh: readNumber("solar_battery_capacity", 4800),
-    latitude: readNumber("solar_latitude", DEFAULT_LAT),
-    longitude: readNumber("solar_longitude", DEFAULT_LON),
+    panelCapacityKw: 6,
+    batteryCapacityWh: 4800,
+    latitude: DEFAULT_LAT,
+    longitude: DEFAULT_LON,
     timezone: DEFAULT_TIMEZONE,
     panelTilt: null,
     panelAzimuth: null,
@@ -178,6 +173,7 @@ export function useSmartEnergy() {
   const [error, setError] = useState<string | null>(null);
   const [batteryCapacityWh, setBatteryCapacityWh] = useState(4800);
   const [reservePct, setReservePct] = useState(SAFETY_RESERVE);
+  const [utcOffsetSeconds, setUtcOffsetSeconds] = useState(0);
   const [nightLoadStats, setNightLoadStats] = useState<LoadStabilityResult>({ averageW: null, coefficientOfVariation: null, confidence: "غير كافية", sampleCount: 0 });
   const [calibration, setCalibration] = useState<Calibration | null>(null);
 
@@ -275,7 +271,11 @@ export function useSmartEnergy() {
           // shifted the whole solar day one hour late.
           const j = i + 1;
           const irradiance = (useTilted ? hourly.global_tilted_irradiance?.[j] : undefined) ?? hourly.shortwave_radiation?.[j] ?? 0;
-          const solarKWh = estimateSolarKWh(irradiance, panelCapacityKw) * solarFactor;
+          // Air temperature over the same hour (the two readings that bound it).
+          const tempStart = hourly.temperature_2m?.[i];
+          const tempEnd = hourly.temperature_2m?.[j];
+          const airTempC = typeof tempStart === "number" && typeof tempEnd === "number" ? (tempStart + tempEnd) / 2 : tempStart ?? tempEnd ?? null;
+          const solarKWh = estimateSolarKWh(irradiance, panelCapacityKw, airTempC) * solarFactor;
           return {
             time,
             irradianceWm2: irradiance,
@@ -411,6 +411,7 @@ export function useSmartEnergy() {
 
       setBatteryCapacityWh(batteryCapacityWh);
       setReservePct(site.reservePct);
+      setUtcOffsetSeconds(Number(nextWeather.utc_offset_seconds) || 0);
       setWeather(nextWeather);
       setForecasts(nextForecasts);
       setError(null);
@@ -440,6 +441,7 @@ export function useSmartEnergy() {
     calibration,
     batteryCapacityWh,
     reservePct,
+    utcOffsetSeconds,
     refresh: () => load("refresh"),
   };
 }

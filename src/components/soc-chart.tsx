@@ -137,8 +137,8 @@ export function SocChart({ points, timeZone, now, reservePct }: { points: LoadPo
               <div>لا توجد قراءات</div>
             ) : (
               <>
-                <div>آخر نسبة: <span style={{ color: colorFor(shown.soc) }}>{shown.soc}%</span></div>
-                {shown.max - shown.min >= 1 && <div className="text-slate-500">المدى: {shown.min}% – {shown.max}%</div>}
+                <div>آخر نسبة: <span style={{ color: colorFor(shown.soc) }}>{Math.round(shown.soc)}%</span></div>
+                {shown.max - shown.min >= 1 && <div className="text-slate-500">المدى: {Math.round(shown.min)}% – {Math.round(shown.max)}%</div>}
                 {shown.powerW !== null && Math.abs(shown.powerW) >= 30 && (
                   <div className={shown.powerW > 0 ? "text-emerald-600" : "text-amber-600"}>
                     {shown.powerW > 0 ? "شحن" : "تفريغ"} ≈ {Math.round(Math.abs(shown.powerW)).toLocaleString("en-US")} واط <AmpPill tone="emerald" amps={batteryAmps({ batteryPowerW: shown.powerW })} className="mr-1 align-middle" />

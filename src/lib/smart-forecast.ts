@@ -93,8 +93,47 @@ export function weatherConfidence(codes: number[], rainProbabilities: number[]) 
   return "منخفضة" as const;
 }
 
-export function estimateSolarKWh(irradianceWm2: number, panelCapacityKw: number, performanceRatio = 0.78) {
-  return Math.max(0, irradianceWm2 / 1000) * Math.max(0, panelCapacityKw) * performanceRatio;
+/**
+ * Share of nameplate power left after the fixed losses (inverter, wiring,
+ * dust, mismatch). Heat is not in here: it changes hour by hour and is applied
+ * separately by panelHeatFactor.
+ */
+const SYSTEM_EFFICIENCY = 0.84;
+
+/**
+ * Panels lose about 0.4% of their output per degree their cells run above
+ * 25 °C, and in full sun the cells sit some 25-30 °C above the air. A fixed
+ * factor hid that: it promised too much at a hot summer noon and too little on
+ * a cold clear morning.
+ */
+export function panelHeatFactor(irradianceWm2: number, airTempC: number | null | undefined) {
+  if (typeof airTempC !== "number" || !Number.isFinite(airTempC)) return 0.93;
+  const cellTempC = airTempC + (Math.max(0, irradianceWm2) / 800) * 25;
+  return Math.min(1.05, Math.max(0.75, 1 - 0.004 * (cellTempC - 25)));
+}
+
+/** Energy (kWh) one hour of this irradiance gives, for the air temperature of that hour. */
+export function estimateSolarKWh(irradianceWm2: number, panelCapacityKw: number, airTempC?: number | null) {
+  return Math.max(0, irradianceWm2 / 1000) * Math.max(0, panelCapacityKw) * SYSTEM_EFFICIENCY * panelHeatFactor(irradianceWm2, airTempC);
+}
+
+/**
+ * The weather service gives sunrise, sunset and hours as the site's own clock
+ * time with no zone ("2026-10-07T06:36"). Reading that with `new Date()` used
+ * the zone of the phone or computer instead, so anyone opening the app from
+ * another zone saw shifted times. These two keep it on the site's clock.
+ */
+export function siteInstant(localIso: string | null | undefined, utcOffsetSeconds: number) {
+  if (!localIso) return Number.NaN;
+  return Date.parse(`${localIso.length === 10 ? localIso + "T00:00" : localIso}Z`) - utcOffsetSeconds * 1000;
+}
+
+/** "06:36 ص" from a site-clock time, optionally shifted by whole hours. */
+export function siteClock(localIso: string | null | undefined, addHours = 0) {
+  if (!localIso) return "—";
+  const wall = Date.parse(`${localIso}Z`);
+  if (!Number.isFinite(wall)) return "—";
+  return new Intl.DateTimeFormat("ar-LB-u-nu-latn", { timeZone: "UTC", hour: "2-digit", minute: "2-digit" }).format(new Date(wall + addHours * 3_600_000));
 }
 
 export function calculateAutonomy(

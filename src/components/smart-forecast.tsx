@@ -3,27 +3,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Loader2, MoonStar, RefreshCw, SunMedium } from "lucide-react";
 import { useSharedSmartEnergy } from "@/components/smart-energy-provider";
-import { calculateAutonomy, weatherIcon, weatherLabel, type LoadStability } from "@/lib/smart-forecast";
+import { calculateAutonomy, siteClock, siteInstant, weatherIcon, weatherLabel, type LoadStability } from "@/lib/smart-forecast";
 import { InfoTip } from "@/components/info-tip";
 import { AmpPill } from "@/components/amp-pill";
 import { acAmpHours, acAmps } from "@/lib/energy";
 
-function formatHour(iso?: string | null) {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("ar-LB-u-nu-latn", {
-    timeZone: "Asia/Beirut",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
-
+/** The forecast's dates are the site's own calendar days; UTC keeps them from shifting. */
 function formatDate(iso: string) {
   return new Intl.DateTimeFormat("ar-LB-u-nu-latn", {
-    timeZone: "Asia/Beirut",
-    weekday: "short",
+    timeZone: "UTC",
+    weekday: "long",
     day: "numeric",
-    month: "short",
-  }).format(new Date(iso + "T12:00:00"));
+    month: "long",
+  }).format(new Date(iso + "T12:00:00Z"));
 }
 
 function NightCard({
@@ -100,7 +92,9 @@ function NightCard({
 }
 
 export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {}) {
-  const { forecasts, weather, snapshot, loading, isRefreshing, error, nightLoadStats, calibration, batteryCapacityWh, reservePct, refresh } = useSharedSmartEnergy();
+  const { forecasts, weather, snapshot, loading, isRefreshing, error, nightLoadStats, calibration, batteryCapacityWh, reservePct, utcOffsetSeconds, refresh } = useSharedSmartEnergy();
+  // Sunrise and sunset arrive on the site's clock; this gives the real instant.
+  const at = (localIso?: string | null) => siteInstant(localIso, utcOffsetSeconds);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -111,7 +105,7 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
   }, [toast]);
 
   const selected = forecasts[selectedIndex];
-  const todayAfterSunset = selectedIndex === 0 && (selected?.sunset ? Date.now() > new Date(selected.sunset).getTime() : false);
+  const todayAfterSunset = selectedIndex === 0 && (selected?.sunset ? Date.now() > at(selected.sunset) : false);
   const current = weather?.current;
 
   // Arriving from the home card ("/energy#night"): the section only exists
@@ -129,24 +123,25 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
     if (!today || !tomorrow) return null;
 
     // After midnight and before today's sunrise we are still inside last night.
-    const todaySunrise = new Date(today.sunrise).getTime();
+    const instant = (localIso: string) => siteInstant(localIso, utcOffsetSeconds);
+    const todaySunrise = instant(today.sunrise);
     if (Number.isFinite(todaySunrise) && now < todaySunrise) {
       return { inProgress: true, startSoc: snapshot?.batterySoc ?? today.chargeAtSunrisePct, hours: Math.max(0.5, (todaySunrise - now) / 3600000) };
     }
-    const todaySunset = new Date(today.sunset).getTime();
+    const todaySunset = instant(today.sunset);
     if (Number.isFinite(todaySunset) && now < todaySunset) {
       return {
         inProgress: false,
         startSoc: today.chargeAtSunsetPct,
-        hours: Math.max(0.5, (new Date(tomorrow.sunrise).getTime() - todaySunset) / 3600000),
+        hours: Math.max(0.5, (instant(tomorrow.sunrise) - todaySunset) / 3600000),
       };
     }
     return {
       inProgress: true,
       startSoc: snapshot?.batterySoc ?? today.chargeAtSunsetPct,
-      hours: Math.max(0.5, (new Date(tomorrow.sunrise).getTime() - now) / 3600000),
+      hours: Math.max(0.5, (instant(tomorrow.sunrise) - now) / 3600000),
     };
-  }, [forecasts, snapshot]);
+  }, [forecasts, snapshot, utcOffsetSeconds]);
 
   const tomorrowNight = useMemo(() => {
     const tomorrow = forecasts[1];
@@ -154,9 +149,9 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
     if (!tomorrow || !after) return null;
     return {
       startSoc: tomorrow.chargeAtSunsetPct,
-      hours: Math.max(0.5, (new Date(after.sunrise).getTime() - new Date(tomorrow.sunset).getTime()) / 3600000),
+      hours: Math.max(0.5, (siteInstant(after.sunrise, utcOffsetSeconds) - siteInstant(tomorrow.sunset, utcOffsetSeconds)) / 3600000),
     };
-  }, [forecasts]);
+  }, [forecasts, utcOffsetSeconds]);
 
   const handleRefresh = async () => {
     const ok = await refresh();
@@ -213,6 +208,11 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
         {error && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">{error}.</p>}
       </header>
 
+      {/* The first load takes a few seconds (weather + readings): say so instead of an empty page. */}
+      {loading && forecasts.length === 0 && (
+        <p className="energy-card flex items-center justify-center gap-2 p-6 text-sm font-bold text-slate-500"><Loader2 size={17} className="animate-spin text-amber-500" aria-hidden="true" />جاري تحميل توقعات الطقس والإنتاج…</p>
+      )}
+
       {/* The day buttons sit on top of the day they open, in one card. */}
       {forecasts.length > 0 && (
         <section className="energy-card space-y-4 p-4 sm:p-5">
@@ -242,7 +242,8 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
             <div className="border-t border-slate-100 pt-4">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-500">{selected.label} • {formatDate(selected.date)}</p>
+                {/* From the fourth day on the label is already the weekday, so it is not repeated. */}
+                <p className="text-xs font-bold text-slate-500">{selectedIndex < 3 ? <>{selected.label} • </> : null}{formatDate(selected.date)}</p>
                 <h2 className="mt-0.5 text-xl font-black text-slate-950">{weatherIcon(selected.weatherCode)} {weatherLabel(selected.weatherCode)}</h2>
               </div>
               <span className="shrink-0 rounded-full bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-600 ring-1 ring-slate-200/70">
@@ -266,23 +267,23 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-emerald-50/70 px-4 py-3">
               <span className="text-xs font-bold text-slate-500">🔋 البطارية</span>
               <span className="text-sm font-black text-slate-900">
-                <span className="text-slate-400">{selectedIndex === 0 && Date.now() > new Date(selected.sunrise).getTime() ? "الآن" : "الشروق"}</span> <bdi dir="ltr">{selected.chargeAtSunrisePct}%</bdi>
+                <span className="text-slate-400">{selectedIndex === 0 && Date.now() > at(selected.sunrise) ? "الآن" : "الشروق"}</span> <bdi dir="ltr">{selected.chargeAtSunrisePct}%</bdi>
                 {/* After today's sunset the "sunset" value would only repeat the current level. */}
                 {!todayAfterSunset && <>
                 <span className="mx-2 text-slate-300">←</span>
                 <span className="text-slate-400">الغروب</span> <bdi dir="ltr" className="text-emerald-700">{selected.chargeAtSunsetPct}%</bdi>
                 </>}
               </span>
-              <span className="w-full text-[11px] font-bold text-slate-500">{todayAfterSunset ? "غابت الشمس. اختر يوم الغد لترى شحن البطارية." : selected.fullChargeTime ? <>تمتلئ نحو <bdi dir="ltr" className="font-black text-emerald-700">{formatHour(selected.fullChargeTime)}</bdi></> : "لا يُتوقع أن تمتلئ هذا اليوم"}</span>
+              <span className="w-full text-[11px] font-bold text-slate-500">{todayAfterSunset ? "غابت الشمس. اختر يوم الغد لترى شحن البطارية." : selected.fullChargeTime ? <>تمتلئ نحو <bdi dir="ltr" className="font-black text-emerald-700">{siteClock(selected.fullChargeTime)}</bdi></> : "لا يُتوقع أن تمتلئ هذا اليوم"}</span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-indigo-50/70 p-4">
                 <span className="text-xs font-bold text-slate-500">🌅 الشروق</span>
-                <strong className="mt-1 block text-lg font-black text-slate-900">{formatHour(selected.sunrise)}</strong>
+                <strong className="mt-1 block text-lg font-black text-slate-900">{siteClock(selected.sunrise)}</strong>
               </div>
               <div className="rounded-2xl bg-orange-50/70 p-4">
                 <span className="text-xs font-bold text-slate-500">🌇 الغروب</span>
-                <strong className="mt-1 block text-lg font-black text-slate-900">{formatHour(selected.sunset)}</strong>
+                <strong className="mt-1 block text-lg font-black text-slate-900">{siteClock(selected.sunset)}</strong>
               </div>
             </div>
           </div>
@@ -297,7 +298,7 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-black text-slate-900">🌙 كفاية الليل</h2>
               <InfoTip label="كيف نحسب كفاية الليل" title="كفاية الليل">
-                تقدير تقريبي يعتمد على نسبة البطارية، سعة البطارية، الاستهلاك الحالي والوقت المتوقع حتى الشروق، مع إبقاء حد الاحتياطي المحفوظ في الإعدادات.
+                تقدير تقريبي: نسبة البطارية عند الغروب × سعتها، مقسومة على متوسط استهلاكك الليلي في آخر أسبوع، مقارنةً بعدد الساعات حتى الشروق، مع إبقاء حد الاحتياطي المحفوظ في الإعدادات.
               </InfoTip>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">

@@ -40,11 +40,20 @@ function hourKey(date: Date, timeZone: string) {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:00`;
 }
 
-/** Stored readings averaged per local clock hour. */
+/**
+ * Stored readings averaged per local clock hour.
+ *
+ * The database only groups by the hour as an instant (seconds since 1970);
+ * the local clock hour is worked out here. Doing the zone conversion in SQL
+ * gave hours shifted by the zone's offset whenever the column was stored as
+ * "timestamp with time zone", so night load was averaged over daytime hours
+ * and panel output was compared with the wrong hour's sunshine. Whole-hour
+ * zones only (a half-hour zone would split each clock hour over two buckets).
+ */
 export async function hourlyReadings(timeZone: string, days: number) {
   const since = new Date(Date.now() - days * 86_400_000);
-  const rows = await prisma.$queryRaw<Array<{ hour: string; pv: number; load: number; soc_max: number; battery: number; n: bigint }>>`
-    SELECT to_char(date_trunc('hour', ("timestamp" AT TIME ZONE 'UTC') AT TIME ZONE ${timeZone}), 'YYYY-MM-DD"T"HH24:00') AS hour,
+  const rows = await prisma.$queryRaw<Array<{ bucket: number; pv: number; load: number; soc_max: number; battery: number; n: bigint }>>`
+    SELECT floor(extract(epoch FROM "timestamp") / 3600)::float8 AS bucket,
            avg("pvPowerW")::float8 AS pv,
            avg("loadPowerW")::float8 AS load,
            max("batterySoc")::float8 AS soc_max,
@@ -54,7 +63,7 @@ export async function hourlyReadings(timeZone: string, days: number) {
     WHERE "timestamp" >= ${since}
     GROUP BY 1
     ORDER BY 1`;
-  return rows.map((row) => ({ hour: row.hour, pvW: row.pv, loadW: row.load, socMax: row.soc_max, batteryW: row.battery, samples: Number(row.n) }));
+  return rows.map((row) => ({ hour: hourKey(new Date(row.bucket * 3_600_000), timeZone), pvW: row.pv, loadW: row.load, socMax: row.soc_max, batteryW: row.battery, samples: Number(row.n) }));
 }
 
 /** Average night load (19:00–06:00 local) from stored readings, one sample per hour. */
@@ -74,14 +83,14 @@ async function expectedByHour(settings: Settings): Promise<Map<string, number>> 
   url.searchParams.set("timezone", settings.timezone);
   url.searchParams.set("past_days", String(LOOKBACK_DAYS));
   url.searchParams.set("forecast_days", "1");
-  url.searchParams.set("hourly", "shortwave_radiation" + (useTilted ? ",global_tilted_irradiance" : ""));
+  url.searchParams.set("hourly", "shortwave_radiation,temperature_2m" + (useTilted ? ",global_tilted_irradiance" : ""));
   if (useTilted) {
     url.searchParams.set("tilt", String(Math.min(90, Math.max(0, settings.panelTilt!))));
     url.searchParams.set("azimuth", String((((settings.panelAzimuth! % 360) + 360) % 360) - 180));
   }
   const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`open_meteo_${response.status}`);
-  const data = (await response.json()) as { hourly?: { time?: string[]; shortwave_radiation?: number[]; global_tilted_irradiance?: number[] } };
+  const data = (await response.json()) as { hourly?: { time?: string[]; shortwave_radiation?: number[]; global_tilted_irradiance?: number[]; temperature_2m?: number[] } };
   const times = data.hourly?.time ?? [];
   const panelKw = settings.panelPowerW / 1000;
   const map = new Map<string, number>();
@@ -90,7 +99,11 @@ async function expectedByHour(settings: Settings): Promise<Map<string, number>> 
     // its timestamp, so the hour starting at `time` takes the next entry.
     const j = i + 1;
     const irradiance = (useTilted ? data.hourly?.global_tilted_irradiance?.[j] : undefined) ?? data.hourly?.shortwave_radiation?.[j];
-    if (typeof irradiance === "number") map.set(time, estimateSolarKWh(irradiance, panelKw));
+    // Same temperature term as the forecast, so the factor compares like with like.
+    const tempStart = data.hourly?.temperature_2m?.[i];
+    const tempEnd = data.hourly?.temperature_2m?.[j];
+    const airTempC = typeof tempStart === "number" && typeof tempEnd === "number" ? (tempStart + tempEnd) / 2 : tempStart ?? tempEnd ?? null;
+    if (typeof irradiance === "number") map.set(time, estimateSolarKWh(irradiance, panelKw, airTempC));
   });
   return map;
 }

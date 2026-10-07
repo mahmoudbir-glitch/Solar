@@ -236,6 +236,13 @@ export default function MoneyDashboard() {
               </div>
             </div>
 
+            {/* With no price saved every amount is zero, which reads like "no savings". */}
+            {settingsLoaded && tariff <= 0 && (
+              <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-bold leading-5 text-amber-800">
+                لم يُحدَّد سعر كهرباء الشبكة بعد، لذلك تظهر المبالغ صفراً. افتح «التفضيلات المالية» في الأسفل وأدخل سعر الكيلوواط ساعة.
+              </p>
+            )}
+
             <div className="mt-4 grid grid-cols-2 gap-2.5">
               <div className={"col-span-2 rounded-2xl border p-4 " + semanticBorder[savedTone] + " " + semanticBg[savedTone]}>
                 <span className={"text-[11px] font-bold " + semanticText[savedTone]}>الوفر التقديري</span>

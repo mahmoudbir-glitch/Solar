@@ -3,18 +3,7 @@
 import { useSharedSmartEnergy } from "@/components/smart-energy-provider";
 import { AmpPill } from "@/components/amp-pill";
 import { acAmpHours } from "@/lib/energy";
-
-function formatHour(iso: string) {
-  return new Intl.DateTimeFormat("ar-LB-u-nu-latn", {
-    timeZone: "Asia/Beirut",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
-
-function addHour(iso: string) {
-  return new Date(new Date(iso).getTime() + 60 * 60 * 1000).toISOString();
-}
+import { siteClock } from "@/lib/smart-forecast";
 
 export function SurplusRecommendations() {
   const { forecasts, loading } = useSharedSmartEnergy();
@@ -85,7 +74,7 @@ export function SurplusRecommendations() {
                   <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">{dayWord}</span>
                 </span>
                 <strong className="mt-2 block text-2xl font-black tracking-tight text-amber-700 sm:text-3xl">
-                  {formatHour(best.start)} — {formatHour(addHour(best.end))}
+                  {siteClock(best.start)} — {siteClock(best.end, 1)}
                 </strong>
               </div>
               <div className="rounded-2xl bg-white/90 px-4 py-3 text-right shadow-sm ring-1 ring-amber-100">

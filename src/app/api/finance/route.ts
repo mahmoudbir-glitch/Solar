@@ -45,9 +45,10 @@ export async function GET() {
           solarPct: Math.round((directSolarKWh / served) * 100),
           batteryPct: Math.round((batteryKWh / served) * 100),
           gridPct: Math.round((gridKWh / served) * 100),
-          solarKWh: Math.round(directSolarKWh * 10) / 10,
-          batteryKWh: Math.round(batteryKWh * 10) / 10,
-          gridKWh: Math.round(gridKWh * 10) / 10,
+          // Unrounded: the page prices these, and a rounded 0.1 kWh is real money at a high tariff.
+          solarKWh: directSolarKWh,
+          batteryKWh,
+          gridKWh,
         },
         source: "daily_summary",
       },

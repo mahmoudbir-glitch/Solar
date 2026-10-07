@@ -67,11 +67,14 @@ export default function HomeConsumptionPage() {
   const fromSolar = Math.min(homeW, Math.max(0, snapshot?.solarPowerW ?? 0));
   const fromBattery = Math.min(homeW - fromSolar, Math.max(0, -(snapshot?.batteryPowerW ?? 0)));
   const fromGrid = Math.max(0, homeW - fromSolar - fromBattery);
-  const share = (w: number) => (homeW > 0 ? Math.round((w / homeW) * 100) : 0);
+  // Rounded so the three always add up to 100 (33 + 33 + 33 left 1% unexplained).
+  const solarPct = homeW > 0 ? Math.round((fromSolar / homeW) * 100) : 0;
+  const batteryPct = homeW > 0 ? Math.min(100 - solarPct, Math.round((fromBattery / homeW) * 100)) : 0;
+  const gridPct = homeW > 0 ? 100 - solarPct - batteryPct : 0;
   const sources = [
-    { label: "الشمس", w: fromSolar, bar: "bg-amber-400", text: "text-amber-700", tone: "amber" as const },
-    { label: "البطارية", w: fromBattery, bar: "bg-emerald-500", text: "text-emerald-700", tone: "emerald" as const },
-    { label: "الشبكة", w: fromGrid, bar: "bg-violet-500", text: "text-violet-700", tone: "violet" as const },
+    { label: "الشمس", w: fromSolar, pct: solarPct, bar: "bg-amber-400", text: "text-amber-700", tone: "amber" as const },
+    { label: "البطارية", w: fromBattery, pct: batteryPct, bar: "bg-emerald-500", text: "text-emerald-700", tone: "emerald" as const },
+    { label: "الشبكة", w: fromGrid, pct: gridPct, bar: "bg-violet-500", text: "text-violet-700", tone: "violet" as const },
   ];
 
   const timeZone = history?.timezone || "Asia/Beirut";
@@ -117,13 +120,13 @@ export default function HomeConsumptionPage() {
       <section className="energy-card space-y-3 p-4">
         <h2 className="text-sm font-black text-slate-900">من أين يأتي استهلاكك الآن</h2>
         <div className="flex h-3 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
-          {sources.map((source) => source.w > 0 && <div key={source.label} className={source.bar} style={{ width: `${share(source.w)}%` }} />)}
+          {sources.map((source) => source.w > 0 && <div key={source.label} className={source.bar} style={{ width: `${source.pct}%` }} />)}
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
           {sources.map((source) => (
             <div key={source.label}>
               <div className="text-[11px] font-bold text-slate-500">{source.label}</div>
-              <div className={"text-base font-black " + source.text}>{snapshot ? `${share(source.w)}%` : "—"}</div>
+              <div className={"text-base font-black " + source.text}>{snapshot ? `${source.pct}%` : "—"}</div>
               <div className="text-[11px] font-semibold text-slate-400">{snapshot ? `${Math.round(source.w)} واط` : "—"}</div>
               <div className="mt-1.5"><AmpPill tone={source.tone} amps={snapshot ? acAmps(source.w) : null} muted={snapshot ? source.w <= 0 : false} /></div>
             </div>

@@ -3,7 +3,6 @@
 import React, { useId, useState } from 'react';
 import { BatteryCharging } from 'lucide-react';
 import { GridTowerIcon, HouseIcon, InverterIcon, SolarPanelIcon } from '@/components/node-icons';
-import { InfoTip } from '@/components/info-tip';
 import { acAmpHours, acAmps, batteryText, homeText, solarText } from '@/lib/energy';
 import { AmpPill } from '@/components/amp-pill';
 
@@ -325,7 +324,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
                 </>
               )}
             </div>
-            <p className="mt-3 text-[11px] font-semibold text-slate-500">اضغط على أي عقدة أخرى لعرض تفاصيلها. الأرقام هنا مأخوذة من بيانات الإنفرتر الحالية ولا يتم توليد أرقام DEMO.</p>
+            <p className="mt-3 text-[11px] font-semibold text-slate-500">اضغط على أي أيقونة أخرى لعرض تفاصيلها. الأرقام من آخر قراءة للإنفرتر.</p>
           </div>
         ) : null}
       </div>

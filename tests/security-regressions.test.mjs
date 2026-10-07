@@ -299,7 +299,7 @@ test("panel azimuth is converted from compass bearing to Open-Meteo's south-base
   assert.equal(convert(180), 0);
   assert.equal(convert(270), 90);
   assert.equal(convert(90), -90);
-  for (const file of ["src/app/api/forecast/solar/route.ts", "src/hooks/use-smart-energy.ts"]) {
+  for (const file of ["src/hooks/use-smart-energy.ts"]) {
     assert.match(read(file), /% 360\) \+ 360\) % 360 - 180/, `${file} must convert the bearing`);
   }
 });
@@ -607,7 +607,7 @@ test("panel calibration ignores throttled hours and waits for enough data", { sk
 
 test("forecast applies the learned calibration and the night check never breaks the sync", () => {
   const hook = read("src/hooks/use-smart-energy.ts");
-  assert.match(hook, /estimateSolarKWh\(irradiance, panelCapacityKw\) \* solarFactor/);
+  assert.match(hook, /estimateSolarKWh\(irradiance, panelCapacityKw, airTempC\) \* solarFactor/);
   assert.match(hook, /status === "calibrated"/);
   const sync = read("src/app/api/telemetry/sync/route.ts");
   assert.match(sync, /const result = await syncSmartEss\(\);\s*\/\/[^\n]*\n\s*\/\/[^\n]*\n\s*await runNightCheck\(\)\.catch\(/);
@@ -686,14 +686,18 @@ test("event log is pruned and the CSV export is read in batches", () => {
   assert.doesNotMatch(exportRoute, /telemetryLog\.findMany\(\{ orderBy: \{ timestamp: "asc" \} \}\)/);
 });
 
-test("summary and predictions use the site's time zone, not the server's", () => {
+test("the summary uses the site's time zone, not the server's", () => {
   const summary = read("src/app/api/telemetry/summary/route.ts");
   assert.match(summary, /const start = localDayStart\(new Date\(\), timezone\);/);
   assert.doesNotMatch(summary, /getUTCFullYear/);
-  const predictions = read("src/app/api/predictions/route.ts");
-  assert.match(predictions, /localHour\(row\.timestamp, settings\.timezone\)/);
-  assert.match(predictions, /utc_offset_seconds/);
-  assert.doesNotMatch(predictions, /new Date\(sunrise\)/);
+});
+
+test("routes and helpers nothing calls stay removed", () => {
+  // They computed the forecast with an older formula (fixed 0.82, no hour
+  // shift, no calibration), so any caller would have shown different numbers.
+  for (const gone of ["src/app/api/predictions", "src/app/api/forecast/solar", "src/app/api/weather", "src/app/api/analytics", "src/app/api/energy", "src/lib/forecast.ts", "src/lib/predictive.ts", "src/lib/predictions.ts"]) {
+    assert.equal(fs.existsSync(path.join(root, gone)), false, gone);
+  }
 });
 
 test("middleware lives in src/ (next to app/) so Next.js actually runs it", () => {
@@ -722,7 +726,7 @@ test("energy accounting: one grid figure everywhere, grid-first split, signed sa
   const store = read("src/lib/telemetry-store.ts");
   assert.ok(store.includes("const avoidedGridKWh = homeKWh - gridImportKWh;"));
   // The live reading and the daily totals use the same grid power.
-  for (const route of ["src/app/api/telemetry/route.ts", "src/app/api/analytics/route.ts", "src/app/api/energy/route.ts"]) {
+  for (const route of ["src/app/api/telemetry/route.ts"]) {
     assert.ok(read(route).includes("effectiveGridW("), route);
     assert.ok(!read(route).includes("gridPowerW ?? 0"), route);
   }
@@ -730,4 +734,42 @@ test("energy accounting: one grid figure everywhere, grid-first split, signed sa
   const summary = read("src/app/api/telemetry/summary/route.ts");
   assert.ok(summary.includes("const gridToHome = Math.min(home, Math.max(0, totals.gridImportKWh));"));
   assert.ok(!summary.includes("Math.min(totals.homeKWh, totals.solarKWh)"));
+});
+
+test("hourly readings are grouped by instant, so the column type cannot shift the local hour", () => {
+  // Converting the zone in SQL moved every hour by the zone's offset when the
+  // column was "timestamp with time zone": night load was averaged over the
+  // morning and panel output compared with the wrong hour's sunshine.
+  const source = read("src/lib/solar-calibration.ts");
+  assert.doesNotMatch(source, /AT TIME ZONE/);
+  assert.match(source, /floor\(extract\(epoch FROM "timestamp"\) \/ 3600\)/);
+  assert.match(source, /hour: hourKey\(new Date\(row\.bucket \* 3_600_000\), timeZone\)/);
+  // Forecast and calibration must use the same temperature term.
+  assert.match(source, /estimateSolarKWh\(irradiance, panelKw, airTempC\)/);
+});
+
+test("panel output falls with heat and site times ignore the viewer's zone", { skip: !canLoadTs }, async () => {
+  const { estimateSolarKWh, panelHeatFactor, siteClock, siteInstant } = await import("../src/lib/smart-forecast.ts");
+  // Full sun: cells run ~31 °C above the air, and lose 0.4% per degree over 25 °C.
+  assert.equal(Math.round(panelHeatFactor(1000, 35) * 1000) / 1000, 0.835);
+  assert.ok(panelHeatFactor(1000, 5) > panelHeatFactor(1000, 35));
+  assert.equal(panelHeatFactor(1000, 60), 0.75);
+  assert.equal(panelHeatFactor(600, undefined), 0.93);
+  // 6 kW in full sun at 20 °C air: 6 x 0.84 x 0.895.
+  assert.equal(Math.round(estimateSolarKWh(1000, 6, 20) * 100) / 100, 4.51);
+  assert.equal(estimateSolarKWh(-5, 6, 20), 0);
+  // 06:36 on the site's clock (UTC+3) is 03:36 UTC wherever the page is opened.
+  assert.equal(new Date(siteInstant("2026-10-07T06:36", 10800)).toISOString(), "2026-10-07T03:36:00.000Z");
+  assert.match(siteClock("2026-10-07T06:36"), /^06:36/);
+  assert.match(siteClock("2026-10-07T16:00", 1), /^05:00/);
+  assert.equal(siteClock(null), "—");
+  const card = read("src/components/smart-forecast.tsx");
+  assert.doesNotMatch(card, /new Date\(selected\.sun(rise|set)\)/);
+  assert.doesNotMatch(read("src/components/surplus-recommendations.tsx"), /timeZone: "Asia\/Beirut"/);
+});
+
+test("the money page prices unrounded energy", () => {
+  const finance = read("src/app/api/finance/route.ts");
+  assert.doesNotMatch(finance, /solarKWh: Math\.round\(directSolarKWh \* 10\) \/ 10/);
+  assert.match(finance, /solarKWh: directSolarKWh,/);
 });
