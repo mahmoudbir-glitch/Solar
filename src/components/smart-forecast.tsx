@@ -204,7 +204,7 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {current && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-200/70" title="توقع جوي من Open-Meteo، وليس قياساً من الإنفرتر">
-                {weatherIcon(current.weather_code ?? 0)} الآن: {weatherLabel(current.weather_code ?? 0)} · <bdi dir="ltr">{Math.round(current.temperature_2m ?? 0)}°</bdi>
+                {weatherIcon(current.weather_code ?? 0, current.is_day !== 0)} الآن: {weatherLabel(current.weather_code ?? 0, current.is_day !== 0)} · <bdi dir="ltr">{Math.round(current.temperature_2m ?? 0)}°</bdi>
               </span>
             )}
             {/* The forecast is scaled to what these panels really delivered on recent days. */}

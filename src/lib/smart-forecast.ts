@@ -64,8 +64,9 @@ export type AutonomyResult = {
   sufficient: boolean;
 };
 
-export function weatherLabel(code: number) {
-  if (code === 0) return "مشمس";
+// isDay is false only for "now" after sunset; daily forecasts describe the daytime.
+export function weatherLabel(code: number, isDay = true) {
+  if (code === 0) return isDay ? "مشمس" : "صافٍ";
   if (code <= 3) return "غائم جزئياً";
   if (code <= 48) return "ضبابي";
   if (code <= 57) return "رذاذ";
@@ -75,9 +76,9 @@ export function weatherLabel(code: number) {
   return "عواصف";
 }
 
-export function weatherIcon(code: number) {
-  if (code === 0) return "☀️";
-  if (code <= 3) return "⛅";
+export function weatherIcon(code: number, isDay = true) {
+  if (code === 0) return isDay ? "☀️" : "🌙";
+  if (code <= 3) return isDay ? "⛅" : "☁️";
   if (code <= 48) return "🌫️";
   if (code <= 67) return "🌧️";
   if (code <= 77) return "❄️";
