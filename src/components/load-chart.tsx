@@ -102,8 +102,9 @@ export function LoadChart({ points, timeZone, now }: { points: LoadPoint[]; time
           <StatTile big tone="amber" label="الإنتاج الشمسي" value={solarKWh.toFixed(1)} unit="kWh" ampTone="amber" ampUnit="Ah" amps={(solarKWh * 1000) / AC_VOLTS} />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <StatTile label="ذروة المنزل" value={peakHomeW === null ? "—" : kw(peakHomeW)} unit="kW" ampTone="sky" amps={peakHomeW === null ? null : peakHomeW / AC_VOLTS} />
-          <StatTile label="ذروة الإنتاج" value={peakSolarW === null ? "—" : kw(peakSolarW)} unit="kW" ampTone="amber" amps={peakSolarW === null ? null : peakSolarW / AC_VOLTS} />
+          {/* Hourly averages, unlike the instant "أعلى حمل اليوم" tile above, so named apart. */}
+          <StatTile label="أعلى ساعة استهلاك" value={peakHomeW === null ? "—" : kw(peakHomeW)} unit="kW" ampTone="sky" amps={peakHomeW === null ? null : peakHomeW / AC_VOLTS} />
+          <StatTile label="أعلى ساعة إنتاج" value={peakSolarW === null ? "—" : kw(peakSolarW)} unit="kW" ampTone="amber" amps={peakSolarW === null ? null : peakSolarW / AC_VOLTS} />
         </div>
       </div>
 
