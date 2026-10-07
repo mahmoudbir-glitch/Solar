@@ -5,16 +5,19 @@ import { ChevronDown } from "lucide-react";
 import type { LoadPoint } from "@/components/load-chart";
 
 const HOUR = 3_600_000;
+// Three hours per line keeps the day to 8 lines.
+const SPAN = 3;
+const LINES = 24 / SPAN;
 
 type Bucket = { start: number; loadW: number; solarW: number; batteryW: number; soc: number | null; n: number };
 
-/** Last 24 clock hours, newest first: average power and the battery level at the end of each hour. */
+/** Last 24 clock hours in 3-hour lines, newest first: average power and the battery level at the end of each line. */
 function hourly(points: LoadPoint[], now: number): Bucket[] {
   const last = Math.floor(now / HOUR) * HOUR;
-  const sums = Array.from({ length: 24 }, (_, i) => ({ start: last - i * HOUR, load: 0, solar: 0, battery: 0, soc: null as number | null, socT: -Infinity, n: 0 }));
+  const sums = Array.from({ length: LINES }, (_, i) => ({ start: last - (i * SPAN + SPAN - 1) * HOUR, load: 0, solar: 0, battery: 0, soc: null as number | null, socT: -Infinity, n: 0 }));
   for (const p of points) {
-    const index = Math.floor((last - Math.floor(p.t / HOUR) * HOUR) / HOUR);
-    if (index < 0 || index > 23) continue;
+    const index = Math.floor((last - Math.floor(p.t / HOUR) * HOUR) / HOUR / SPAN);
+    if (index < 0 || index >= LINES) continue;
     const s = sums[index];
     s.load += Math.max(0, p.loadW);
     s.solar += Math.max(0, p.solarW);
@@ -37,8 +40,8 @@ function hourly(points: LoadPoint[], now: number): Bucket[] {
 
 function useHourLabel(timeZone: string) {
   return useMemo(() => {
-    const fmt = new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-    return (t: number) => fmt.format(t);
+    const fmt = new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", hourCycle: "h23" });
+    return (t: number) => `${fmt.format(t)}–${fmt.format(t + SPAN * HOUR)}`;
   }, [timeZone]);
 }
 
@@ -59,7 +62,7 @@ function HourFold({ children }: { children: ReactNode }) {
   return (
     <details className="group rounded-2xl bg-slate-50 ring-1 ring-slate-200/70" dir="rtl">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-black text-slate-700 [&::-webkit-details-marker]:hidden">
-        تفاصيل كل ساعة
+        تفاصيل الساعات
         <ChevronDown size={16} className="text-slate-500 transition-transform group-open:rotate-180" aria-hidden="true" />
       </summary>
       <div className="space-y-3 px-3 pb-3">{children}</div>
@@ -89,7 +92,7 @@ export function HomeHourRows({ points, timeZone, now }: { points: LoadPoint[]; t
       <div className="space-y-1.5">
         {split.map((r) => (
           <div key={r.start} className="flex items-center gap-2">
-            <span className="w-10 shrink-0 text-[11px] font-bold text-slate-500"><bdi dir="ltr">{label(r.start)}</bdi></span>
+            <span className="w-12 shrink-0 text-[11px] font-bold text-slate-500"><bdi dir="ltr">{label(r.start)}</bdi></span>
             <div className="flex h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100">
               {r.n > 0 && (
                 <>
@@ -114,7 +117,7 @@ export function HomeHourRows({ points, timeZone, now }: { points: LoadPoint[]; t
           { label: "فائض شمسي", dot: "bg-amber-200" },
         ]}
       />
-      <p className="text-[11px] font-semibold text-slate-400">كل سطر = ساعة، الأحدث فوق. الرقم = متوسط استهلاك البيت بتلك الساعة.</p>
+      <p className="text-[11px] font-semibold text-slate-400">كل سطر = 3 ساعات، الأحدث فوق. الرقم = متوسط استهلاك البيت.</p>
     </HourFold>
   );
 }
@@ -138,7 +141,7 @@ export function SocHourRows({ points, timeZone, now, reservePct }: { points: Loa
           const moving = r.n > 0 && Math.abs(r.batteryW) >= 30;
           return (
             <div key={r.start} className="flex items-center gap-2">
-              <span className="w-10 shrink-0 text-[11px] font-bold text-slate-500"><bdi dir="ltr">{label(r.start)}</bdi></span>
+              <span className="w-12 shrink-0 text-[11px] font-bold text-slate-500"><bdi dir="ltr">{label(r.start)}</bdi></span>
               <div className="relative h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100">
                 {r.soc !== null && t && <div className={"absolute inset-y-0 right-0 rounded-full " + t.bar} style={{ width: Math.max(0, Math.min(100, r.soc)) + "%" }} />}
                 <div className="absolute inset-y-0 w-0.5 bg-rose-500/70" style={{ right: reservePct + "%" }} aria-hidden="true" />
@@ -159,7 +162,7 @@ export function SocHourRows({ points, timeZone, now, reservePct }: { points: Loa
           { label: <>خط أحمر = حد الاحتياطي <bdi dir="ltr">{reservePct}%</bdi></>, dot: "bg-rose-500/70" },
         ]}
       />
-      <p className="text-[11px] font-semibold text-slate-400">كل سطر = ساعة، الأحدث فوق، معبّأ حتى نسبة الشحن بآخرها. ↑ شحن · ↓ تفريغ.</p>
+      <p className="text-[11px] font-semibold text-slate-400">كل سطر = 3 ساعات، الأحدث فوق، معبّأ حتى نسبة الشحن بآخرها. ↑ شحن · ↓ تفريغ.</p>
     </HourFold>
   );
 }
