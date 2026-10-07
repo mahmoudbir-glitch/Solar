@@ -43,7 +43,10 @@ export function BatteryTimeline({ anchor }: { anchor?: string } = {}) {
     const hours = forecasts.flatMap((day) => day.hourly.filter((point) => typeof point.socPct === "number"));
     const now = Date.now();
 
+    // Only today, tomorrow and the day after: further out the weather
+    // forecast is too rough to plan the battery on.
     return forecasts
+      .slice(0, 3)
       .map((day, index): DayRow | null => {
         // Tonight already has its own card at the top of the page.
         if (index === 0 && Number.isFinite(new Date(day.sunset).getTime()) && now > new Date(day.sunset).getTime()) return null;
