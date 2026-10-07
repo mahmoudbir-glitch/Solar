@@ -1,5 +1,6 @@
 "use client";
 
+import { sunsetTone, tonePill, toneText } from "@/lib/battery-tone";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, MoonStar, RefreshCw, SunMedium } from "lucide-react";
 import { useSharedSmartEnergy } from "@/components/smart-energy-provider";
@@ -56,6 +57,13 @@ function TonightCard({
     amber: "from-amber-50 text-amber-700",
     rose: "from-rose-50 text-rose-700",
   }[tone];
+  const toneRing = {
+    slate: "ring-slate-200/70",
+    emerald: "ring-emerald-300/70",
+    amber: "ring-amber-300/70",
+    rose: "ring-rose-300/70",
+  }[tone];
+  const valueText = tone === "slate" ? "text-slate-400" : toneText[tone];
   const verdict = !hasEnoughSamples
     ? "تقدير أولي"
     : result.sufficient
@@ -65,7 +73,7 @@ function TonightCard({
         : "قد لا تكفي حتى الصباح";
 
   return (
-    <section id="night" className={"energy-card scroll-mt-40 overflow-hidden bg-gradient-to-b to-white p-4 ring-2 ring-amber-300/70 " + toneClass}>
+    <section id="night" className={"energy-card scroll-mt-40 overflow-hidden bg-gradient-to-b to-white p-4 ring-2 " + toneRing + " " + toneClass}>
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs font-black text-slate-500">
           <MoonStar size={15} aria-hidden="true" /> الليلة الجارية · حتى الشروق <bdi dir="ltr">{siteClock(until)}</bdi>
@@ -82,11 +90,11 @@ function TonightCard({
         </div>
         <div className="rounded-xl bg-white/80 px-1 py-2 ring-1 ring-slate-200/60">
           <span className="block text-[10px] font-bold text-slate-500">عند الشروق</span>
-          <strong className="block text-lg font-black text-indigo-700">{hasEnoughSamples ? <bdi dir="ltr">{result.expectedSocAtSunrise}%</bdi> : "—"}</strong>
+          <strong className={"block text-lg font-black " + valueText}>{hasEnoughSamples ? <bdi dir="ltr">{result.expectedSocAtSunrise}%</bdi> : "—"}</strong>
         </div>
         <div className="rounded-xl bg-white/80 px-1 py-2 ring-1 ring-slate-200/60">
           <span className="block text-[10px] font-bold text-slate-500">تغطية</span>
-          <strong className="block text-lg font-black">{hasEnoughSamples ? <bdi dir="ltr">{result.probability}%</bdi> : "—"}</strong>
+          <strong className={"block text-lg font-black " + valueText}>{hasEnoughSamples ? <bdi dir="ltr">{result.probability}%</bdi> : "—"}</strong>
         </div>
       </div>
       {!hasEnoughSamples && <p className="mt-2 text-[11px] font-bold text-slate-500">تظهر النسب بعد تجمّع قراءات ليلية كافية.</p>}
@@ -285,7 +293,7 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
                 <span className={"rounded-full px-2.5 py-1 text-[11px] font-black ring-1 " + confidenceTone[selected.confidence]}>ثقة التوقع: {selected.confidence}</span>
                 {/* The chosen day's battery in one line; every day side by side is in the battery card below. */}
                 {!todayAfterSunset && (
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700 ring-1 ring-emerald-200/70">
+                  <span className={"rounded-full px-2.5 py-1 text-[11px] font-black ring-1 " + tonePill[sunsetTone(selected.chargeAtSunsetPct, Boolean(selected.fullChargeTime))]}>
                     🔋 {selected.fullChargeTime ? <>تمتلئ <bdi dir="ltr">{siteClock(selected.fullChargeTime)}</bdi></> : "لا تمتلئ"} · الغروب <bdi dir="ltr">{selected.chargeAtSunsetPct}%</bdi>
                   </span>
                 )}

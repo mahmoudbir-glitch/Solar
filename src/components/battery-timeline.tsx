@@ -1,5 +1,6 @@
 "use client";
 
+import { sunsetTone, toneText, toneTile } from "@/lib/battery-tone";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useSharedSmartEnergy } from "@/components/smart-energy-provider";
@@ -140,17 +141,17 @@ export function BatteryTimeline({ anchor }: { anchor?: string } = {}) {
               </div>
 
               <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-emerald-50/70 px-1 py-1.5">
+                <div className={"rounded-xl px-1 py-1.5 " + (row.fullAt ? toneTile.emerald : toneTile.amber)}>
                   <span className="block text-[10px] font-bold text-slate-500">تمتلئ</span>
-                  <strong className="block text-sm font-black text-emerald-700">{row.fullAt ? <bdi dir="ltr">{formatHour(row.fullAt)}</bdi> : <span className="text-xs text-slate-500">لا تمتلئ</span>}</strong>
+                  <strong className={"block text-sm font-black " + (row.fullAt ? toneText.emerald : toneText.amber)}>{row.fullAt ? <bdi dir="ltr">{formatHour(row.fullAt)}</bdi> : <span className="text-xs">لا تمتلئ</span>}</strong>
                 </div>
-                <div className="rounded-xl bg-orange-50/70 px-1 py-1.5">
+                <div className={"rounded-xl px-1 py-1.5 " + toneTile[sunsetTone(row.sunsetPct, Boolean(row.fullAt))]}>
                   <span className="block text-[10px] font-bold text-slate-500">عند الغروب</span>
-                  <strong className="block text-sm font-black text-slate-900"><bdi dir="ltr">{row.sunsetPct}%</bdi></strong>
+                  <strong className={"block text-sm font-black " + toneText[sunsetTone(row.sunsetPct, Boolean(row.fullAt))]}><bdi dir="ltr">{row.sunsetPct}%</bdi></strong>
                 </div>
-                <div className={"rounded-xl px-1 py-1.5 " + (row.morningPct === null ? "bg-slate-50" : lasts ? "bg-indigo-50/70" : "bg-rose-50")}>
+                <div className={"rounded-xl px-1 py-1.5 " + (row.morningPct === null ? "bg-slate-50" : lasts ? toneTile.emerald : toneTile.rose)}>
                   <span className="block text-[10px] font-bold text-slate-500">الصباح التالي</span>
-                  <strong className={"block text-sm font-black " + (row.morningPct === null ? "text-slate-400" : lasts ? "text-indigo-700" : "text-rose-700")}>
+                  <strong className={"block text-sm font-black " + (row.morningPct === null ? "text-slate-400" : lasts ? toneText.emerald : toneText.rose)}>
                     {row.morningPct === null ? "—" : <bdi dir="ltr">{row.morningPct}%</bdi>}
                   </strong>
                 </div>
