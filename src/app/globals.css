@@ -7,6 +7,10 @@ html { min-height: 100%; background: #f4f6fc; }
 body { margin: 0; min-height: 100vh; background: #f4f6fc; color: #181f3f; }
 .animate-dynamic-bg { background: linear-gradient(180deg, #ffffff 0%, #eaeef8 100%); }
 * { box-sizing: border-box; }
+/* Keep the top header and bottom tab bar pinned while scrolling: stop the
+ * phone's pull-to-refresh and overscroll stretch, which drag the whole page
+ * (bars included) up or down at either end of a page. */
+html, body { overscroll-behavior-y: none; }
 :focus-visible { outline: 2px solid #4d47e0; outline-offset: 2px; }
 button,a,input,select { -webkit-tap-highlight-color: transparent; }
 button:disabled { cursor: not-allowed; opacity: .6; }
@@ -18,14 +22,14 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 }
 .energy-card { border: 1px solid rgba(219,225,240,.9); border-radius: 1.15rem; background: rgba(255,255,255,.96); box-shadow: 0 14px 40px rgba(77,71,224,.07); }
 .page-title { font-size: 1.5rem; line-height: 2rem; font-weight: 900; color: #181f3f; }
-/* Solar's sun badge breathes slowly. */
-@keyframes solar-mark-glow {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.08) drop-shadow(0 0 8px rgba(255, 182, 28, 0.55)); }
+/* Only the sun in Solar's logo blinks; the solar panel stays still. */
+@keyframes solar-mark-sun-blink {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 0 rgba(255, 182, 28, 0)); }
+  50% { opacity: 0.35; filter: drop-shadow(0 0 10px rgba(255, 182, 28, 0.9)); }
 }
-.solar-mark { animation: solar-mark-glow 3.2s ease-in-out infinite; }
+.solar-mark-sun { animation: solar-mark-sun-blink 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .solar-mark { animation: none; }
+  .solar-mark-sun { animation: none; }
 }
 
 /* Computer screens (1024px and wider): a page lays its cards out in two columns

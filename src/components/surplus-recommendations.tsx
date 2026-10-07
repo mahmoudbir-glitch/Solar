@@ -33,6 +33,13 @@ export function SurplusRecommendations() {
   const dayWord = todayBest ? "اليوم" : "غدًا";
   const todayLeftKWh = (forecasts[0]?.hourly ?? []).reduce((sum, point) => sum + point.surplusKWh, 0);
 
+  // Hour by hour for the day the window belongs to: only hours still ahead
+  // (they carry a modelled battery level) and with some sun.
+  const detailHours = (forecasts[todayBest ? 0 : 1]?.hourly ?? []).filter(
+    (point) => typeof point.socPct === "number" && point.solarKWh >= 0.05,
+  );
+  const maxSolar = Math.max(0.1, ...detailHours.map((point) => point.solarKWh));
+
   // Typical household loads with a rough energy cost, so each tip says
   // whether today's surplus actually covers it.
   const surplus = best?.kwh ?? 0;
@@ -47,15 +54,10 @@ export function SurplusRecommendations() {
     .map((load) => ({ id: load.id, kwh: load.kwh, title: load.title, icon: load.icon }));
 
   return (
-    <section dir="rtl" className="energy-card overflow-hidden p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-xl ring-1 ring-amber-200/70" aria-hidden="true">⚡</span>
-          <div className="min-w-0">
-            <h2 className="text-lg font-black tracking-tight text-slate-950">أفضل وقت لاستخدام الشمس</h2>
-            <p className="text-xs font-semibold text-slate-500">ساعات الفائض وما يمكن تشغيله فيها.</p>
-          </div>
-        </div>
+    <section dir="rtl" className="energy-card overflow-hidden p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-black tracking-tight text-slate-950">⚡ أفضل وقت لاستخدام الشمس</h2>
+        {best && !loading && <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-800">{dayWord}</span>}
       </div>
 
       {loading && (
@@ -66,23 +68,18 @@ export function SurplusRecommendations() {
 
       {!loading && best && (
         <>
-          <div className="mt-4 rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <span className="inline-flex items-center gap-2 text-xs font-extrabold text-slate-500">
-                  ☀️ النافذة الأفضل
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">{dayWord}</span>
-                </span>
-                <strong className="mt-2 block text-2xl font-black tracking-tight text-amber-700 sm:text-3xl">
-                  {siteClock(best.start)} — {siteClock(best.end, 1)}
+          <div className="mt-3 rounded-2xl bg-gradient-to-br from-amber-50 to-white p-3.5 ring-1 ring-amber-100">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="block text-[11px] font-bold text-slate-500">☀️ النافذة الأفضل</span>
+                <strong className="mt-0.5 block text-2xl font-black tracking-tight text-amber-700">
+                  {siteClock(best.start)} – {siteClock(best.end, 1)}
                 </strong>
               </div>
-              <div className="rounded-2xl bg-white/90 px-4 py-3 text-right shadow-sm ring-1 ring-amber-100">
-                <span className="block text-xs font-bold text-slate-500">قابل للاستخدام</span>
-                <strong className="mt-1 block text-lg font-black text-slate-900">
-                  نحو <bdi dir="ltr">{Math.round(best.kwh * 10) / 10} kWh</bdi>
-                </strong>
-                <span className="mt-1.5 block"><AmpPill tone="amber" unit="Ah" amps={acAmpHours(best.kwh)} /></span>
+              <div className="shrink-0 text-left">
+                <span className="block text-[11px] font-bold text-slate-500">فائض قابل للاستخدام</span>
+                <strong className="mt-0.5 block text-lg font-black text-slate-900"><bdi dir="ltr">{Math.round(best.kwh * 10) / 10} kWh</bdi></strong>
+                <AmpPill tone="amber" unit="Ah" amps={acAmpHours(best.kwh)} />
               </div>
             </div>
             {!todayBest && (
@@ -92,26 +89,52 @@ export function SurplusRecommendations() {
             )}
           </div>
 
-          {/* What the surplus can run: one compact tile per appliance, no long text. */}
+          {/* What the surplus can run: one short chip per appliance. */}
           {recommendations.length > 0 && (
-            <div className="mt-4">
-              <h3 className="text-xs font-black text-slate-500">💡 ما يمكن تشغيله بالفائض <span className="font-semibold text-slate-400">(لكل دورة أو ساعة)</span></h3>
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="mt-3">
+              <h3 className="text-[11px] font-black text-slate-500">💡 يكفي الفائض لتشغيل</h3>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {recommendations.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2.5 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-2.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-lg shadow-sm" aria-hidden="true">{item.icon}</span>
-                    <div className="min-w-0">
-                      <strong className="block truncate text-xs font-black text-slate-900">{item.title}</strong>
-                      <span className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-slate-500">
-                        <bdi dir="ltr">{item.kwh} kWh</bdi>
-                        <AmpPill tone="emerald" unit="Ah" amps={acAmpHours(item.kwh)} className="!min-w-0 !px-1.5" />
-                      </span>
-                    </div>
-                  </div>
+                  <span key={item.id} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-800 ring-1 ring-emerald-200/70">
+                    <span aria-hidden="true">{item.icon}</span>{item.title}
+                    <bdi dir="ltr" className="font-bold text-emerald-600">{item.kwh} kWh</bdi>
+                  </span>
                 ))}
               </div>
             </div>
           )}
+          {detailHours.length > 0 && (
+            <details className="group mt-3 rounded-2xl border border-amber-100 bg-white">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-black text-amber-800 [&::-webkit-details-marker]:hidden">
+                تفصيل الساعات
+                <span className="text-xs text-amber-600 transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
+              </summary>
+              <div className="border-t border-amber-100 px-3 pb-3">
+                <div className="grid grid-cols-[4.5rem_1fr_3rem_3rem] items-center gap-x-2 py-2 text-[10px] font-black text-slate-400">
+                  <span>الساعة</span>
+                  <span>الشمس · <span className="text-amber-600">الفائض</span></span>
+                  <span className="text-center">فائض</span>
+                  <span className="text-center">🔋</span>
+                </div>
+                {detailHours.map((point) => {
+                  const inWindow = point.time >= best.start && point.time <= best.end;
+                  return (
+                    <div key={point.time} className={"grid grid-cols-[4.5rem_1fr_3rem_3rem] items-center gap-x-2 rounded-lg py-1.5 text-[11px] font-bold " + (inWindow ? "bg-amber-50" : "")}>
+                      <bdi dir="ltr" className="text-right text-slate-600">{siteClock(point.time)}</bdi>
+                      <div className="relative h-2.5 overflow-hidden rounded-full bg-slate-100" title={`الشمس ${Math.round(point.solarKWh * 10) / 10} kWh`}>
+                        <div className="absolute inset-y-0 right-0 rounded-full bg-amber-200" style={{ width: `${(point.solarKWh / maxSolar) * 100}%` }} />
+                        <div className="absolute inset-y-0 right-0 rounded-full bg-amber-500" style={{ width: `${(point.surplusKWh / maxSolar) * 100}%` }} />
+                      </div>
+                      <bdi dir="ltr" className={"text-center " + (point.surplusKWh >= 0.05 ? "font-black text-amber-700" : "text-slate-400")}>{point.surplusKWh >= 0.05 ? (Math.round(point.surplusKWh * 10) / 10).toFixed(1) : "—"}</bdi>
+                      <bdi dir="ltr" className="text-center text-emerald-700">{Math.round(point.socPct!)}%</bdi>
+                    </div>
+                  );
+                })}
+                <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">الأرقام بالـ kWh لكل ساعة. الفائض هو ما يبقى بعد البيت وشحن البطارية، و🔋 مستوى البطارية في آخر الساعة. الصفوف المظللة هي النافذة الأفضل.</p>
+              </div>
+            </details>
+          )}
+
         </>
       )}
 

@@ -69,15 +69,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-[calc(env(safe-area-inset-top)+0.5rem)] z-50 mx-2 mt-2 overflow-hidden rounded-[1.75rem] border border-slate-200/70 bg-white/90 shadow-[0_8px_28px_rgba(82,55,38,0.08)] backdrop-blur-xl sm:mx-auto sm:max-w-5xl lg:max-w-6xl">
         <div className="mx-auto flex max-w-5xl items-center lg:max-w-6xl justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3" aria-label="Solar">
+            <SolarMark />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <SolarMark />
-                <div className="truncate text-xl font-black tracking-tight text-slate-950 sm:text-2xl">Solar</div>
+                <div className="truncate text-xl font-black leading-tight tracking-tight text-slate-950 sm:text-2xl">Solar</div>
                 <span className="hidden rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-black text-emerald-700 sm:inline-flex">
                   طاقة ذكية
                 </span>
               </div>
-              <div className="mt-0.5 truncate text-[11px] font-black text-black sm:text-xs">
+              <div className="truncate text-[11px] font-black leading-tight text-black sm:text-xs">
                 الطاقة البديلة
               </div>
             </div>

@@ -3,8 +3,8 @@ import { SmartEnergyProvider } from "@/components/smart-energy-provider";
 import { SurplusRecommendations } from "@/components/surplus-recommendations";
 
 /**
- * الطاقة، من الأهم إلى التفاصيل: الأيام ويومها المختار، ثم أفضل وقت لاستخدام
- * الشمس، ثم البطارية خلال الأيام، ثم الليل، ثم التفاصيل المطوية.
+ * الطاقة، من الأهم إلى التفاصيل: الليلة الجارية (ليلًا فقط)، ثم الأيام ويومها
+ * المختار، ثم البطارية يومًا بيوم، ثم أفضل وقت لاستخدام الشمس.
  */
 export default function EnergyPage() {
   return (

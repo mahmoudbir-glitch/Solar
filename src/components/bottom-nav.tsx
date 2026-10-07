@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { LayoutGrid, Lightbulb, BatteryFull, Zap, Coins, SlidersHorizontal } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
-/* Idle tabs are a calm grey; on the phone the open tab is a solid pill in the colour of what it is about (the same colours its page
+/* Idle tabs are a calm grey; on the phone the open tab is a solid circle in the colour of what it is about (the same colours its page
  * header and numbers use): overview indigo, home sky, battery emerald, solar
  * energy amber, money teal, settings rose. Full class strings for Tailwind. */
 type NavTone = { icon: string; idle: string; active: string; desktop: string };
@@ -78,7 +78,7 @@ export function BottomNav() {
       aria-label="التنقل السفلي"
       className="fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] z-50 mx-auto max-w-lg rounded-full border border-slate-200/80 bg-white/95 p-1.5 shadow-[0_10px_35px_rgba(82,55,38,0.14)] backdrop-blur-xl md:hidden"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-6 gap-1">
+      <div className="mx-auto grid max-w-lg grid-cols-6 items-center justify-items-center gap-0.5">
         {navItems.map(({ href, label, Icon, tone }) => {
           const active = isNavActive(path, href);
           const t = TONES[tone];
@@ -88,13 +88,13 @@ export function BottomNav() {
               href={href}
               aria-current={active ? 'page' : undefined}
               className={
-                'group flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-full px-1 text-[10px] font-extrabold transition-all active:scale-95 ' +
+                'group flex aspect-square w-full max-w-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-extrabold transition-all active:scale-95 ' +
                 (active
                   ? 'shadow-md ring-1 ' + t.active
                   : 'text-slate-600 ' + t.idle)
               }
             >
-              <span className="flex h-7 w-10 items-center justify-center">
+              <span className="flex h-6 w-8 items-center justify-center">
                 <Icon size={21} strokeWidth={active ? 2.6 : 2.1} aria-hidden="true" className={active ? undefined : t.icon} />
               </span>
               <span className="leading-none">{label}</span>
