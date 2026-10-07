@@ -1,5 +1,6 @@
 "use client";
 
+import { BatteryFlowSplit } from "@/components/energy-split";
 import React, { useCallback, useEffect, useState } from "react";
 import { BatteryCharging, BatteryFull, Clock, Gauge, Loader2, Thermometer, Zap } from "lucide-react";
 import type { EnergySnapshot } from "@/lib/energy";
@@ -170,7 +171,12 @@ export default function BatteryPage() {
       <section className="energy-card space-y-2 p-4">
         <h2 className="text-sm font-black text-slate-900">نسبة الشحن خلال آخر 24 ساعة</h2>
         {history && history.points.filter((p) => typeof p.soc === "number").length >= 2 ? (
-          <SocChart points={history.points} timeZone={history.timezone || "Asia/Beirut"} now={Date.now()} reservePct={settings?.batteryMinReservePct ?? 20} />
+          <>
+            <BatteryFlowSplit points={history.points} now={Date.now()} />
+            <div className="border-t border-slate-100 pt-3">
+              <SocChart points={history.points} timeZone={history.timezone || "Asia/Beirut"} now={Date.now()} reservePct={settings?.batteryMinReservePct ?? 20} />
+            </div>
+          </>
         ) : (
           <p className="py-6 text-center text-xs font-semibold text-slate-400">يظهر المنحنى بعد تجمّع قراءات كافية (نحو ساعة من الاستخدام).</p>
         )}

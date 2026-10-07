@@ -1,5 +1,6 @@
 "use client";
 
+import { HomeSourceSplit } from "@/components/energy-split";
 import React, { useCallback, useEffect, useState } from "react";
 import { Lightbulb, Loader2, RefreshCw } from "lucide-react";
 import type { EnergySnapshot } from "@/lib/energy";
@@ -152,7 +153,12 @@ export default function HomeConsumptionPage() {
       <section className="energy-card space-y-2 p-4">
         <h2 className="text-sm font-black text-slate-900">آخر 24 ساعة</h2>
         {history && history.points.length >= 2 ? (
-          <LoadChart points={history.points} timeZone={timeZone} now={Date.now()} />
+          <>
+            <HomeSourceSplit points={history.points} now={Date.now()} />
+            <div className="border-t border-slate-100 pt-3">
+              <LoadChart points={history.points} timeZone={timeZone} now={Date.now()} />
+            </div>
+          </>
         ) : (
           <p className="py-6 text-center text-xs font-semibold text-slate-400">يظهر المنحنى بعد تجمّع قراءات كافية (نحو ساعة من الاستخدام).</p>
         )}
