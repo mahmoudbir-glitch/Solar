@@ -31,6 +31,9 @@ export function SurplusRecommendations() {
   const tomorrowBest = todayBest ? undefined : bestWindow(1);
   const best = todayBest ?? tomorrowBest;
   const dayWord = todayBest ? "اليوم" : "غدًا";
+  // The hour in progress is the first of today's hours with a modelled level;
+  // a window starting there starts now, not at that hour's (past) top.
+  const nowHour = forecasts[0]?.hourly.find((point) => typeof point.socPct === "number")?.time;
   const todayLeftKWh = (forecasts[0]?.hourly ?? []).reduce((sum, point) => sum + point.surplusKWh, 0);
 
   // Hour by hour for the day the window belongs to: only hours still ahead
@@ -73,7 +76,7 @@ export function SurplusRecommendations() {
               <div className="min-w-0">
                 <span className="block text-[11px] font-bold text-slate-500">☀️ النافذة الأفضل</span>
                 <strong className="mt-0.5 block text-2xl font-black tracking-tight text-amber-700">
-                  {siteClock(best.start)} – {siteClock(best.end, 1)}
+                  {todayBest && best.start === nowHour ? "الآن" : siteClock(best.start)} – {siteClock(best.end, 1)}
                 </strong>
               </div>
               <div className="shrink-0 text-left">
