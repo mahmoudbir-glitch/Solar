@@ -839,3 +839,15 @@ test("battery-by-day header says 'من يومين', not 'من 2 أيام'", () =
   const timeline = read("src/components/battery-timeline.tsx");
   assert.ok(timeline.includes('withNight.length === 2 ? "يومين"'));
 });
+
+test("cron sync accepts the secret only in the Authorization header, never in the URL", () => {
+  const source = read("src/app/api/telemetry/sync/route.ts");
+  assert.match(source, /startsWith\("Bearer "\)/);
+  assert.doesNotMatch(source, /searchParams/);
+});
+
+test("failed sign-ins only store a user name that belongs to a real account", () => {
+  const source = read("src/app/api/auth/login/route.ts");
+  assert.match(source, /username:\s*knownName \? username : null/);
+  assert.doesNotMatch(source, /username:\s*username \|\| null/);
+});

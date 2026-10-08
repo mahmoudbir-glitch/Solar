@@ -9,14 +9,16 @@ export const maxDuration = 60;
 
 // An external scheduler (e.g. cron-job.org) calls this every minute so readings
 // are recorded even while nobody has the app open. It is protected by
-// CRON_SECRET, sent as "Authorization: Bearer <secret>" or "?key=<secret>".
+// CRON_SECRET, sent only as "Authorization: Bearer <secret>". A "?key=" query
+// parameter is deliberately not accepted: URLs end up in the scheduler's and
+// the host's request logs, headers do not.
 function authorized(request: NextRequest) {
   // A value pasted into the hosting dashboard often carries a trailing line
   // break; without trimming, the key that was copied never matches it.
   const expected = process.env.CRON_SECRET?.trim();
   if (!expected || expected.length < 16) return false;
   const header = request.headers.get("authorization") ?? "";
-  const given = (header.startsWith("Bearer ") ? header.slice(7) : request.nextUrl.searchParams.get("key") ?? "").trim();
+  const given = (header.startsWith("Bearer ") ? header.slice(7) : "").trim();
   // Compare digests so the lengths always match and timing reveals nothing.
   const a = createHash("sha256").update(given).digest();
   const b = createHash("sha256").update(expected).digest();

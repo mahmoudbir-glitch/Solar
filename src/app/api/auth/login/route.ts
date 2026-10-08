@@ -85,9 +85,13 @@ export async function POST(request: NextRequest) {
     const nextState = attempts.get(key) || { count: 0, resetAt: now + WINDOW_MS };
     nextState.count++;
     attempts.set(key, nextState);
+    // Keep the typed name only when it belongs to a real account. Anything else
+    // may be a password typed into the wrong field, and must not be stored.
+    const knownName =
+      usernameOk || Boolean(config.ownerUsername && safeEqual(username, config.ownerUsername));
     await recordMonitoringEvent({
       action: MONITORING_ACTIONS.LOGIN_FAILED,
-      username: username || null,
+      username: knownName ? username : null,
       success: false,
       details: `${usernameOk ? "password_mismatch" : "username_mismatch"}; ${clientDetail(tag)}`,
     });
