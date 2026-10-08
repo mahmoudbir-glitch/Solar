@@ -277,17 +277,36 @@ export function deviceFromSn(pn: string, sn: string): DessDevice | null {
 }
 
 /**
- * Picks the device to read. An account can hold several dataloggers (for
- * example one that was added but never got Wi-Fi, next to the working one), and
- * reading the first match would keep hitting the offline one. So: prefer an
- * online device whose PN matches, then any online device, then a PN match, and
- * only then whatever is first. status 1 means offline in SmartESS.
+ * Picks the device to read. The saved datalogger PN is the owner's choice and
+ * is never overridden: with several devices on the account, only one whose PN
+ * matches is read (an online one first; status 1 means offline in SmartESS),
+ * and when none matches nothing is picked, so the caller can ask the owner
+ * instead of silently reading someone else's inverter. An account with a single
+ * device has no such ambiguity, so that device is used even if the PN was
+ * mistyped or never entered.
  */
 export function pickDevice(devices: Array<Record<string, unknown>>, wantedPn: string) {
   const wanted = wantedPn.trim();
-  const online = devices.filter((entry) => Number(entry.status) !== 1);
-  const matches = (entry: Record<string, unknown>) => String(entry.pn ?? "").trim() === wanted;
-  return online.find(matches) ?? online[0] ?? devices.find(matches) ?? devices[0];
+  const isOnline = (entry: Record<string, unknown>) => Number(entry.status) !== 1;
+  if (wanted) {
+    // Some listings omit the PN; the device SN always starts with it.
+    const matching = devices.filter((entry) => {
+      const pn = String(entry.pn ?? "").trim();
+      return pn ? pn === wanted : String(entry.sn ?? "").trim().startsWith(wanted);
+    });
+    if (matching.length) return matching.find(isOnline) ?? matching[0];
+  }
+  return devices.length === 1 ? devices[0] : undefined;
+}
+
+/** Says why no device was picked, naming the PNs the owner can choose from. */
+export function describeNoDevice(devices: Array<Record<string, unknown>>, wantedPn: string): string {
+  if (!devices.length) return "تم تسجيل الدخول إلى SmartESS، لكن الحساب لا يحتوي أي جهاز.";
+  const pns = Array.from(new Set(devices.map((entry) => String(entry.pn ?? entry.sn ?? "").trim()).filter(Boolean))).join("، ");
+  const wanted = wantedPn.trim();
+  return wanted
+    ? `حساب SmartESS يحتوي ${devices.length} أجهزة ولا يطابق أيٌّ منها رقم الدنجل المحفوظ (${wanted}). الأرقام الموجودة في الحساب: ${pns}. اكتب الرقم الصحيح في خانة «رقم Datalogger (PN)» ثم أعد الاختبار.`
+    : `حساب SmartESS يحتوي ${devices.length} أجهزة ولم يُحدَّد أيها يخص هذه المنظومة. الأرقام الموجودة في الحساب: ${pns}. اكتب رقم الدنجل في خانة «رقم Datalogger (PN)» ثم أعد الاختبار.`;
 }
 
 export type DessReading = {

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth-session";
-import { storeReading } from "@/lib/smartess-sync";
+import { FROZEN_REASON, isFrozen, storeReading } from "@/lib/smartess-sync";
 import { assertPublicEndpoint, fetchPublicEndpoint, PrivateEndpointError } from "@/lib/net-guard";
 import { decryptSecret } from "@/lib/inverter-config-crypto";
 import { patchConnectionExtras } from "@/lib/connection-extras";
-import { authenticate, describeDessError, discoverDevices, pickDevice, readLastData } from "@/lib/dessmonitor";
+import { authenticate, describeDessError, describeNoDevice, discoverDevices, pickDevice, readLastData } from "@/lib/dessmonitor";
 
 // Login, discovery and up to three read actions against a slow server.
 export const maxDuration = 60;
@@ -101,11 +101,14 @@ export async function POST(request: NextRequest) {
 
         if (!device) {
           const pns = discovery.collectors.map((entry) => String(entry.pn ?? "")).filter(Boolean).join("، ") || "لا يوجد";
-          const message = `تم تسجيل الدخول إلى SmartESS، لكن لم نجد جهازاً قابلاً للقراءة. جوامع البيانات في الحساب: ${pns}. المحاولات: ${discovery.attempts.join(" | ")}`;
+          // Several devices and none is the saved one: never guess, ask the owner.
+          const message = devices.length
+            ? describeNoDevice(devices, wanted)
+            : `تم تسجيل الدخول إلى SmartESS، لكن لم نجد جهازاً قابلاً للقراءة. جوامع البيانات في الحساب: ${pns}. المحاولات: ${discovery.attempts.join(" | ")}`;
           await prisma.inverterConnection
             .update({ where: { id: row.id }, data: { lastStatus: "error", lastTestResult: "error", lastTestReason: message } })
             .catch(() => {});
-          return NextResponse.json({ ok: false, source: "dessmonitor", error: "no_devices", message }, { status: 502 });
+          return NextResponse.json({ ok: false, source: "dessmonitor", error: devices.length ? "device_not_selected" : "no_devices", message }, { status: 502 });
         }
 
         // status 1 = Offline in SmartESS: the login worked but the datalogger is
@@ -138,11 +141,26 @@ export async function POST(request: NextRequest) {
         }).catch((error) => console.error("[inverter] remember_device_failed", error));
 
         const latencyMs = Date.now() - started;
+        // A login and a device are not a working connection: SmartESS keeps
+        // answering with its last values after the dongle stops uploading. The
+        // test only passes on a reading that is complete and still changing.
+        const notLive = async (error: string, message: string) => {
+          await prisma.inverterConnection
+            .update({ where: { id: row.id }, data: { lastStatus: "error", lastTestResult: "error", lastTestLatencyMs: latencyMs, lastTestReason: message } })
+            .catch(() => {});
+          return NextResponse.json({ ok: false, source: "dessmonitor", error, message, latencyMs, parameters: reading.parameters }, { status: 502 });
+        };
+        if (await isFrozen(reading).catch(() => false)) return await notLive("telemetry_frozen", FROZEN_REASON);
+
         // Store what the test just read so the dashboard shows it straight away.
+        let storeCrashed = false;
         const stored = await storeReading(reading, device).catch((error) => {
+          storeCrashed = true;
           console.error("[inverter] store_reading_failed", error);
           return { ok: false as const, reason: "تعذر حفظ القراءة." };
         });
+        // Missing values come from SmartESS; a database error does not.
+        if (!stored.ok && !storeCrashed) return await notLive("telemetry_incomplete", stored.reason);
         const mapped = Object.entries(reading)
           .filter(([key, value]) => key !== "parameters" && key !== "raw" && value !== undefined)
           .map(([key]) => key);
