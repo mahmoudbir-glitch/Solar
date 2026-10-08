@@ -26,20 +26,6 @@ export type EnergySnapshot = {
   currency?: string;
 };
 
-export const demoSnapshot: EnergySnapshot = {
-  timestamp: "2026-01-01T12:00:00.000Z",
-  solarPowerW: 5827,
-  homePowerW: 1299,
-  gridPowerW: -452,
-  batteryPowerW: 4976,
-  batterySoc: 78,
-  batteryVoltage: 25.6,
-  batteryCurrent: 194,
-  batteryTemperature: 29,
-  gridConnected: true,
-  source: "demo",
-};
-
 export function batteryState(w: number): BatteryState {
   return w > 50 ? "charging" : w < -50 ? "discharging" : "idle";
 }

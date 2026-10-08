@@ -355,14 +355,42 @@ test("SmartESS login is reused so the owner's phone app is not signed out repeat
   assert.match(sync, /reason: "auth_backoff"/);
 });
 
-test("the reader prefers an online device over the first PN match", () => {
-  // An account can hold a never-connected datalogger next to the working one.
+test("the reader never switches to a device other than the saved datalogger", () => {
+  // With several devices on the account, falling back to "any online device"
+  // could silently read another inverter. Only a single device is unambiguous.
   const lib = read("src/lib/dessmonitor.ts");
   assert.match(lib, /export function pickDevice/);
-  assert.match(lib, /Number\(entry\.status\) !== 1/);
-  assert.match(read("src/lib/smartess-sync.ts"), /pickDevice\(devices, wanted\)/);
-  assert.match(read("src/app/api/inverter/test/route.ts"), /pickDevice\(devices, wanted\)/);
+  assert.match(lib, /return devices\.length === 1 \? devices\[0\] : undefined;/);
+  const sync = read("src/lib/smartess-sync.ts");
+  assert.match(sync, /pickDevice\(devices, wanted\)/);
+  assert.match(sync, /if \(!device\) return await fail\(describeNoDevice\(devices, wanted\)\);/);
+  // A remembered device is dropped once the owner saves a different PN.
+  assert.match(sync, /\(!wanted \|\| remembered\.pn === wanted\)/);
+  const route = read("src/app/api/inverter/test/route.ts");
+  assert.match(route, /pickDevice\(devices, wanted\)/);
+  assert.match(route, /describeNoDevice\(devices, wanted\)/);
 });
+
+test("device choice follows the saved PN", { skip: !process.features?.typescript }, async () => {
+  const { pickDevice } = await import("../src/lib/dessmonitor.ts");
+  const a = { pn: "A1", sn: "A1094801", devcode: 2376, status: 1 };
+  const b = { pn: "B2", sn: "B2094801", devcode: 2376, status: 0 };
+  assert.equal(pickDevice([a, b], "A1"), a, "the saved device is kept even while it is offline");
+  assert.equal(pickDevice([a, b], "C3"), undefined);
+  assert.equal(pickDevice([a, b], ""), undefined);
+  assert.equal(pickDevice([b], "C3"), b, "a single device is unambiguous");
+  assert.equal(pickDevice([{ sn: "A1094801", devcode: 2376 }, b], "A1").sn, "A1094801");
+  assert.equal(pickDevice([], "A1"), undefined);
+});
+
+test("connection test passes only on a complete, still-changing reading", () => {
+  const route = read("src/app/api/inverter/test/route.ts");
+  assert.match(route, /if \(await isFrozen\(reading\)\.catch\(\(\) => false\)\) return await notLive\("telemetry_frozen", FROZEN_REASON\);/);
+  assert.match(route, /if \(!stored\.ok && !storeCrashed\) return await notLive\("telemetry_incomplete", stored\.reason\);/);
+  // The frozen check comes before the reading is stored.
+  assert.ok(route.indexOf('notLive("telemetry_frozen"') < route.indexOf("await storeReading(reading, device)"));
+});
+
 
 test("device discovery falls back beyond the energy-storage listing", () => {
   // A device of type "Other" is missing from webQueryDeviceEs (ERR_NOT_FOUND_DEVICE)

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/inverter-config-crypto";
 import { patchConnectionExtras } from "@/lib/connection-extras";
-import { authenticate, DessError, describeDessError, discoverDevices, listCollectors, pickDevice, readLastData, type DessAuth, type DessDevice, type DessReading } from "@/lib/dessmonitor";
+import { authenticate, DessError, describeDessError, describeNoDevice, discoverDevices, listCollectors, pickDevice, readLastData, type DessAuth, type DessDevice, type DessReading } from "@/lib/dessmonitor";
 import { ingestSample } from "@/lib/telemetry-store";
 import { adoptEnvCloudAccount, defaultConnectionData, envCloudAccount } from "@/lib/smartess-env";
 
@@ -35,7 +35,9 @@ const nearlyEqual = (a: number | null | undefined, b: number | null | undefined)
  * still for 15 minutes, so identical readings across that window mean the data
  * is frozen and must not be stored (it would inflate today's totals).
  */
-async function isFrozen(reading: DessReading) {
+export const FROZEN_REASON = "الدنجل لا يرسل قراءات جديدة: القيم نفسها منذ 15 دقيقة. تأكد أن الدنجل متصل بالواي فاي.";
+
+export async function isFrozen(reading: DessReading) {
   const select = { timestamp: true, pvPowerW: true, loadPowerW: true, batterySoc: true, batteryPowerW: true, batteryVoltage: true } as const;
   const next = {
     pv: Math.max(0, reading.solarPowerW ?? 0),
@@ -226,10 +228,13 @@ async function run(deadline: number): Promise<SyncResult> {
 
     // The connection test stores the device that worked; reuse it so each sync
     // is a single read instead of up to seven discovery calls.
+    // A remembered device is only reused while it is still the datalogger the
+    // owner has saved; after the PN is changed, the device is looked up again.
+    const wanted = (row.dataloggerPn || "").trim();
     const remembered = extras.dessDevice as DessDevice | undefined;
     let target: DessDevice;
     let device: Record<string, unknown> | undefined;
-    if (remembered && remembered.pn && remembered.sn && Number.isFinite(Number(remembered.devcode))) {
+    if (remembered && remembered.pn && remembered.sn && Number.isFinite(Number(remembered.devcode)) && (!wanted || remembered.pn === wanted)) {
       target = { pn: remembered.pn, sn: remembered.sn, devcode: Number(remembered.devcode), devaddr: Number(remembered.devaddr ?? 1) };
       // The remembered path skips discovery, so re-check the datalogger's
       // online status now and then (one call). A failed check is ignored.
@@ -248,9 +253,8 @@ async function run(deadline: number): Promise<SyncResult> {
       }
     } else {
       const { devices } = await discoverDevices(auth, cloudUrl, timeout);
-      const wanted = (row.dataloggerPn || "").trim();
       device = pickDevice(devices, wanted);
-      if (!device) return await fail("تم تسجيل الدخول إلى SmartESS، لكن الحساب لا يحتوي أي جهاز.");
+      if (!device) return await fail(describeNoDevice(devices, wanted));
 
       // SmartESS reports an offline device's last known values as if current.
       // Storing them would show hours-old numbers as live, so refuse.
@@ -268,6 +272,11 @@ async function run(deadline: number): Promise<SyncResult> {
       await patchExtras((stored) => {
         stored.dessDevice = target;
       }).catch((error) => console.error("[smartess] remember_device_failed", error));
+      // Only reached with a different PN when the account holds a single
+      // device: save its real PN so the remembered device keeps being reused.
+      if (target.pn && target.pn !== wanted) {
+        await prisma.inverterConnection.update({ where: { id: row.id }, data: { dataloggerPn: target.pn } }).catch(() => {});
+      }
     }
 
     const reading = await readLastData(auth, target, cloudUrl, timeout);
@@ -281,7 +290,7 @@ async function run(deadline: number): Promise<SyncResult> {
     // a reading that arrives that late must not be stored as "now".
     if (Date.now() > deadline) return { ok: false, reason: "transient" };
     if (await isFrozen(reading)) {
-      return await fail("الدنجل لا يرسل قراءات جديدة: القيم نفسها منذ 15 دقيقة. تأكد أن الدنجل متصل بالواي فاي.");
+      return await fail(FROZEN_REASON);
     }
     const stored = await storeReading(reading, device);
     if (!stored.ok) return await fail(stored.reason);
