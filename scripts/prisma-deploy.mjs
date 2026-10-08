@@ -38,8 +38,9 @@ if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") {
   process.exit(0);
 }
 
+// Same order as src/lib/prisma.ts, so migrations run on the database the app uses.
 const databaseUrl =
-  process.env.DATABASE_URL || process.env.PRISMA_DATABASE_URL || process.env.POSTGRES_URL;
+  process.env.SOLAR_DATABASE_URL || process.env.DATABASE_URL || process.env.PRISMA_DATABASE_URL || process.env.POSTGRES_URL;
 
 if (!databaseUrl) {
   console.error("[solar] DATABASE_URL is not set; cannot run migrations.");

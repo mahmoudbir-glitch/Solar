@@ -863,3 +863,8 @@ test("per-minute sync keeps database work low", () => {
   // The frozen-data check reads at most an hour of rows.
   assert.match(read("src/lib/smartess-sync.ts"), /take: 60,/);
 });
+
+test("the app and its migrations use the same database, SOLAR_DATABASE_URL first", () => {
+  assert.match(read("src/lib/prisma.ts"), /process\.env\.SOLAR_DATABASE_URL \|\|\s*process\.env\.DATABASE_URL/);
+  assert.match(read("scripts/prisma-deploy.mjs"), /process\.env\.SOLAR_DATABASE_URL \|\| process\.env\.DATABASE_URL/);
+});
