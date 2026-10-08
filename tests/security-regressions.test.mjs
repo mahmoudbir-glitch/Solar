@@ -820,3 +820,12 @@ test("off-grid, the grid icon stays idle like its label", () => {
   const flow = read("src/components/energy-flow.tsx");
   assert.ok(flow.includes("<GridTowerIcon active={gridConnected === true && !inverterOffGrid} />"));
 });
+
+test("split percentages always add up to 100", { skip: !canLoadTs }, async () => {
+  const { percentsOf } = await import("../src/lib/energy.ts");
+  const sum = (a) => a.reduce((s, v) => s + v, 0);
+  assert.deepEqual(percentsOf([1, 1, 1]).sort(), [33, 33, 34]);
+  assert.equal(sum(percentsOf([0.5, 0.5, 0.5, 0])), 100);
+  assert.equal(sum(percentsOf([2.345, 1.005, 0.65])), 100);
+  assert.deepEqual(percentsOf([0, 0, 0]), [0, 0, 0]);
+});

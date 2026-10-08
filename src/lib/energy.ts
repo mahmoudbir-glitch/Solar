@@ -220,3 +220,23 @@ export function batteryAmpHours(kWh: number | null | undefined, nominal?: number
   if (typeof kWh !== "number" || !Number.isFinite(kWh)) return null;
   return (Math.abs(kWh) * 1000) / batteryWorkingVolts(nominal);
 }
+
+/**
+ * Whole percentages of a split that always add up to 100 (largest remainder):
+ * rounding each part on its own gave 33 + 33 + 33 = 99 or 101.
+ */
+export function percentsOf(values: number[]): number[] {
+  const parts = values.map((v) => (Number.isFinite(v) && v > 0 ? v : 0));
+  const total = parts.reduce((sum, v) => sum + v, 0);
+  if (total <= 0) return parts.map(() => 0);
+  const exact = parts.map((v) => (v / total) * 100);
+  const floors = exact.map(Math.floor);
+  let left = 100 - floors.reduce((sum, v) => sum + v, 0);
+  const order = exact.map((v, i) => ({ i, r: v - floors[i] })).sort((a, b) => b.r - a.r);
+  for (const { i } of order) {
+    if (left <= 0) break;
+    floors[i] += 1;
+    left -= 1;
+  }
+  return floors;
+}
