@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { moneyTone, semanticBg, semanticBorder, semanticText } from "@/lib/energy";
 import { AmpPill } from "@/components/amp-pill";
 import { StatTile } from "@/components/stat-tile";
-import { acAmpHours } from "@/lib/energy";
+import { acAmpHours, percentsOf } from "@/lib/energy";
 
 type Period = "day" | "week" | "month";
 
@@ -146,12 +146,14 @@ export default function MoneyDashboard() {
   const savedAmount = useMemo(() => hypotheticalCost - gridCost + exportIncome, [hypotheticalCost, gridCost, exportIncome]);
   const savedTone = moneyTone(savedAmount);
 
+  // Percentages from the kWh, rounded so the three always add up to 100.
+  const [solarPct, batteryPct, gridPct] = data ? percentsOf([data.sources.solarKWh, data.sources.batteryKWh, data.sources.gridKWh]) : [0, 0, 0];
   const sourceRows = data
     ? sourceStyles.map((style) => {
         const values = {
-          solar: { pct: data.sources.solarPct, kwh: data.sources.solarKWh },
-          battery: { pct: data.sources.batteryPct, kwh: data.sources.batteryKWh },
-          grid: { pct: data.sources.gridPct, kwh: data.sources.gridKWh },
+          solar: { pct: solarPct, kwh: data.sources.solarKWh },
+          battery: { pct: batteryPct, kwh: data.sources.batteryKWh },
+          grid: { pct: gridPct, kwh: data.sources.gridKWh },
         }[style.key];
 
         return { ...style, pct: values.pct, kwh: values.kwh };

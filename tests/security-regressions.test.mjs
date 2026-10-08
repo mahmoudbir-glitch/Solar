@@ -829,3 +829,8 @@ test("split percentages always add up to 100", { skip: !canLoadTs }, async () =>
   assert.equal(sum(percentsOf([2.345, 1.005, 0.65])), 100);
   assert.deepEqual(percentsOf([0, 0, 0]), [0, 0, 0]);
 });
+
+test("money page source percentages come from the kWh and add up to 100", () => {
+  const page = read("src/app/money/page.tsx");
+  assert.ok(page.includes("percentsOf([data.sources.solarKWh, data.sources.batteryKWh, data.sources.gridKWh])"));
+});
