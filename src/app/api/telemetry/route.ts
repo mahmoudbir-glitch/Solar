@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
         // Priced with the current tariff, so correcting the tariff in Settings
         // also corrects today's figure (the stored running sum used old prices).
         todayGridSavings: today
-          ? Math.round((Math.max(0, today.homeKWh - today.gridImportKWh) * (settings?.gridTariff ?? 0) + today.gridExportKWh * (settings?.exportTariff ?? 0)) * 100) / 100
+          ? Math.round(((today.homeKWh - today.gridImportKWh) * (settings?.gridTariff ?? 0) + today.gridExportKWh * (settings?.exportTariff ?? 0)) * 100) / 100
           : undefined,
         currency: settings?.currency ?? undefined,
       },

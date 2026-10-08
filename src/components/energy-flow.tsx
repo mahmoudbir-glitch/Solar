@@ -84,7 +84,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   // <bdi dir="ltr"> keeps "1.23 kW" in that order inside the RTL layout.
   const formatKw = (value: number) => <bdi dir="ltr">{Math.abs(value).toFixed(2) + ' kW'}</bdi>;
   const formatKwh = (value?: number) => value === undefined ? '—' : <bdi dir="ltr">{value.toFixed(1) + ' kWh'}</bdi>;
-  const formatSavings = (value?: number) => value === undefined ? '—' : savingsCurrency + value.toFixed(2);
+  const formatSavings = (value?: number) => value === undefined ? '—' : <bdi dir="ltr">{(value < 0 ? '-' : '') + savingsCurrency + Math.abs(value).toFixed(2)}</bdi>;
 
   const operatingMode = !isLive
     ? { label: 'بانتظار البيانات الحية', className: 'border-slate-200 bg-slate-50 text-slate-600' }
@@ -220,10 +220,10 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
 
         <button type="button" onClick={() => setActiveNode("grid")} aria-label="عرض تفاصيل الشبكة" className="absolute left-[18%] top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transition-transform active:scale-95">
           <div
-            className={gridConnected === true ? "relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-violet-200 bg-gradient-to-br from-violet-400 to-violet-600" : "relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-200 bg-slate-100"}
+            className={gridConnected === true && !inverterOffGrid ? "relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-violet-200 bg-gradient-to-br from-violet-400 to-violet-600" : "relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-200 bg-slate-100"}
             style={gridConnected === true && (gridImporting || gridExporting) ? { boxShadow: `0 10px 24px rgba(133,72,242,${gridGlowStrength}), 0 0 ${Math.round(16 + Math.abs(gridKw) * 2.5)}px rgba(133,72,242,${gridGlowStrength * 0.5})`, animation: `energy-node-pulse ${gridPulseDuration}s ease-in-out infinite` } : undefined}
           >
-            <GridTowerIcon active={gridConnected === true} />
+            <GridTowerIcon active={gridConnected === true && !inverterOffGrid} />
           </div>
           <div className="pointer-events-none absolute left-1/2 top-full mt-1.5 w-[7.5rem] -translate-x-1/2 text-center">
             <div className="text-xs font-black text-slate-700">الشبكة</div>
@@ -320,7 +320,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
               {activeNode === "grid" && (
                 <>
                   <div className="rounded-xl bg-violet-50 p-3"><div className="font-bold text-slate-500">الحالة</div><div className={"mt-1 font-black " + (gridConnected === true && !inverterOffGrid ? "text-violet-700" : "text-slate-600")}>{gridConnected == null ? "غير معروفة" : !gridConnected ? "مقطوعة" : inverterOffGrid ? "غير مستخدمة (منفصل)" : "متصلة"}</div></div>
-                  <div className="rounded-xl bg-slate-50 p-3"><div className="font-bold text-slate-500">التدفق</div><div className="mt-1 font-black text-slate-800">{gridExporting ? "تصدير" : gridImporting ? "سحب" : "متوازن / لا يوجد تدفق"}</div></div>
+                  <div className="rounded-xl bg-slate-50 p-3"><div className="font-bold text-slate-500">التدفق</div><div className="mt-1 font-black text-slate-800">{gridExporting ? "تصدير" : gridImporting ? "سحب" : "متوازن / لا يوجد تدفق"}</div><div className="mt-1 font-black text-violet-700">{formatKw(gridKw)}</div><div className="mt-1.5"><AmpPill tone="violet" amps={isLive ? gridAmps : null} muted={!gridImporting && !gridExporting} /></div></div>
                 </>
               )}
             </div>
@@ -335,7 +335,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
         <div className="grid grid-cols-3 divide-x divide-x-reverse divide-slate-200 text-center">
           <div className="px-2"><div className="text-[11px] font-bold text-slate-500">إنتاج اليوم</div><div className="mt-1 text-base font-black text-amber-600 sm:text-lg">{formatKwh(todayProductionKWh)}</div><div className="mt-1.5"><AmpPill tone="amber" unit="Ah" amps={acAmpHours(todayProductionKWh)} /></div></div>
           <div className="px-2"><div className="text-[11px] font-bold text-slate-500">استهلاك اليوم</div><div className="mt-1 text-base font-black text-sky-700 sm:text-lg">{formatKwh(todayHomeUsageKWh)}</div><div className="mt-1.5"><AmpPill tone="sky" unit="Ah" amps={acAmpHours(todayHomeUsageKWh)} /></div></div>
-          <div className="px-2"><div className="text-[11px] font-bold text-slate-500">وفر اليوم</div><div className="mt-1 text-base font-black text-emerald-600 sm:text-lg">{formatSavings(todayGridSavings)}</div></div>
+          <div className="px-2"><div className="text-[11px] font-bold text-slate-500">وفر اليوم</div><div className={"mt-1 text-base font-black sm:text-lg " + ((todayGridSavings ?? 0) < 0 ? "text-rose-600" : "text-emerald-600")}>{formatSavings(todayGridSavings)}</div></div>
         </div>
         {todayProductionKWh === undefined && todayHomeUsageKWh === undefined && <p className="mt-2 text-center text-[10px] font-semibold text-slate-400">تُحسب أرقام اليوم تلقائياً مع تجمّع القراءات.</p>}
       </div>

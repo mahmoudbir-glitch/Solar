@@ -129,7 +129,7 @@ export default function BatteryPage() {
               </div>
             </div>
             {snapshot && <p className="mt-3 text-sm font-bold text-slate-500">{Math.abs(powerW).toLocaleString("en-US")} واط</p>}
-            {snapshot && <span className="mt-2"><AmpPill tone="emerald" amps={batteryAmps(snapshot)} muted={Math.abs(powerW) < 50} /></span>}
+            {snapshot && <span className="mt-2"><AmpPill tone="emerald" amps={batteryAmps(snapshot, settings?.batteryNominalVoltage)} muted={Math.abs(powerW) < 50} /></span>}
           </>
         )}
       </section>
@@ -144,7 +144,7 @@ export default function BatteryPage() {
           value={snapshot ? (Math.abs(powerW) / 1000).toFixed(2) : "—"}
           unit={snapshot ? "kW" : undefined}
           valueClass="text-emerald-700"
-          pill={snapshot ? <AmpPill tone="emerald" amps={batteryAmps(snapshot)} muted={Math.abs(powerW) < 50} /> : undefined}
+          pill={snapshot ? <AmpPill tone="emerald" amps={batteryAmps(snapshot, settings?.batteryNominalVoltage)} muted={Math.abs(powerW) < 50} /> : undefined}
           hint={snapshot && state !== "idle" ? (state === "charging" ? "شحن" : "تفريغ") : undefined}
         />
         {snapshot?.batteryTemperature != null

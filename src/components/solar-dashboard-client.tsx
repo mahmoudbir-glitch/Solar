@@ -14,12 +14,12 @@ const REFRESH_MS = 15_000;
 export default function SolarDashboardClient() {
   const [snapshot, setSnapshot] = useState<EnergySnapshot | null>(null);
   const [isLive, setIsLive] = useState(false);
-  const [battery, setBattery] = useState<{ capacityWh: number; reservePct: number } | null>(null);
+  const [battery, setBattery] = useState<{ capacityWh: number; reservePct: number; nominal?: number } | null>(null);
 
   useEffect(() => {
     void fetch("/api/settings", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
-      .then((data) => { if (data?.batteryCapacityWh) setBattery({ capacityWh: data.batteryCapacityWh, reservePct: data.batteryMinReservePct ?? 20 }); })
+      .then((data) => { if (data?.batteryCapacityWh) setBattery({ capacityWh: data.batteryCapacityWh, reservePct: data.batteryMinReservePct ?? 20, nominal: data.batteryNominalVoltage }); })
       .catch(() => {});
   }, []);
 
@@ -70,7 +70,7 @@ export default function SolarDashboardClient() {
         todayHomeUsageKWh={snapshot?.todayHomeUsageKWh}
         todayGridSavings={snapshot?.todayGridSavings}
         isLive={isLive}
-        batteryAmps={batteryAmps(snapshot)}
+        batteryAmps={batteryAmps(snapshot, battery?.nominal)}
         savingsCurrency={snapshot?.currency ? `${snapshot.currency} ` : undefined}
       />
 

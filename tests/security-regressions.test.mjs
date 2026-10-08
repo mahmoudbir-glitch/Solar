@@ -773,3 +773,22 @@ test("the money page prices unrounded energy", () => {
   assert.doesNotMatch(finance, /solarKWh: Math\.round\(directSolarKWh \* 10\) \/ 10/);
   assert.match(finance, /solarKWh: directSolarKWh,/);
 });
+
+test("battery amps ignore a stale 0 A and use the bank's own voltage", { skip: !canLoadTs }, async () => {
+  const { batteryAmps } = await import("../src/lib/energy.ts");
+  assert.equal(batteryAmps({ batteryCurrent: 31, batteryVoltage: 53, batteryPowerW: 1600 }), 31);
+  assert.ok(Math.abs(batteryAmps({ batteryCurrent: 0, batteryVoltage: 53, batteryPowerW: 1590 }) - 30) < 0.01);
+  assert.ok(Math.abs(batteryAmps({ batteryPowerW: 1280 }, 24) - 50) < 0.01);
+  assert.equal(batteryAmps({ batteryCurrent: 0, batteryPowerW: 10 }), 0);
+});
+
+test("today's saving on the home screen uses the same signed rule as the money page", () => {
+  const route = read("src/app/api/telemetry/route.ts");
+  assert.ok(route.includes("(today.homeKWh - today.gridImportKWh) * (settings?.gridTariff ?? 0)"));
+  assert.ok(!route.includes("Math.max(0, today.homeKWh - today.gridImportKWh)"));
+});
+
+test("off-grid, the grid icon stays idle like its label", () => {
+  const flow = read("src/components/energy-flow.tsx");
+  assert.ok(flow.includes("<GridTowerIcon active={gridConnected === true && !inverterOffGrid} />"));
+});
