@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useId, useState } from 'react';
-import { BatteryCharging } from 'lucide-react';
+import { Battery, BatteryCharging, BatteryMedium } from 'lucide-react';
 import { GridTowerIcon, HouseIcon, InverterIcon, SolarPanelIcon } from '@/components/node-icons';
 import { acAmpHours, acAmps, batteryText, homeText, solarText } from '@/lib/energy';
 import { AmpPill } from '@/components/amp-pill';
@@ -70,6 +70,10 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   const homeActive = liveFlowActive && homeKw > FLOW_THRESHOLD;
   const batteryCharging = liveFlowActive && batteryKw > FLOW_THRESHOLD;
   const batteryDischarging = liveFlowActive && batteryKw < -FLOW_THRESHOLD;
+  // The icon inside the battery ring follows the live state, so a resting
+  // battery no longer shows a charging bolt.
+  const BatteryStateIcon = batteryCharging ? BatteryCharging : batteryDischarging ? BatteryMedium : Battery;
+  const batteryIconTone = batteryCharging ? "text-emerald-500" : batteryDischarging ? "text-amber-500" : "text-slate-400";
   const gridImporting = liveFlowActive && gridConnected !== false && gridKw > FLOW_THRESHOLD;
   const gridExporting = liveFlowActive && gridConnected !== false && gridKw < -FLOW_THRESHOLD;
   // In off-grid (battery) mode this inverter still reports ~230 V on "Grid
@@ -254,7 +258,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
             style={batteryCharging || batteryDischarging ? { boxShadow: `0 10px 28px rgba(16,171,90,${batteryGlowStrength}), 0 0 ${Math.round(18 + Math.abs(batteryKw) * 3)}px rgba(16,171,90,${batteryGlowStrength * 0.55})`, animation: `energy-node-pulse ${batteryPulseDuration}s ease-in-out infinite` } : undefined}
           >
             <div className="relative flex h-11 w-11 items-center justify-center rounded-full border-[3px] border-white/70 bg-white">
-              <BatteryCharging className="absolute h-4 w-4 -translate-y-2.5 text-emerald-500" strokeWidth={2.3} />
+              <BatteryStateIcon className={"absolute h-4 w-4 -translate-y-2.5 " + batteryIconTone} strokeWidth={2.3} />
               <span className={"mt-2 text-xs font-black " + batteryToneClass}>{batterySocText}</span>
             </div>
           </div>
