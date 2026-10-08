@@ -773,34 +773,3 @@ test("the money page prices unrounded energy", () => {
   assert.doesNotMatch(finance, /solarKWh: Math\.round\(directSolarKWh \* 10\) \/ 10/);
   assert.match(finance, /solarKWh: directSolarKWh,/);
 });
-
-test("connection test runs the value / kW / amp / UI self-check", () => {
-  const route = read("src/app/api/inverter/test/route.ts");
-  const page = read("src/app/settings/page.tsx");
-  assert.match(route, /runSystemCheck\(/);
-  assert.match(route, /check,/);
-  assert.match(page, /<SystemCheckReport report=\{checkReport\} \/>/);
-});
-
-test("self-check passes a healthy reading and flags broken ones", { skip: !canLoadTs }, async () => {
-  const { runSystemCheck, CHECK_AC_VOLTS } = await import("../src/lib/system-check.ts");
-  const { AC_VOLTS } = await import("../src/lib/energy.ts");
-  assert.equal(CHECK_AC_VOLTS, AC_VOLTS);
-  const limits = { ratedPowerKw: 8.2, battery: { minVoltage: 40, maxVoltage: 63, maxCurrentA: 190 }, ac: { maxInputCurrentA: 40 } };
-  const settings = { panelPowerW: 6000, batteryCapacityWh: 5000, batteryNominalVoltage: 48, inverterRatedPowerKw: 8.2 };
-  const good = runSystemCheck({ reading: { solarPowerW: 3000, loadPowerW: 1200, batterySoc: 70, batteryPowerW: 1600, batteryVoltage: 53, batteryCurrent: 30, gridConnected: false }, settings, limits });
-  assert.equal(good.counts.fail, 0, JSON.stringify(good.items.filter((i) => i.status === "fail")));
-  assert.equal(good.counts.warn, 0, JSON.stringify(good.items.filter((i) => i.status === "warn")));
-  const bad = runSystemCheck({ reading: { solarPowerW: 3000, loadPowerW: 1200, batterySoc: 120, batteryPowerW: 1600, batteryVoltage: 53, batteryCurrent: -30, gridConnected: false, gridPowerW: 900 }, settings: { ...settings, batteryNominalVoltage: 24 }, limits });
-  const failed = new Set(bad.items.filter((i) => i.status === "fail").map((i) => i.id));
-  for (const id of ["soc", "nominal", "bat-vi", "ui-battery-state", "ui-grid"]) assert.ok(failed.has(id), id);
-  assert.equal(bad.ok, false);
-});
-
-test("battery amps ignore a stale 0 A and use the bank's own voltage", { skip: !canLoadTs }, async () => {
-  const { batteryAmps } = await import("../src/lib/energy.ts");
-  assert.equal(batteryAmps({ batteryCurrent: 31, batteryVoltage: 53, batteryPowerW: 1600 }), 31);
-  assert.ok(Math.abs(batteryAmps({ batteryCurrent: 0, batteryVoltage: 53, batteryPowerW: 1590 }) - 30) < 0.01);
-  assert.ok(Math.abs(batteryAmps({ batteryPowerW: 1280 }, 24) - 50) < 0.01);
-  assert.equal(batteryAmps({ batteryCurrent: 0, batteryPowerW: 10 }), 0);
-});

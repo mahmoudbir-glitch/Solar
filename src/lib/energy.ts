@@ -199,20 +199,12 @@ export function acAmps(watts: number | null | undefined): number | null {
   return Math.abs(watts) / AC_VOLTS;
 }
 
-/**
- * Battery current: the measured value when the inverter reports it, else
- * power ÷ battery voltage. A measured 0 A while the battery clearly moves power
- * is a stale one-way parameter, not a measurement, so the derived value wins.
- * Without a measured voltage the bank's working voltage (from its nominal
- * class in Settings) is used instead of always assuming a 48 V bank.
- */
-export function batteryAmps(snapshot: { batteryCurrent?: number; batteryVoltage?: number; batteryPowerW: number } | null | undefined, nominal?: number | null): number | null {
+/** Battery current: the measured value when the inverter reports it, else power ÷ battery voltage. */
+export function batteryAmps(snapshot: { batteryCurrent?: number; batteryVoltage?: number; batteryPowerW: number } | null | undefined): number | null {
   if (!snapshot) return null;
-  const powerKnown = Number.isFinite(snapshot.batteryPowerW);
-  const measured = typeof snapshot.batteryCurrent === "number" && Number.isFinite(snapshot.batteryCurrent) ? Math.abs(snapshot.batteryCurrent) : null;
-  if (measured !== null && !(measured < 0.5 && powerKnown && Math.abs(snapshot.batteryPowerW) > 50)) return measured;
-  const volts = snapshot.batteryVoltage && snapshot.batteryVoltage > 10 ? snapshot.batteryVoltage : batteryWorkingVolts(nominal);
-  return powerKnown ? Math.abs(snapshot.batteryPowerW) / volts : measured;
+  if (typeof snapshot.batteryCurrent === "number" && Number.isFinite(snapshot.batteryCurrent)) return Math.abs(snapshot.batteryCurrent);
+  const volts = snapshot.batteryVoltage && snapshot.batteryVoltage > 20 ? snapshot.batteryVoltage : 51.2;
+  return Number.isFinite(snapshot.batteryPowerW) ? Math.abs(snapshot.batteryPowerW) / volts : null;
 }
 
 /** Energy on the 230 V side expressed as amp-hours (kWh × 1000 ÷ 230). */
