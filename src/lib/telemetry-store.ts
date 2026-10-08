@@ -226,11 +226,15 @@ export async function ingestSample(input: TelemetryInput) {
         where: { id: "default" },
         data: { lastStatus: "connected", lastSeenAt: timestamp },
       });
-      await recordMonitoringEvent({
-        action: MONITORING_ACTIONS.TELEMETRY_RECEIVED,
-        success: true,
-        details: `source=${input.source}; timestamp=${timestamp.toISOString()}`,
-      });
+      // Once an hour is enough to show in the event log that readings arrive;
+      // one row per reading was ~1,440 extra database writes a day.
+      if (hourChanged) {
+        await recordMonitoringEvent({
+          action: MONITORING_ACTIONS.TELEMETRY_RECEIVED,
+          success: true,
+          details: `source=${input.source}; timestamp=${timestamp.toISOString()}`,
+        });
+      }
     }
   } catch (error) {
     console.error("[telemetry] post_processing_failed", error);

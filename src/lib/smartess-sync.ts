@@ -62,7 +62,7 @@ export async function isFrozen(reading: DessReading) {
   const recent = await prisma.telemetryLog.findMany({
     where: { source: SMARTESS_SOURCE, timestamp: { gte: new Date(Date.now() - 6 * 3_600_000) } },
     orderBy: { timestamp: "desc" },
-    take: 400,
+    take: 60,
     select,
   });
   let runStart: Date | null = null;

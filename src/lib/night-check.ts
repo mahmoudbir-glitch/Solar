@@ -1,3 +1,4 @@
+import type { EnergySettings } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calculateAutonomy } from "@/lib/smart-forecast";
 import { sunTimes } from "@/lib/solar-core";
@@ -13,8 +14,22 @@ import { hourlyReadings, nightLoadFrom } from "@/lib/solar-calibration";
 const WINDOW_AFTER_SUNSET_MS = 90 * 60_000;
 const ACTION = "night_check";
 
-export async function runNightCheck(now = new Date()) {
+// The cron calls this every minute, but it only does anything for 90 minutes
+// after sunset. Keeping the location in memory lets the other ~22 hours of
+// calls return without touching the database at all.
+const SETTINGS_CACHE_MS = 60 * 60_000;
+type NightSettings = EnergySettings | null;
+let cachedSettings: { at: number; settings: NightSettings } | null = null;
+
+async function nightSettings() {
+  if (cachedSettings && Date.now() - cachedSettings.at < SETTINGS_CACHE_MS) return cachedSettings.settings;
   const settings = await prisma.energySettings.findUnique({ where: { id: "default" } });
+  cachedSettings = { at: Date.now(), settings };
+  return settings;
+}
+
+export async function runNightCheck(now = new Date()) {
+  const settings = await nightSettings();
   if (!settings) return;
   const { sunset } = sunTimes(now, settings.latitude, settings.longitude);
   if (now < sunset || now.getTime() - sunset.getTime() > WINDOW_AFTER_SUNSET_MS) return;

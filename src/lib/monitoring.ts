@@ -40,7 +40,7 @@ export async function ensureMonitoringStorage() {
   }
 }
 
-/** One TELEMETRY_RECEIVED event is written per reading (about 1,440 a day). */
+/** One TELEMETRY_RECEIVED event is written per hour of readings (about 24 a day). */
 const TELEMETRY_EVENT_DAYS = 7;
 /** Everything else: sign-ins, app opens, alerts, night checks. */
 const EVENT_DAYS = 365;
