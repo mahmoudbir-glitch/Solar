@@ -834,3 +834,8 @@ test("money page source percentages come from the kWh and add up to 100", () => 
   const page = read("src/app/money/page.tsx");
   assert.ok(page.includes("percentsOf([data.sources.solarKWh, data.sources.batteryKWh, data.sources.gridKWh])"));
 });
+
+test("battery-by-day header says 'من يومين', not 'من 2 أيام'", () => {
+  const timeline = read("src/components/battery-timeline.tsx");
+  assert.ok(timeline.includes('withNight.length === 2 ? "يومين"'));
+});

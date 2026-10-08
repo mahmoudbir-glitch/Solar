@@ -108,7 +108,9 @@ export function BatteryTimeline({ anchor }: { anchor?: string } = {}) {
               ? "متى تمتلئ وكم تبقى عند الغروب"
               : short === 0
                 ? `✓ تكفي حتى الصباح في كل الأيام (${withNight.length})`
-                : `⚠ تصل للاحتياطي ليلًا في ${short} من ${withNight.length} أيام`}
+                : withNight.length === 1
+                  ? "⚠ تصل للاحتياطي ليلًا"
+                  : `⚠ تصل للاحتياطي ليلًا في ${short} من ${withNight.length === 2 ? "يومين" : `${withNight.length} أيام`}`}
           </p>
         </div>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 ring-1 ring-slate-200/70">
