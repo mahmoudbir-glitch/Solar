@@ -6,6 +6,8 @@ import { assertPublicEndpoint, fetchPublicEndpoint, PrivateEndpointError } from 
 import { decryptSecret } from "@/lib/inverter-config-crypto";
 import { patchConnectionExtras } from "@/lib/connection-extras";
 import { authenticate, describeDessError, discoverDevices, pickDevice, readLastData } from "@/lib/dessmonitor";
+import { runSystemCheck, type CheckReading } from "@/lib/system-check";
+import { getInverterLimits } from "@/lib/inverter-limits";
 
 // Login, discovery and up to three read actions against a slow server.
 export const maxDuration = 60;
@@ -17,6 +19,12 @@ export const dynamic = "force-dynamic";
 // default is 1000ms. Using timeoutMs directly made healthy servers look dead.
 const MIN_REMOTE_TIMEOUT_MS = 5000;
 const remoteTimeout = (timeoutMs: number) => Math.max(MIN_REMOTE_TIMEOUT_MS, timeoutMs);
+
+/** Checks the values, kW/amp maths and what the icons and cards will show. */
+async function systemCheck(reading: CheckReading, model?: string | null) {
+  const settings = await prisma.energySettings.findUnique({ where: { id: "default" } }).catch(() => null);
+  return runSystemCheck({ reading, settings, limits: getInverterLimits(model) });
+}
 
 function configured() {
   return Boolean(process.env.DATABASE_URL || process.env.PRISMA_DATABASE_URL || process.env.POSTGRES_URL);
@@ -45,7 +53,12 @@ export async function POST(request: NextRequest) {
   const session = await verifySessionToken(request.cookies.get(COOKIE_NAME)?.value);
   if (!session) return NextResponse.json({ ok: false, error: "unauthorized", message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
   if (process.env.SOLAR_MOCK_INVERTER === "true") {
-    return NextResponse.json({ ok: true, source: "mock", message: "وضع الاختبار التجريبي يعمل بنجاح — لا يوجد اتصال عتادي فعلي.", latencyMs: 12 });
+    const check = runSystemCheck({
+      reading: { solarPowerW: 4200, loadPowerW: 3350, batterySoc: 78, batteryPowerW: 850, batteryVoltage: 51.2, batteryCurrent: 16.6, gridConnected: false },
+      settings: { panelPowerW: 6000, batteryCapacityWh: 4800, batteryNominalVoltage: 48, inverterRatedPowerKw: 8.2 },
+      limits: getInverterLimits("Victor Max-8.2KW"),
+    });
+    return NextResponse.json({ ok: true, source: "mock", message: "وضع الاختبار التجريبي يعمل بنجاح — لا يوجد اتصال عتادي فعلي.", latencyMs: 12, check });
   }
   if (!configured()) return NextResponse.json({ ok: false, error: "database_not_configured", message: "قاعدة البيانات غير مهيأة." }, { status: 503 });
 
@@ -160,9 +173,15 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        const check = await systemCheck(reading, row.inverterModel).catch((error) => {
+          console.error("[inverter] system_check_failed", error);
+          return undefined;
+        });
+
         return NextResponse.json({
           ok: true,
           source: "dessmonitor",
+          check,
           latencyMs,
           message: `تم تسجيل الدخول إلى SmartESS وقراءة ${Object.keys(reading.parameters).length} قيمة من الجهاز.`,
           device: { pn: device.pn, devcode: device.devcode, devaddr: device.devaddr, sn: device.sn },

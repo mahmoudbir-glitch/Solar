@@ -220,10 +220,10 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
 
         <button type="button" onClick={() => setActiveNode("grid")} aria-label="عرض تفاصيل الشبكة" className="absolute left-[18%] top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transition-transform active:scale-95">
           <div
-            className={gridConnected === true ? "relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-violet-200 bg-gradient-to-br from-violet-400 to-violet-600" : "relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-200 bg-slate-100"}
+            className={gridConnected === true && !inverterOffGrid ? "relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-violet-200 bg-gradient-to-br from-violet-400 to-violet-600" : "relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-200 bg-slate-100"}
             style={gridConnected === true && (gridImporting || gridExporting) ? { boxShadow: `0 10px 24px rgba(133,72,242,${gridGlowStrength}), 0 0 ${Math.round(16 + Math.abs(gridKw) * 2.5)}px rgba(133,72,242,${gridGlowStrength * 0.5})`, animation: `energy-node-pulse ${gridPulseDuration}s ease-in-out infinite` } : undefined}
           >
-            <GridTowerIcon active={gridConnected === true} />
+            <GridTowerIcon active={gridConnected === true && !inverterOffGrid} />
           </div>
           <div className="pointer-events-none absolute left-1/2 top-full mt-1.5 w-[7.5rem] -translate-x-1/2 text-center">
             <div className="text-xs font-black text-slate-700">الشبكة</div>

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { DevicesList } from "@/components/devices-list";
 import { AmpPill } from "@/components/amp-pill";
+import { SystemCheckReport } from "@/components/system-check-report";
+import type { CheckReport } from "@/lib/system-check";
 import { AC_VOLTS, batteryAmpHours } from "@/lib/energy";
 import { AlertCircle, Bell, CheckCircle2, ChevronDown, Cpu, Database, Eye, EyeOff, Plug, Plus, Radio, RotateCcw, Save, SlidersHorizontal as SettingsIcon, Smartphone, X, type LucideIcon } from "lucide-react";
 
@@ -157,6 +159,7 @@ export default function SettingsPage() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [checkReport, setCheckReport] = useState<CheckReport | null>(null);
   const [error, setError] = useState("");
   const [newToken, setNewToken] = useState("");
   const [auditItems, setAuditItems] = useState<Array<{ id: string; action: string; details: string | null; timestamp: string }>>([]);
@@ -298,11 +301,12 @@ export default function SettingsPage() {
     // The server tests what is stored, not what is typed in the form, so a
     // password typed but not yet saved would always report "missing". Save first.
     if (!(await saveAll())) return;
-    setMessage("جاري اختبار الاتصال…"); setError("");
+    setMessage("جاري اختبار الاتصال وفحص القيم…"); setError(""); setCheckReport(null);
     try {
       const response = await fetch("/api/inverter/test", { method: "POST", cache: "no-store", headers: newToken ? { Authorization: "Bearer " + newToken } : undefined });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.message || "فشل اختبار الاتصال.");
+      if (data.check && Array.isArray(data.check.items)) setCheckReport(data.check as CheckReport);
       setMessage("تم الاتصال بنجاح" + (data.latencyMs ? " — زمن الاستجابة " + data.latencyMs + " ms." : ".") + (data.stored === false && data.storeProblem ? " لكن لم تُحفظ القراءة: " + data.storeProblem : data.stored ? " تم حفظ القراءة في لوحة التحكم." : ""));
       await load(true);
     } catch (e) {
@@ -432,6 +436,7 @@ export default function SettingsPage() {
 
           <p className="text-xs font-bold text-slate-500">آخر قراءة: {draft.lastSeenAt ? new Date(draft.lastSeenAt).toLocaleString("ar-u-nu-latn") : "لا توجد"}</p>
           {draft.lastStatus === "error" && draft.lastTestReason && !/لا يرسل قراءات/.test(draft.lastTestReason) && <p className="rounded-xl bg-rose-50 p-3 text-xs font-bold leading-5 text-rose-700">سبب عدم الاتصال: {draft.lastTestReason}</p>}
+          {checkReport && <SystemCheckReport report={checkReport} />}
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => void testConnection()} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-700"><Plug className="h-4 w-4" aria-hidden="true" />اختبار الاتصال</button>
             {draft.id && !draft.isPrimary && <button type="button" onClick={() => void setPrimary()} className="rounded-xl bg-violet-100 px-4 py-3 text-sm font-black text-violet-700">تعيين كأساسي</button>}
