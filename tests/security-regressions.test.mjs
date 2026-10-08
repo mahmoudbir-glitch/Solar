@@ -860,11 +860,26 @@ test("per-minute sync keeps database work low", () => {
   // The "telemetry received" event is written once an hour, not per reading.
   const store = read("src/lib/telemetry-store.ts");
   assert.match(store, /if \(hourChanged\) \{\s*await recordMonitoringEvent\(\{\s*action: MONITORING_ACTIONS\.TELEMETRY_RECEIVED/);
-  // The frozen-data check reads at most an hour of rows.
-  assert.match(read("src/lib/smartess-sync.ts"), /take: 60,/);
+  // The frozen-data check reads only the last 30 readings (over 15 minutes even at the 45-second minimum gap).
+  assert.match(read("src/lib/smartess-sync.ts"), /take: 30,/);
 });
 
 test("the app and its migrations use the same database, SOLAR_DATABASE_URL first", () => {
   assert.match(read("src/lib/prisma.ts"), /process\.env\.SOLAR_DATABASE_URL \|\|\s*process\.env\.DATABASE_URL/);
   assert.match(read("scripts/prisma-deploy.mjs"), /process\.env\.SOLAR_DATABASE_URL \|\| process\.env\.DATABASE_URL/);
+});
+
+test("Supabase queries go through the transaction pooler and the database size is guarded", () => {
+  const url = read("src/lib/database-url.ts");
+  assert.match(url, /hostname\.endsWith\("\.pooler\.supabase\.com"\)/);
+  assert.match(url, /parsed\.port = "6543"/);
+  assert.match(url, /searchParams\.set\("pgbouncer", "true"\)/);
+  const client = read("src/lib/prisma.ts");
+  assert.match(client, /runtimeDatabaseUrl\(databaseUrl, process\.env\.DATABASE_SESSION_MODE === "1"\)/);
+  assert.match(client, /datasources: \{ db: \{ url: runtimeUrl \} \}/);
+  // Migrations keep the session-mode address.
+  assert.doesNotMatch(read("scripts/prisma-deploy.mjs"), /runtimeDatabaseUrl/);
+  const store = read("src/lib/telemetry-store.ts");
+  assert.match(store, /pg_database_size\(current_database\(\)\)/);
+  assert.match(store, /if \(dayChanged\) await guardDatabaseSize\(\)\.catch\(/);
 });

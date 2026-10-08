@@ -148,6 +148,25 @@ function collectAlerts(previous: Sample | null, row: Sample, s: NonNullable<Sett
 
 
 /**
+ * Supabase's free plan stops writes once the database passes 500 MB. Minute
+ * readings grow by roughly 10 MB a month, so this should never trigger; if it
+ * does, readings older than SIZE_GUARD_KEEP_DAYS are deleted. Daily totals
+ * (DailySummary) are kept, so the history pages still show those days.
+ */
+const SIZE_GUARD_BYTES = 400 * 1024 * 1024;
+const SIZE_GUARD_KEEP_DAYS = 90;
+
+export async function guardDatabaseSize() {
+  const [row] = await prisma.$queryRaw<Array<{ bytes: bigint }>>`SELECT pg_database_size(current_database())::bigint AS bytes`;
+  const bytes = Number(row?.bytes ?? 0);
+  console.info(`[db] size_mb=${(bytes / 1024 / 1024).toFixed(1)}`);
+  if (bytes < SIZE_GUARD_BYTES) return;
+  const cutoff = new Date(Date.now() - SIZE_GUARD_KEEP_DAYS * 86_400_000);
+  const { count } = await prisma.telemetryLog.deleteMany({ where: { timestamp: { lt: cutoff } } });
+  console.warn(`[db] size_guard deleted=${count} readings older than ${SIZE_GUARD_KEEP_DAYS} days`);
+}
+
+/**
  * Stores one reading and runs the follow-up work (daily totals, alerts,
  * retention, connection status). Shared by the gateway ingest route and the
  * SmartESS cloud reader so both feed the dashboard identically.
@@ -220,6 +239,10 @@ export async function ingestSample(input: TelemetryInput) {
     }
     // The event log has its own, fixed retention (it is not the energy history).
     if (hourChanged) await pruneMonitoringEvents().catch((error) => console.error("[monitoring] prune_failed", error));
+    // Once a day: log the database size, and trim old minute readings before
+    // the free plan's storage limit is reached.
+    const dayChanged = !latest || latest.timestamp.getUTCDate() !== timestamp.getUTCDate();
+    if (dayChanged) await guardDatabaseSize().catch((error) => console.error("[db] size_guard_failed", error));
 
     if (input.source.toLowerCase() !== "demo") {
       await prisma.inverterConnection.updateMany({
