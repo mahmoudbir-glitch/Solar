@@ -291,6 +291,8 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
                   </p>
                 </div>
                 <div className="shrink-0 text-left">
+                  {/* What the big number is: the panels' expected output for the chosen day. */}
+                  <span className="mb-1 block max-w-[8.5rem] text-[10px] font-bold leading-tight text-slate-500">إنتاج الألواح المتوقع حسب الطقس</span>
                   <strong className="block text-3xl font-black leading-none text-amber-700"><bdi dir="ltr">{selected.productionKWh}<small className="text-sm"> kWh</small></bdi></strong>
                   <span className="mt-1.5 block"><AmpPill tone="amber" unit="Ah" amps={acAmpHours(selected.productionKWh)} /></span>
                 </div>

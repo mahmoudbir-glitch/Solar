@@ -883,3 +883,8 @@ test("Supabase queries go through the transaction pooler and the database size i
   assert.match(store, /pg_database_size\(current_database\(\)\)/);
   assert.match(store, /if \(dayChanged\) await guardDatabaseSize\(\)\.catch\(/);
 });
+
+test("the forecast's big kWh number says what it is", () => {
+  const source = read("src/components/smart-forecast.tsx");
+  assert.ok(source.indexOf("إنتاج الألواح المتوقع حسب الطقس") < source.indexOf("{selected.productionKWh}<small"));
+});
