@@ -478,7 +478,7 @@ export default function SettingsPage() {
         <DevicesList />
       </SettingsSection>}
 
-      <SettingsSection icon={Database} tone="sky" summary={`الحفظ ${settings.retentionDays} يوم`} query={query} keywords="بيانات تصدير CSV سجل النشاط مسح الاحتفاظ حفظ" onReset={() => resetSection(["retentionDays"], "البيانات")} title="البيانات" subtitle="مدة الحفظ والتصدير">
+      <SettingsSection icon={Database} tone="sky" summary={settings.retentionDays > 0 ? `الحفظ ${settings.retentionDays} يوماً` : "الحفظ بلا حد"} query={query} keywords="بيانات تصدير CSV سجل النشاط مسح الاحتفاظ حفظ" onReset={() => resetSection(["retentionDays"], "البيانات")} title="البيانات" subtitle="مدة الحفظ والتصدير">
           <SettingsField label="مدة حفظ السجل التاريخي"><select value={settings.retentionDays} onChange={(e) => updateSetting("retentionDays", Number(e.target.value))} className={input}><option value={30}>30 يوماً</option><option value={90}>90 يوماً</option><option value={180}>180 يوماً</option><option value={365}>365 يوماً</option><option value={0}>بلا حد</option></select></SettingsField>
         <div className="flex flex-wrap gap-2">
           <a href="/api/settings/export" className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white">تصدير CSV</a>
