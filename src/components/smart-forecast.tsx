@@ -20,6 +20,13 @@ function formatDate(iso: string) {
   }).format(new Date(iso + "T12:00:00Z"));
 }
 
+/** "يوم" / "يومين" / "5 أيام" / "12 يوماً": Arabic count of days. */
+function daysWord(n: number) {
+  if (n === 1) return "يوم";
+  if (n === 2) return "يومين";
+  return `${n} ${n >= 3 && n <= 10 ? "أيام" : "يوماً"}`;
+}
+
 const confidenceTone = {
   "عالية": "bg-emerald-50 text-emerald-700 ring-emerald-200/70",
   "متوسطة": "bg-amber-50 text-amber-700 ring-amber-200/70",
@@ -217,9 +224,9 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
                     : <>⏳ يتعلّم من ألواحك</>}
                 <InfoTip label="معايرة التوقع" title="معايرة التوقع">
                   {calibration.status === "calibrated"
-                    ? <>في آخر {calibration.days} أيام أعطت ألواحك <bdi dir="ltr">{Math.round(calibration.factor * 100)}%</bdi> من التقدير النظري، فعُدّل التوقع على ذلك.</>
+                    ? <>في آخر {daysWord(calibration.days)} أعطت ألواحك <bdi dir="ltr">{Math.round(calibration.factor * 100)}%</bdi> من التقدير النظري، فعُدّل التوقع على ذلك.</>
                     : calibration.status === "suspect"
-                      ? <>أعطت ألواحك في آخر {calibration.days} أيام <bdi dir="ltr">{Math.round(calibration.ratio * 100)}%</bdi> فقط من التقدير النظري، وهذا أقل من أي منظومة سليمة. غالباً لم تجد الشمس مكاناً تذهب إليه أو أن قدرة الألواح في الإعدادات غير دقيقة، لذلك لم نعدّل التوقع.</>
+                      ? <>أعطت ألواحك في آخر {daysWord(calibration.days)} <bdi dir="ltr">{Math.round(calibration.ratio * 100)}%</bdi> فقط من التقدير النظري، وهذا أقل من أي منظومة سليمة. غالباً لم تجد الشمس مكاناً تذهب إليه أو أن قدرة الألواح في الإعدادات غير دقيقة، لذلك لم نعدّل التوقع.</>
                       : <>يبدأ تعديل التوقع على إنتاج ألواحك الفعلي بعد حوالي أسبوع من القراءات.</>}
                 </InfoTip>
               </span>
