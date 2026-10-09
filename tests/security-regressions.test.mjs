@@ -888,3 +888,12 @@ test("the forecast's big kWh number says what it is", () => {
   const source = read("src/components/smart-forecast.tsx");
   assert.ok(source.indexOf("إنتاج الألواح المتوقع حسب الطقس") < source.indexOf("{selected.productionKWh}<small"));
 });
+
+test("battery page draws the battery with its reserve line and shows stored and usable energy", () => {
+  const page = read("src/app/battery/page.tsx");
+  assert.match(page, /function BatteryGauge\(/);
+  assert.match(page, /strokeDasharray="5 4"/);
+  assert.match(page, /المخزّن الآن/);
+  assert.match(page, /المتاح قبل الاحتياطي/);
+  assert.match(page, /const usableKWh = \(Math\.max\(0, soc - reservePct\) \/ 100\) \* capacityKWh;/);
+});
