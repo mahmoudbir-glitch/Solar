@@ -940,3 +940,11 @@ test("smart monitor: equipment and reserve alerts, night, a full battery and the
   assert.match(card, /insight\.details\.map/);
   assert.ok(read("src/app/home/page.tsx").includes("<IntelligentEnergyCard snapshot={snapshot} history={history?.points} />"));
 });
+
+test("battery outline runs a line whose colour and direction follow what the battery is doing", () => {
+  const page = read("src/app/battery/page.tsx");
+  assert.match(page, /const flow: Flow = !snapshot \|\| state === "idle" \? "idle" : state === "charging" \? "charging" : soc <= reservePct \+ 5 \? "low" : "discharging";/);
+  assert.match(page, /battery-flow-out/);
+  const css = read("src/app/globals.css");
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.battery-flow \{ animation: none; \} \}/);
+});

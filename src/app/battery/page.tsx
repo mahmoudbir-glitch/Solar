@@ -33,7 +33,18 @@ function estimate(soc: number, powerW: number, settings: BatterySettings | null)
 const CELLS = 10;
 const BODY = { x: 30, width: 250, gap: 4 } as const;
 
-function BatteryGauge({ soc, reservePct, tone, charging }: { soc: number; reservePct: number; tone: string; charging: boolean }) {
+/** What the battery is doing, as the colour and direction of the line running round it. */
+type Flow = "charging" | "discharging" | "low" | "idle";
+const FLOW_STROKE: Record<Flow, string> = {
+  charging: "stroke-emerald-500",
+  discharging: "stroke-amber-500",
+  low: "stroke-rose-500",
+  idle: "stroke-slate-300",
+};
+
+function BatteryGauge({ soc, reservePct, tone, charging, flow, powerW }: { soc: number; reservePct: number; tone: string; charging: boolean; flow: Flow; powerW: number }) {
+  // More power, faster line: about 4 s a lap when barely moving, 1.2 s at 3 kW and above.
+  const lapSeconds = Math.max(1.2, Math.min(4, 4 - (Math.abs(powerW) / 1000) * 0.95));
   const cell = (BODY.width - BODY.gap * (CELLS - 1)) / CELLS;
   const right = BODY.x + BODY.width;
   const reserveX = right - (reservePct / 100) * BODY.width;
@@ -41,7 +52,19 @@ function BatteryGauge({ soc, reservePct, tone, charging }: { soc: number; reserv
     <svg viewBox="0 0 300 120" className="h-auto w-full" role="img" aria-label={`البطارية مشحونة ${Math.round(soc)}٪، والاحتياطي ${reservePct}٪`}>
       {/* Terminal on the left, body outline */}
       <rect x="4" y="42" width="14" height="36" rx="4" className="fill-slate-300" />
-      <rect x="20" y="10" width="270" height="100" rx="16" className="fill-white stroke-slate-300" strokeWidth="3" />
+      <rect x="20" y="10" width="270" height="100" rx="16" className="fill-white stroke-slate-200" strokeWidth="3" />
+      {/* The line round the body: two bright segments that run clockwise while charging and the other way while
+          discharging. Idle, the outline simply takes the state's colour and stays still. */}
+      {flow === "idle" ? (
+        <rect x="20" y="10" width="270" height="100" rx="16" fill="none" className={FLOW_STROKE.idle} strokeWidth="3" />
+      ) : (
+        <rect
+          x="20" y="10" width="270" height="100" rx="16" fill="none" pathLength={100}
+          className={"battery-flow " + (flow === "charging" ? "" : "battery-flow-out ") + FLOW_STROKE[flow]}
+          strokeWidth="4.5" strokeLinecap="round" strokeDasharray="16 34"
+          style={{ animationDuration: `${lapSeconds.toFixed(2)}s` }}
+        />
+      )}
       {Array.from({ length: CELLS }, (_, i) => {
         const x = right - (i + 1) * cell - i * BODY.gap;
         const fill = Math.min(1, Math.max(0, soc / 10 - i));
@@ -118,33 +141,27 @@ export default function BatteryPage() {
   const usableKWh = (Math.max(0, soc - reservePct) / 100) * capacityKWh;
   // Where the reserve line sits under the gauge, as a share of its width (matches BatteryGauge's geometry).
   const reserveLeftPct = ((280 - (reservePct / 100) * 250) / 300) * 100;
+  const flow: Flow = !snapshot || state === "idle" ? "idle" : state === "charging" ? "charging" : soc <= reservePct + 5 ? "low" : "discharging";
+  const flowNote = { charging: "تشحن الآن", discharging: "تغذّي البيت الآن", low: "تفرغ وهي قريبة من الاحتياطي", idle: "لا شحن ولا تفريغ" }[flow];
 
   return (
     <div className="desktop-grid w-full space-y-3 pb-4 text-right" dir="rtl">
       <PageHeader icon={BatteryFull} tone="emerald" eyebrow="Solar • البطارية" title="حالة البطارية" subtitle="الشحن والجهد والحرارة والوقت المتوقع." />
 
-      {/* البطارية كما هي: الخانات، النسبة، الحالة، والطاقة المخزّنة */}
-      <section className="energy-card p-5">
+      {/* البطارية الآن: النسبة والحالة، ثم الشكل بخطه المتحرك، ثم الطاقة المخزّنة */}
+      <section className="energy-card p-4">
         {loading && !snapshot ? (
           <div className="flex justify-center py-10"><Loader2 className="h-10 w-10 animate-spin text-emerald-500" aria-label="جاري تحميل القراءة" /></div>
         ) : (
           <>
-            <BatteryGauge soc={soc} reservePct={reservePct} tone={toneText} charging={state === "charging"} />
-            {/* Scale under the cells: they fill from the right, so 0% is on the right and 100% by the terminal. */}
-            <div className="relative mt-1 h-4 text-[10px] font-bold text-slate-400">
-              <span className="absolute right-[3%]">0%</span>
-              <span className="absolute -translate-x-1/2 whitespace-nowrap text-rose-500" style={{ left: `${reserveLeftPct}%` }}>الاحتياطي <bdi dir="ltr">{reservePct}%</bdi></span>
-              <span className="absolute left-[7%]">100%</span>
-            </div>
-
-            <div className="mt-4 flex items-end justify-between gap-3">
-              <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
                 <div className={"text-5xl font-black leading-none " + toneText}><bdi dir="ltr">{snapshot ? Math.round(soc) + "%" : "—"}</bdi></div>
-                <div className="mt-2 text-xs font-bold text-slate-500">{!snapshot ? "لا توجد قراءة" : eta ? (eta.label === "عند حد الاحتياطي" ? eta.label : (eta.charging ? "تمتلئ بعد " : "تصل للاحتياطي بعد ") + eta.label) : state === "idle" ? "لا شحن ولا تفريغ الآن" : ""}</div>
+                <div className="mt-2 text-xs font-bold text-slate-500">{!snapshot ? "لا توجد قراءة" : eta ? (eta.label === "عند حد الاحتياطي" ? eta.label : (eta.charging ? "تمتلئ بعد " : "تصل للاحتياطي بعد ") + eta.label) : flowNote}</div>
               </div>
               {snapshot && (
-                <div className="flex flex-col items-end gap-1.5">
-                  <span className={"inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-black ring-1 " + (state === "charging" ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : state === "discharging" ? "bg-amber-50 text-amber-700 ring-amber-200" : "bg-slate-50 text-slate-500 ring-slate-200")}>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <span className={"inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-black ring-1 " + (flow === "charging" ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : flow === "low" ? "bg-rose-50 text-rose-700 ring-rose-200" : flow === "discharging" ? "bg-amber-50 text-amber-700 ring-amber-200" : "bg-slate-50 text-slate-500 ring-slate-200")}>
                     {state === "charging" && <Zap className="h-3.5 w-3.5" />}{batteryStateLabel(state)}
                   </span>
                   <span className="text-sm font-black text-slate-700"><bdi dir="ltr">{(Math.abs(powerW) / 1000).toFixed(2)}<small className="text-xs text-slate-500"> kW</small></bdi></span>
@@ -153,15 +170,25 @@ export default function BatteryPage() {
               )}
             </div>
 
+            <div className="mt-3">
+              <BatteryGauge soc={soc} reservePct={reservePct} tone={toneText} charging={state === "charging"} flow={flow} powerW={powerW} />
+            </div>
+            {/* Scale under the cells: they fill from the right, so 0% is on the right and 100% by the terminal. */}
+            <div className="relative mt-1 h-4 text-[10px] font-bold text-slate-400">
+              <span className="absolute right-[3%]">0%</span>
+              <span className="absolute -translate-x-1/2 whitespace-nowrap text-rose-500" style={{ left: `${reserveLeftPct}%` }}>الاحتياطي <bdi dir="ltr">{reservePct}%</bdi></span>
+              <span className="absolute left-[7%]">100%</span>
+            </div>
+
             {settings && snapshot && (
-              <dl className="mt-4 grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 border-t border-slate-100 pt-4">
-                <div className="pl-3">
+              <dl className="mt-4 grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 rounded-2xl bg-slate-50/70 py-3">
+                <div className="px-3">
                   <dt className="text-[11px] font-bold text-slate-500">المخزّن الآن</dt>
-                  <dd className="mt-1 flex flex-wrap items-center gap-1.5"><span className="text-lg font-black text-slate-900"><bdi dir="ltr">{storedKWh.toFixed(2)}<small className="text-xs text-slate-500"> kWh</small></bdi></span><AmpPill tone="emerald" unit="Ah" amps={batteryAmpHours(storedKWh, settings.batteryNominalVoltage)} /></dd>
+                  <dd className="mt-1"><span className="text-lg font-black text-slate-900"><bdi dir="ltr">{storedKWh.toFixed(2)}<small className="text-xs text-slate-500"> kWh</small></bdi></span><span className="mt-1 block"><AmpPill tone="emerald" unit="Ah" amps={batteryAmpHours(storedKWh, settings.batteryNominalVoltage)} /></span></dd>
                 </div>
-                <div className="pr-3">
+                <div className="px-3">
                   <dt className="text-[11px] font-bold text-slate-500">المتاح قبل الاحتياطي</dt>
-                  <dd className="mt-1 flex flex-wrap items-center gap-1.5"><span className={"text-lg font-black " + (usableKWh > 0 ? "text-slate-900" : "text-rose-600")}><bdi dir="ltr">{usableKWh.toFixed(2)}<small className="text-xs text-slate-500"> kWh</small></bdi></span><AmpPill tone="emerald" unit="Ah" amps={batteryAmpHours(usableKWh, settings.batteryNominalVoltage)} /></dd>
+                  <dd className="mt-1"><span className={"text-lg font-black " + (usableKWh > 0 ? "text-slate-900" : "text-rose-600")}><bdi dir="ltr">{usableKWh.toFixed(2)}<small className="text-xs text-slate-500"> kWh</small></bdi></span><span className="mt-1 block"><AmpPill tone="emerald" unit="Ah" amps={batteryAmpHours(usableKWh, settings.batteryNominalVoltage)} /></span></dd>
                 </div>
               </dl>
             )}
@@ -183,9 +210,9 @@ export default function BatteryPage() {
       {/* البطارية اليوم */}
       <section className="energy-card p-4">
         <h2 className="text-sm font-black text-slate-900">البطارية اليوم</h2>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-          <div><div className="text-[11px] font-bold text-slate-500">شحن</div><div className="text-base font-black text-emerald-600"><bdi dir="ltr">{history?.batteryToday ? history.batteryToday.chargeKWh.toFixed(1) : "—"}<span className="text-[10px]"> kWh</span></bdi></div><div className="mt-1.5"><AmpPill tone="emerald" unit="Ah" amps={history?.batteryToday ? batteryAmpHours(history.batteryToday.chargeKWh, settings?.batteryNominalVoltage) : null} /></div></div>
-          <div><div className="text-[11px] font-bold text-slate-500">تفريغ</div><div className="text-base font-black text-amber-600"><bdi dir="ltr">{history?.batteryToday ? history.batteryToday.dischargeKWh.toFixed(1) : "—"}<span className="text-[10px]"> kWh</span></bdi></div><div className="mt-1.5"><AmpPill tone="amber" unit="Ah" amps={history?.batteryToday ? batteryAmpHours(history.batteryToday.dischargeKWh, settings?.batteryNominalVoltage) : null} /></div></div>
+        <div className="mt-3 grid grid-cols-2 divide-x divide-x-reverse divide-slate-100">
+          <Reading label="شُحن فيها" value={history?.batteryToday ? history.batteryToday.chargeKWh.toFixed(1) : "—"} unit={history?.batteryToday ? "kWh" : undefined} muted={!history?.batteryToday} note={<AmpPill tone="emerald" unit="Ah" amps={history?.batteryToday ? batteryAmpHours(history.batteryToday.chargeKWh, settings?.batteryNominalVoltage) : null} />} />
+          <Reading label="خرج منها" value={history?.batteryToday ? history.batteryToday.dischargeKWh.toFixed(1) : "—"} unit={history?.batteryToday ? "kWh" : undefined} muted={!history?.batteryToday} note={<AmpPill tone="amber" unit="Ah" amps={history?.batteryToday ? batteryAmpHours(history.batteryToday.dischargeKWh, settings?.batteryNominalVoltage) : null} />} />
         </div>
       </section>
 
@@ -208,11 +235,18 @@ export default function BatteryPage() {
       {settings && (
         <section className="energy-card desktop-wide p-4">
           <h2 className="text-sm font-black text-slate-900">مواصفات البطارية</h2>
-          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <dt className="text-slate-500">النوع</dt><dd className="text-left font-black text-emerald-700" dir="ltr">{settings.batteryChemistry || "—"}</dd>
-            <dt className="text-slate-500">السعة</dt><dd className="text-left font-black text-emerald-700" dir="ltr">{(settings.batteryCapacityWh / 1000).toFixed(2)} kWh <AmpPill tone="emerald" unit="Ah" amps={batteryAmpHours(settings.batteryCapacityWh / 1000, settings.batteryNominalVoltage)} className="ml-1 align-middle" /></dd>
-            <dt className="text-slate-500">الجهد الاسمي</dt><dd className="text-left font-black text-emerald-700" dir="ltr">{settings.batteryNominalVoltage ? `${settings.batteryNominalVoltage} V` : "—"}</dd>
-            <dt className="text-slate-500">حد الاحتياطي</dt><dd className="text-left font-black text-emerald-700" dir="ltr">{settings.batteryMinReservePct}%</dd>
+          <dl className="mt-3 grid grid-cols-2 gap-2">
+            {[
+              { label: "النوع", value: settings.batteryChemistry || "—" },
+              { label: "السعة", value: `${(settings.batteryCapacityWh / 1000).toFixed(2)} kWh`, pill: <AmpPill tone="emerald" unit="Ah" amps={batteryAmpHours(settings.batteryCapacityWh / 1000, settings.batteryNominalVoltage)} /> },
+              { label: "الجهد الاسمي", value: settings.batteryNominalVoltage ? `${settings.batteryNominalVoltage} V` : "—" },
+              { label: "حد الاحتياطي", value: `${settings.batteryMinReservePct}%` },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl bg-slate-50 p-3">
+                <dt className="text-[11px] font-bold text-slate-500">{item.label}</dt>
+                <dd className="mt-1 flex flex-wrap items-center gap-1.5 text-base font-black text-emerald-700"><bdi dir="ltr">{item.value}</bdi>{item.pill}</dd>
+              </div>
+            ))}
           </dl>
           <p className="mt-2 text-[11px] font-semibold text-slate-400">تُعدَّل من الإعدادات ← مواصفات العتاد.</p>
         </section>
