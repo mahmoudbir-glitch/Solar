@@ -38,7 +38,7 @@ export function StatTile({ label, value, unit, tone = "slate", big = false, amps
       {(ampTone || hint) && (
         <span className="mt-auto flex flex-col items-start gap-1.5 pt-2.5">
           {ampTone && <AmpPill tone={ampTone} amps={amps} unit={ampUnit} />}
-          {hint && <span className="block max-w-full truncate text-[11px] font-semibold leading-4 text-slate-400">{hint}</span>}
+          {hint && <span className="block max-w-full text-[11px] font-semibold leading-4 text-slate-400">{hint}</span>}
         </span>
       )}
     </div>

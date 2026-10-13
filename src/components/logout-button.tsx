@@ -39,10 +39,10 @@ export default function LogoutButton(){
         onClick={() => void logout()}
         disabled={loading}
         aria-label="تسجيل الخروج"
-        className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 hover:text-red-600 disabled:opacity-50"
+        className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 hover:text-red-600 disabled:opacity-50"
       >
         <LogOut size={18}/>
-        <span>{loading ? "..." : "تسجيل الخروج"}</span>
+        <span className="hidden min-[360px]:inline">{loading ? "..." : "تسجيل الخروج"}</span>
       </button>
       {error ? <span className="text-xs font-bold text-red-600" role="alert">{error}</span> : null}
     </div>

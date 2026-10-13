@@ -174,8 +174,8 @@ export function BatteryTimeline({ anchor }: { anchor?: string } = {}) {
         })}
       </ul>
 
-      <p className="mt-3 flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
-        <span className="inline-block h-3 w-0.5 rounded bg-rose-500" aria-hidden="true" />
+      <p className="mt-3 text-[10px] font-semibold leading-5 text-slate-500">
+        <span className="ml-1.5 inline-block h-3 w-0.5 rounded bg-rose-500 align-middle" aria-hidden="true" />
         الخط الأحمر: حد الاحتياطي <bdi dir="ltr">{Math.round(reservePct)}%</bdi> · الشريط: نزول البطارية من الغروب إلى الصباح
       </p>
     </details>

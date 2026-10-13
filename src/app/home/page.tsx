@@ -67,11 +67,15 @@ export default function HomeConsumptionPage() {
   // من أين يأتي حمل المنزل الآن: الشمس أولاً، ثم البطارية، والباقي من الشبكة.
   const fromSolar = Math.min(homeW, Math.max(0, snapshot?.solarPowerW ?? 0));
   const fromBattery = Math.min(homeW - fromSolar, Math.max(0, -(snapshot?.batteryPowerW ?? 0)));
-  const fromGrid = Math.max(0, homeW - fromSolar - fromBattery);
+  // The grid only counts what it really delivers (measured, or the shortfall
+  // while on mains). Off-grid the small leftover is the inverter's own loss,
+  // so it must not show up as "from the grid".
+  const fromGrid = Math.min(Math.max(0, homeW - fromSolar - fromBattery), Math.max(0, snapshot?.gridPowerW ?? 0));
+  const served = fromSolar + fromBattery + fromGrid;
   // Rounded so the three always add up to 100 (33 + 33 + 33 left 1% unexplained).
-  const solarPct = homeW > 0 ? Math.round((fromSolar / homeW) * 100) : 0;
-  const batteryPct = homeW > 0 ? Math.min(100 - solarPct, Math.round((fromBattery / homeW) * 100)) : 0;
-  const gridPct = homeW > 0 ? 100 - solarPct - batteryPct : 0;
+  const solarPct = served > 0 ? Math.round((fromSolar / served) * 100) : 0;
+  const batteryPct = served > 0 ? Math.min(100 - solarPct, Math.round((fromBattery / served) * 100)) : 0;
+  const gridPct = served > 0 ? 100 - solarPct - batteryPct : 0;
   const sources = [
     { label: "الشمس", w: fromSolar, pct: solarPct, bar: "bg-amber-400", text: "text-amber-700", tone: "amber" as const },
     { label: "البطارية", w: fromBattery, pct: batteryPct, bar: "bg-emerald-500", text: "text-emerald-700", tone: "emerald" as const },

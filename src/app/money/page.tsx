@@ -192,7 +192,7 @@ export default function MoneyDashboard() {
 
   return (
     <div className="desktop-grid w-full space-y-3 pb-4 text-right" dir="rtl">
-      <PageHeader icon={Coins} tone="teal" eyebrow="Solar • المال" title="التحليل المالي ومصادر الكهرباء" subtitle={data?.periodDays ? `مصادر الكهرباء والوفر خلال ${periodLabel(period, data.periodDays)}.` : "مصادر الكهرباء والوفر من قراءات منظومتك."} />
+      <PageHeader icon={Coins} tone="teal" eyebrow="Solar • المال" title="المال والوفر" subtitle={data?.periodDays ? `مصادر الكهرباء والوفر خلال ${periodLabel(period, data.periodDays)}.` : "مصادر الكهرباء والوفر من قراءات منظومتك."} />
 
       <div role="tablist" aria-label="فترة التحليل" className="grid grid-cols-3 gap-2">
         {PERIODS.map((item) => (
@@ -331,10 +331,6 @@ export default function MoneyDashboard() {
                 الحساب: <bdi dir="ltr">{money(hypotheticalCost)}</bdi> بلا النظام − <bdi dir="ltr">{money(gridCost)}</bdi> دفعت للشبكة{exportIncome > 0 ? <> + <bdi dir="ltr">{money(exportIncome)}</bdi> من التصدير</> : null} = <bdi dir="ltr">{money(savedAmount)}</bdi> {currency}
               </p>
             )}
-
-            <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-[10px] font-semibold leading-5 text-slate-500">
-              ملاحظة: الأرقام تقديرية وتعتمد على الطاقة المسجلة وتعرفة الشراء والتصدير التي تضبطها في الإعدادات.
-            </p>
           </section>
         </>
       )}

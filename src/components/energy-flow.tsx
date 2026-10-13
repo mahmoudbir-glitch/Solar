@@ -140,7 +140,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
         </div>
       </div>
 
-      <div className="relative mx-auto mt-1 aspect-[400/530] w-full max-w-lg">
+      <div className="relative mx-auto mt-9 aspect-[400/530] w-full max-w-lg min-[380px]:mt-1">
         <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 400 530" fill="none" aria-hidden="true">
           <defs>
             <filter id={glowId}><feGaussianBlur stdDeviation="2" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
