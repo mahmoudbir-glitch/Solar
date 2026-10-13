@@ -44,8 +44,8 @@ const FLOW_STROKE: Record<Flow, string> = {
 
 function BatteryGauge({ soc, reservePct, tone, charging, flow, powerW }: { soc: number; reservePct: number; tone: string; charging: boolean; flow: Flow; powerW: number }) {
   // The dashes march one step (one dash and its gap, about 18 px) per cycle, so they move steadily rather than
-  // racing round: 1.8 s a step at low power, easing to 0.8 s a step at 3 kW and above.
-  const stepSeconds = Math.max(0.8, Math.min(1.8, 1.8 - (Math.abs(powerW) / 1000) * 0.33));
+  // racing round: 1.2 s a step at low power, easing to 0.55 s a step at 3 kW and above.
+  const stepSeconds = Math.max(0.55, Math.min(1.2, 1.2 - (Math.abs(powerW) / 1000) * 0.22));
   const cell = (BODY.width - BODY.gap * (CELLS - 1)) / CELLS;
   const right = BODY.x + BODY.width;
   const reserveX = right - (reservePct / 100) * BODY.width;

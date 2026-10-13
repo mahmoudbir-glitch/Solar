@@ -47,6 +47,6 @@ button:disabled { cursor: not-allowed; opacity: .6; }
    the inline animation-duration, set from the power, decides how quick each step is. */
 @keyframes battery-flow-in { to { stroke-dashoffset: -2.5; } }
 @keyframes battery-flow-out { to { stroke-dashoffset: 2.5; } }
-.battery-flow { animation: battery-flow-in 1.5s linear infinite; }
+.battery-flow { animation: battery-flow-in 1s linear infinite; }
 .battery-flow-out { animation-name: battery-flow-out; }
 @media (prefers-reduced-motion: reduce) { .battery-flow { animation: none; } }
