@@ -42,10 +42,11 @@ button:disabled { cursor: not-allowed; opacity: .6; }
   .desktop-grid > [role="status"], .desktop-grid > [role="alert"], .desktop-grid > .desktop-wide { grid-column: 1 / -1; }
 }
 
-/* Battery page: the dashed line running round the battery. Charging runs clockwise, discharging the other way;
-   the speed comes from an inline animation-duration that follows the power. */
-@keyframes battery-flow-in { to { stroke-dashoffset: -100; } }
-@keyframes battery-flow-out { to { stroke-dashoffset: 100; } }
-.battery-flow { animation: battery-flow-in 2.4s linear infinite; }
+/* Battery page: the dashed line running round the battery. Charging runs clockwise, discharging the other way.
+   Each cycle moves the dashes by one dash-and-gap (2.5 of the path's 100 units), so the motion is a steady march;
+   the inline animation-duration, set from the power, decides how quick each step is. */
+@keyframes battery-flow-in { to { stroke-dashoffset: -2.5; } }
+@keyframes battery-flow-out { to { stroke-dashoffset: 2.5; } }
+.battery-flow { animation: battery-flow-in 1.5s linear infinite; }
 .battery-flow-out { animation-name: battery-flow-out; }
 @media (prefers-reduced-motion: reduce) { .battery-flow { animation: none; } }

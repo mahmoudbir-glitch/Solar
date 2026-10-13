@@ -43,8 +43,9 @@ const FLOW_STROKE: Record<Flow, string> = {
 };
 
 function BatteryGauge({ soc, reservePct, tone, charging, flow, powerW }: { soc: number; reservePct: number; tone: string; charging: boolean; flow: Flow; powerW: number }) {
-  // More power, faster line: about 4 s a lap when barely moving, 1.2 s at 3 kW and above.
-  const lapSeconds = Math.max(1.2, Math.min(4, 4 - (Math.abs(powerW) / 1000) * 0.95));
+  // The dashes march one step (one dash and its gap, about 18 px) per cycle, so they move steadily rather than
+  // racing round: 1.8 s a step at low power, easing to 0.8 s a step at 3 kW and above.
+  const stepSeconds = Math.max(0.8, Math.min(1.8, 1.8 - (Math.abs(powerW) / 1000) * 0.33));
   const cell = (BODY.width - BODY.gap * (CELLS - 1)) / CELLS;
   const right = BODY.x + BODY.width;
   const reserveX = right - (reservePct / 100) * BODY.width;
@@ -62,7 +63,7 @@ function BatteryGauge({ soc, reservePct, tone, charging, flow, powerW }: { soc: 
           x="20" y="10" width="270" height="100" rx="16" fill="none" pathLength={100}
           className={"battery-flow " + (flow === "charging" ? "" : "battery-flow-out ") + FLOW_STROKE[flow]}
           strokeWidth="3.5" strokeLinecap="round" strokeDasharray="1.5 1"
-          style={{ animationDuration: `${lapSeconds.toFixed(2)}s` }}
+          style={{ animationDuration: `${stepSeconds.toFixed(2)}s` }}
         />
       )}
       {Array.from({ length: CELLS }, (_, i) => {
