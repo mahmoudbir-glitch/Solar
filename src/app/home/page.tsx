@@ -10,6 +10,7 @@ import { LoadChart, type LoadPoint } from "@/components/load-chart";
 import { homeText, acAmps, acAmpHours } from "@/lib/energy";
 import { AmpPill } from "@/components/amp-pill";
 import { startVisiblePolling } from "@/lib/visible-polling";
+import { IntelligentEnergyCard } from "@/components/intelligent-energy-card";
 
 const REFRESH_MS = 15_000;
 const HISTORY_REFRESH_MS = 5 * 60_000;
@@ -100,6 +101,9 @@ export default function HomeConsumptionPage() {
           </button>
         }
       />
+
+      {/* المراقبة الذكية: حكم واحد على حالة المنظومة الآن، وأسبابه عند الفتح */}
+      {snapshot && <IntelligentEnergyCard snapshot={snapshot} history={history?.points} />}
 
       {/* إجمالي السحب الحالي */}
       <section className="energy-card p-6 text-center">

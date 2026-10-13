@@ -897,3 +897,46 @@ test("battery page draws the battery with its reserve line and shows stored and 
   assert.match(page, /المتاح قبل الاحتياطي/);
   assert.match(page, /const usableKWh = \(Math\.max\(0, soc - reservePct\) \/ 100\) \* capacityKWh;/);
 });
+
+test("smart monitor: equipment and reserve alerts, night, a full battery and the one-hour trend", { skip: !process.features?.typescript }, async () => {
+  const { analyzeEnergy, trendContext } = await import("../src/lib/intelligent-energy.ts");
+  const settings = { batteryCapacityWh: 15360, batteryMinReservePct: 20, inverterRatedPowerKw: 8.2 };
+  const base = { timestamp: "2026-10-13T09:00:00.000Z", solarPowerW: 0, homePowerW: 300, gridPowerW: 0, batteryPowerW: -320, batterySoc: 60, source: "live" };
+
+  // Under the saved reserve and still discharging used to read "normal" on a small load.
+  assert.equal(analyzeEnergy({ ...base, batterySoc: 18 }, settings, {}).title, "البطارية عند حد الاحتياطي");
+  // The load against the inverter's rating: its own percent, or the saved rating.
+  assert.equal(analyzeEnergy({ ...base, homePowerW: 3000, loadPercent: 95 }, settings, {}).title, "الإنفرتر قريب من حده الأقصى");
+  assert.equal(analyzeEnergy({ ...base, homePowerW: 7800, batteryPowerW: -8000 }, settings, {}).title, "الإنفرتر قريب من حده الأقصى");
+  assert.equal(analyzeEnergy({ ...base, inverterTemperature: 66 }, settings, {}).title, "حرارة الإنفرتر مرتفعة");
+  assert.equal(analyzeEnergy({ ...base, batteryTemperature: 47 }, settings, {}).title, "حرارة البطارية مرتفعة");
+
+  // A full battery makes an off-grid inverter hold the panels back: advice, not a "low production" alarm.
+  const full = analyzeEnergy({ ...base, solarPowerW: 900, homePowerW: 850, batteryPowerW: 0, batterySoc: 100 }, settings, { recentAverageSolarPowerW: 3200 });
+  assert.equal(full.title, "البطارية ممتلئة والشمس متوفرة");
+  assert.equal(full.alert, false);
+  // The same fall with room in the battery is a real drop, except around sunrise and sunset.
+  const dropped = { ...base, solarPowerW: 900, homePowerW: 850, batteryPowerW: 0, batterySoc: 60 };
+  assert.equal(analyzeEnergy(dropped, settings, { recentAverageSolarPowerW: 3200 }).title, "الإنتاج الشمسي منخفض");
+  assert.notEqual(analyzeEnergy(dropped, settings, { recentAverageSolarPowerW: 3200, sunLow: true }).title, "الإنتاج الشمسي منخفض");
+
+  // Night: a wrong panel reading is reported, but never instead of a battery alert.
+  assert.equal(analyzeEnergy({ ...base, solarPowerW: 900 }, settings, { isNight: true }).title, "قراءة الإنتاج الشمسي غير منطقية");
+  assert.equal(analyzeEnergy({ ...base, solarPowerW: 900, batterySoc: 8 }, settings, { isNight: true }).title, "البطارية منخفضة جداً");
+  assert.equal(analyzeEnergy(base, settings, { isNight: true }).title, "وضع الليل");
+
+  // The trend is the last hour only, and needs three readings.
+  const now = Date.parse("2026-10-13T09:00:00.000Z");
+  const at = (minutesAgo, batterySoc, homePowerW = 1000) => ({ t: now - minutesAgo * 60_000, homePowerW, solarPowerW: 0, batterySoc });
+  assert.equal(trendContext([at(600, 90), at(5, 50), at(0, 49)], now).batterySocDropPerHour, null);
+  const trend = trendContext([at(600, 95, 9000), at(40, 60), at(20, 55), at(0, 50, 3000)], now);
+  assert.equal(Math.round(trend.batterySocDropPerHour), 15);
+  assert.equal(trend.recentAverageHomePowerW, 1000);
+  // One percent step over three minutes is not a rate.
+  assert.equal(trendContext([at(3, 51), at(2, 51), at(0, 50)], now).batterySocDropPerHour, null);
+
+  // The card shows the reasons, and takes the stored history so the trend is there on opening.
+  const card = read("src/components/intelligent-energy-card.tsx");
+  assert.match(card, /insight\.details\.map/);
+  assert.ok(read("src/app/home/page.tsx").includes("<IntelligentEnergyCard snapshot={snapshot} history={history?.points} />"));
+});
