@@ -3,7 +3,6 @@
 import { SocHourRows } from "@/components/hour-rows";
 import { useMemo } from "react";
 import type { LoadPoint } from "@/components/load-chart";
-import { StatTile, type StatTone } from "@/components/stat-tile";
 
 const HOUR = 3_600_000;
 
@@ -42,21 +41,26 @@ export function SocChart({ points, timeZone, now, reservePct }: { points: LoadPo
   const buckets = useMemo(() => hourly(points, now), [points, now]);
 
   const known = buckets.filter((b) => b.soc !== null);
-  const latest = known.at(-1)?.soc ?? null;
   const low = known.length ? Math.min(...known.map((b) => b.min)) : null;
   const high = known.length ? Math.max(...known.map((b) => b.max)) : null;
 
-  const toneFor = (soc: number | null): StatTone => (soc === null ? "slate" : soc < reservePct ? "rose" : soc < reservePct + 10 ? "amber" : "emerald");
+  const toneFor = (soc: number | null) => (soc === null ? "text-slate-900" : soc < reservePct ? "text-rose-700" : soc < reservePct + 10 ? "text-amber-700" : "text-emerald-700");
   const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v)}%`);
   const change = known.length >= 2 ? (known.at(-1)!.soc as number) - (known[0].soc as number) : null;
 
   return (
     <div className="space-y-3">
-      <div className="grid auto-rows-fr grid-cols-2 gap-3" dir="rtl">
-        <StatTile big tone={toneFor(latest)} label="الشحن الآن" value={pct(latest)} />
-        <StatTile big tone={toneFor(low)} label="أدنى نسبة" value={pct(low)} />
-        <StatTile label="أعلى نسبة" value={pct(high)} />
-        <StatTile label="التغيّر خلال 24 ساعة" value={change === null ? "—" : `${change > 0 ? "+" : ""}${Math.round(change)}%`} />
+      <div className="grid grid-cols-3 gap-2 text-center" dir="rtl">
+        {[
+          { label: "أدنى نسبة", value: pct(low), text: toneFor(low) },
+          { label: "أعلى نسبة", value: pct(high), text: toneFor(high) },
+          { label: "التغيّر", value: change === null ? "—" : `${change > 0 ? "+" : ""}${Math.round(change)}%`, text: "text-slate-900" },
+        ].map((item) => (
+          <div key={item.label} className="rounded-2xl bg-slate-50 px-1 py-2.5">
+            <div className="text-[11px] font-bold text-slate-500">{item.label}</div>
+            <div className={"mt-0.5 text-lg font-black " + item.text}><bdi dir="ltr">{item.value}</bdi></div>
+          </div>
+        ))}
       </div>
 
       <SocHourRows points={points} timeZone={timeZone} now={now} reservePct={reservePct} />

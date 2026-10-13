@@ -13,7 +13,7 @@ import { startVisiblePolling } from "@/lib/visible-polling";
 
 const REFRESH_MS = 15_000;
 type BatterySettings = { batteryCapacityWh: number; batteryMinReservePct: number; batteryChemistry?: string | null; batteryNominalVoltage?: number };
-type History = { points: LoadPoint[]; timezone: string; batteryToday: { chargeKWh: number; dischargeKWh: number } | null; socToday: { min: number; max: number } | null };
+type History = { points: LoadPoint[]; timezone: string; batteryToday: { chargeKWh: number; dischargeKWh: number } | null };
 
 /** تقدير الوقت المتبقي حتى الاكتمال أو حتى حدّ الاحتياطي، من السعة والقدرة الحالية. */
 function estimate(soc: number, powerW: number, settings: BatterySettings | null) {
@@ -133,7 +133,7 @@ export default function BatteryPage() {
             {/* Scale under the cells: they fill from the right, so 0% is on the right and 100% by the terminal. */}
             <div className="relative mt-1 h-4 text-[10px] font-bold text-slate-400">
               <span className="absolute right-[3%]">0%</span>
-              <span className="absolute -translate-x-1/2 whitespace-nowrap text-rose-500" style={{ left: `${reserveLeftPct}%` }}>الاحتياطي {reservePct}%</span>
+              <span className="absolute -translate-x-1/2 whitespace-nowrap text-rose-500" style={{ left: `${reserveLeftPct}%` }}>الاحتياطي <bdi dir="ltr">{reservePct}%</bdi></span>
               <span className="absolute left-[7%]">100%</span>
             </div>
 
@@ -179,18 +179,13 @@ export default function BatteryPage() {
             : <Reading label="الحرارة" value="—" muted note="تحتاج BMS" />}
         </div>
       </section>
-      {eta && <p className="px-1 text-[11px] font-semibold text-slate-400">الوقت تقديري: يُحسب من السعة المحفوظة في الإعدادات والقدرة الحالية، ويتغير مع تغيّر الحمل.</p>}
-      {snapshot && snapshot.batteryTemperature == null && (
-        <p className="rounded-2xl bg-amber-50 p-3 text-[11px] font-bold leading-5 text-amber-800">الحرارة والنسبة الدقيقة يرسلهما جهاز إدارة البطارية (BMS). تظهران بعد توصيل كابل الاتصال من منفذ CAN في البطارية إلى الإنفرتر.</p>
-      )}
 
       {/* البطارية اليوم */}
       <section className="energy-card p-4">
         <h2 className="text-sm font-black text-slate-900">البطارية اليوم</h2>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-center">
           <div><div className="text-[11px] font-bold text-slate-500">شحن</div><div className="text-base font-black text-emerald-600"><bdi dir="ltr">{history?.batteryToday ? history.batteryToday.chargeKWh.toFixed(1) : "—"}<span className="text-[10px]"> kWh</span></bdi></div><div className="mt-1.5"><AmpPill tone="emerald" unit="Ah" amps={history?.batteryToday ? batteryAmpHours(history.batteryToday.chargeKWh, settings?.batteryNominalVoltage) : null} /></div></div>
           <div><div className="text-[11px] font-bold text-slate-500">تفريغ</div><div className="text-base font-black text-amber-600"><bdi dir="ltr">{history?.batteryToday ? history.batteryToday.dischargeKWh.toFixed(1) : "—"}<span className="text-[10px]"> kWh</span></bdi></div><div className="mt-1.5"><AmpPill tone="amber" unit="Ah" amps={history?.batteryToday ? batteryAmpHours(history.batteryToday.dischargeKWh, settings?.batteryNominalVoltage) : null} /></div></div>
-          <div><div className="text-[11px] font-bold text-slate-500">أدنى / أعلى</div><div className="text-base font-black text-slate-800"><bdi dir="ltr">{history?.socToday ? `${Math.round(history.socToday.min)}–${Math.round(history.socToday.max)}%` : "—"}</bdi></div></div>
         </div>
       </section>
 
