@@ -53,7 +53,7 @@ function BatteryGauge({ soc, reservePct, tone, charging, flow, powerW }: { soc: 
       {/* Terminal on the left, body outline */}
       <rect x="4" y="42" width="14" height="36" rx="4" className="fill-slate-300" />
       <rect x="20" y="10" width="270" height="100" rx="16" className="fill-white stroke-slate-200" strokeWidth="3" />
-      {/* The line round the body: two bright segments that run clockwise while charging and the other way while
+      {/* The line round the body: a ring of short dashes that runs clockwise while charging and the other way while
           discharging. Idle, the outline simply takes the state's colour and stays still. */}
       {flow === "idle" ? (
         <rect x="20" y="10" width="270" height="100" rx="16" fill="none" className={FLOW_STROKE.idle} strokeWidth="3" />
@@ -61,7 +61,7 @@ function BatteryGauge({ soc, reservePct, tone, charging, flow, powerW }: { soc: 
         <rect
           x="20" y="10" width="270" height="100" rx="16" fill="none" pathLength={100}
           className={"battery-flow " + (flow === "charging" ? "" : "battery-flow-out ") + FLOW_STROKE[flow]}
-          strokeWidth="4.5" strokeLinecap="round" strokeDasharray="16 34"
+          strokeWidth="3.5" strokeLinecap="round" strokeDasharray="1.5 1"
           style={{ animationDuration: `${lapSeconds.toFixed(2)}s` }}
         />
       )}

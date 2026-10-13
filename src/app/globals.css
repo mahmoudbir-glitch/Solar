@@ -42,7 +42,7 @@ button:disabled { cursor: not-allowed; opacity: .6; }
   .desktop-grid > [role="status"], .desktop-grid > [role="alert"], .desktop-grid > .desktop-wide { grid-column: 1 / -1; }
 }
 
-/* Battery page: the line running round the battery. Charging runs clockwise, discharging the other way;
+/* Battery page: the dashed line running round the battery. Charging runs clockwise, discharging the other way;
    the speed comes from an inline animation-duration that follows the power. */
 @keyframes battery-flow-in { to { stroke-dashoffset: -100; } }
 @keyframes battery-flow-out { to { stroke-dashoffset: 100; } }
