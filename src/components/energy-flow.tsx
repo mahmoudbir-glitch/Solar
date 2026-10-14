@@ -3,6 +3,7 @@
 import React, { useId, useState } from 'react';
 import { Battery, BatteryCharging, BatteryMedium } from 'lucide-react';
 import { GridTowerIcon, HouseIcon, InverterIcon, SolarPanelIcon } from '@/components/node-icons';
+import { boltMode, BOLT_LABELS } from '@/lib/bolt-mode';
 import { acAmpHours, acAmps, batteryText, homeText, solarText } from '@/lib/energy';
 import { AmpPill } from '@/components/amp-pill';
 
@@ -24,6 +25,8 @@ interface EnergyFlowProps {
   isLive?: boolean;
   /** Battery current in amps (measured when available). */
   batteryAmps?: number | null;
+  /** Reserve limit (%), so the centre bolt turns red near it. */
+  batteryReservePct?: number;
 }
 
 const FLOW_THRESHOLD = 0.05;
@@ -43,6 +46,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   savingsCurrency = '$',
   isLive = false,
   batteryAmps = null,
+  batteryReservePct = 20,
 }) => {
   const [activeNode, setActiveNode] = useState<'solar' | 'battery' | 'home' | 'grid' | 'inverter' | null>(null);
   const flowId = useId().replace(/:/g, '');
@@ -74,6 +78,8 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   // battery no longer shows a charging bolt.
   const BatteryStateIcon = batteryCharging ? BatteryCharging : batteryDischarging ? BatteryMedium : Battery;
   const batteryIconTone = batteryCharging ? "text-emerald-500" : batteryDischarging ? "text-amber-500" : "text-slate-400";
+  // The bolt in the hub follows the battery: blinking yellow/violet while it charges from the sun/grid.
+  const bolt = boltMode({ batteryW: batteryKw * 1000, solarW: solarKw * 1000, soc: batteryPercentage, reservePct: batteryReservePct, live: liveFlowActive });
   const gridImporting = liveFlowActive && gridConnected !== false && gridKw > FLOW_THRESHOLD;
   const gridExporting = liveFlowActive && gridConnected !== false && gridKw < -FLOW_THRESHOLD;
   // In off-grid (battery) mode this inverter still reports ~230 V on "Grid
@@ -271,7 +277,8 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
 
         <div className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
           <button type="button" onClick={() => setActiveNode("inverter")} aria-label="عرض تفاصيل الإنفرتر" className={"relative flex h-14 w-14 items-center justify-center rounded-full border-2 transition-transform active:scale-95 " + (liveFlowActive ? "border-indigo-200 bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-[0_8px_24px_rgba(77,71,224,0.35)]" : "border-slate-200 bg-slate-100")}>
-            <InverterIcon active={liveFlowActive} />
+            <InverterIcon active={liveFlowActive} mode={bolt} />
+            <span className="sr-only">البطارية {BOLT_LABELS[bolt]}</span>
           </button>
         </div>
       </div>

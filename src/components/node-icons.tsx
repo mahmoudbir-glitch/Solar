@@ -1,4 +1,5 @@
 import React from "react";
+import { BOLT_COLORS, boltBlinks, type BoltMode } from "@/lib/bolt-mode";
 
 /*
  * Solar's icons for the energy-flow nodes. Each sits on a filled circle in its
@@ -74,17 +75,19 @@ export function HouseIcon({ className = "h-10 w-10" }: { className?: string }) {
  * The inverter as an energy core: a bold amber lightning bolt for the power it
  * handles, the same mark Shamsak uses. Grey when no power is flowing.
  */
-export function InverterIcon({ active = true, className = "h-10 w-10" }: { active?: boolean; className?: string }) {
+export function InverterIcon({ active = true, mode, className = "h-10 w-10" }: { active?: boolean; mode?: BoltMode; className?: string }) {
   const id = React.useId().replace(/:/g, "");
+  // With a battery mode the bolt takes that mode's colour and blinks while charging (see bolt-mode.ts).
+  const colors = mode ? BOLT_COLORS[mode] : active ? { top: "#fcd34d", bottom: "#f97316", edge: "#ea580c" } : BOLT_COLORS.idle;
   return (
-    <svg viewBox="0 0 48 48" className={className} aria-hidden="true" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 48 48" className={className + (mode && boltBlinks(mode) ? " bolt-blink" : "")} aria-hidden="true" strokeLinecap="round" strokeLinejoin="round">
       <defs>
         <linearGradient id={`bolt-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={active ? "#fcd34d" : "#e2e8f0"} />
-          <stop offset="100%" stopColor={active ? "#f97316" : "#94a3b8"} />
+          <stop offset="0%" stopColor={colors.top} />
+          <stop offset="100%" stopColor={colors.bottom} />
         </linearGradient>
       </defs>
-      <path transform="translate(0 2)" d="M27.5 3 L12 25.5 H22.5 L19.5 41 L36 17.5 H25.5 Z" fill={`url(#bolt-${id})`} stroke={active ? "#ea580c" : "#94a3b8"} strokeWidth="1.6" />
+      <path transform="translate(0 2)" d="M27.5 3 L12 25.5 H22.5 L19.5 41 L36 17.5 H25.5 Z" fill={`url(#bolt-${id})`} stroke={colors.edge} strokeWidth="1.6" />
     </svg>
   );
 }

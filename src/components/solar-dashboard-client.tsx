@@ -73,6 +73,7 @@ export default function SolarDashboardClient() {
         todayGridSavings={snapshot?.todayGridSavings}
         isLive={isLive}
         batteryAmps={batteryAmps(snapshot, battery?.nominal)}
+        batteryReservePct={battery?.reservePct}
         savingsCurrency={snapshot?.currency ? `${snapshot.currency} ` : undefined}
       />
 

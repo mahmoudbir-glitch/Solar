@@ -50,3 +50,8 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 .battery-flow { animation: battery-flow-in 1s linear infinite; }
 .battery-flow-out { animation-name: battery-flow-out; }
 @media (prefers-reduced-motion: reduce) { .battery-flow { animation: none; } }
+
+/* The battery bolt blinks while the battery charges (battery page and the hub on the home page). */
+@keyframes bolt-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.bolt-blink { animation: bolt-blink 1.1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .bolt-blink { animation: none; } }

@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { SocChart } from "@/components/soc-chart";
 import type { LoadPoint } from "@/components/load-chart";
 import { startVisiblePolling } from "@/lib/visible-polling";
+import { BOLT_COLORS, boltBlinks, type BoltMode } from "@/lib/bolt-mode";
 
 const REFRESH_MS = 15_000;
 type BatterySettings = { batteryCapacityWh: number; batteryMinReservePct: number; batteryChemistry?: string | null; batteryNominalVoltage?: number };
@@ -42,7 +43,7 @@ const FLOW_STROKE: Record<Flow, string> = {
   idle: "stroke-slate-300",
 };
 
-function BatteryGauge({ soc, reservePct, tone, charging, flow, powerW }: { soc: number; reservePct: number; tone: string; charging: boolean; flow: Flow; powerW: number }) {
+function BatteryGauge({ soc, reservePct, tone, bolt, flow, powerW }: { soc: number; reservePct: number; tone: string; bolt: BoltMode; flow: Flow; powerW: number }) {
   // The dashes march one step (one dash and its gap, about 18 px) per cycle, so they move steadily rather than
   // racing round: 1.2 s a step at low power, easing to 0.55 s a step at 3 kW and above.
   const stepSeconds = Math.max(0.55, Math.min(1.2, 1.2 - (Math.abs(powerW) / 1000) * 0.22));
@@ -79,7 +80,8 @@ function BatteryGauge({ soc, reservePct, tone, charging, flow, powerW }: { soc: 
       })}
       {/* Reserve limit */}
       <line x1={reserveX} x2={reserveX} y1="14" y2="106" className="stroke-rose-400" strokeWidth="2" strokeDasharray="5 4" />
-      {charging && <path d="M159 30 L141 64 H154 L148 92 L169 54 H156 Z" className="fill-amber-400 stroke-white" strokeWidth="3" strokeLinejoin="round" />}
+      {/* The bolt: blinks while charging (yellow from the panels, violet from the grid); still and orange, red or grey otherwise. */}
+      <path d="M159 30 L141 64 H154 L148 92 L169 54 H156 Z" fill={BOLT_COLORS[bolt].bottom} stroke="white" strokeWidth="3" strokeLinejoin="round" className={boltBlinks(bolt) ? "bolt-blink" : undefined} />
     </svg>
   );
 }
@@ -143,6 +145,7 @@ export default function BatteryPage() {
   // Where the reserve line sits under the gauge, as a share of its width (matches BatteryGauge's geometry).
   const reserveLeftPct = ((280 - (reservePct / 100) * 250) / 300) * 100;
   const flow: Flow = !snapshot || state === "idle" ? "idle" : state === "charging" ? "charging" : soc <= reservePct + 5 ? "low" : "discharging";
+  const bolt: BoltMode = flow === "charging" ? ((snapshot?.solarPowerW ?? 0) >= 50 ? "solar" : "grid") : flow;
   const flowNote = { charging: "تشحن الآن", discharging: "تغذّي البيت الآن", low: "تفرغ وهي قريبة من الاحتياطي", idle: "لا شحن ولا تفريغ" }[flow];
 
   return (
@@ -172,7 +175,7 @@ export default function BatteryPage() {
             </div>
 
             <div className="mt-3">
-              <BatteryGauge soc={soc} reservePct={reservePct} tone={toneText} charging={state === "charging"} flow={flow} powerW={powerW} />
+              <BatteryGauge soc={soc} reservePct={reservePct} tone={toneText} bolt={bolt} flow={flow} powerW={powerW} />
             </div>
             {/* Scale under the cells: they fill from the right, so 0% is on the right and 100% by the terminal. */}
             <div className="relative mt-1 h-4 text-[10px] font-bold text-slate-400">
