@@ -43,10 +43,13 @@ const FLOW_STROKE: Record<Flow, string> = {
   idle: "stroke-slate-300",
 };
 
+/** The battery's whole silhouette, terminal included: the path the dashed line runs round (clockwise from the top). */
+const OUTLINE = "M36 10 H274 A16 16 0 0 1 290 26 V94 A16 16 0 0 1 274 110 H36 A16 16 0 0 1 20 94 V78 H8 A4 4 0 0 1 4 74 V46 A4 4 0 0 1 8 42 H20 V26 A16 16 0 0 1 36 10 Z";
+
 function BatteryGauge({ soc, reservePct, tone, bolt, flow, powerW }: { soc: number; reservePct: number; tone: string; bolt: BoltMode; flow: Flow; powerW: number }) {
   // The dashes march one step (one dash and its gap, about 18 px) per cycle, so they move steadily rather than
-  // racing round: 1.2 s a step at low power, easing to 0.55 s a step at 3 kW and above.
-  const stepSeconds = Math.max(0.55, Math.min(1.2, 1.2 - (Math.abs(powerW) / 1000) * 0.22));
+  // racing round: 0.9 s a step at low power, easing to 0.4 s a step at 3 kW and above.
+  const stepSeconds = Math.max(0.4, Math.min(0.9, 0.9 - (Math.abs(powerW) / 1000) * 0.17));
   const cell = (BODY.width - BODY.gap * (CELLS - 1)) / CELLS;
   const right = BODY.x + BODY.width;
   const reserveX = right - (reservePct / 100) * BODY.width;
@@ -58,10 +61,10 @@ function BatteryGauge({ soc, reservePct, tone, bolt, flow, powerW }: { soc: numb
       {/* The line round the body: a ring of short dashes that runs clockwise while charging and the other way while
           discharging. Idle, the outline simply takes the state's colour and stays still. */}
       {flow === "idle" ? (
-        <rect x="20" y="10" width="270" height="100" rx="16" fill="none" className={FLOW_STROKE.idle} strokeWidth="3" />
+        <path d={OUTLINE} fill="none" className={FLOW_STROKE.idle} strokeWidth="3" strokeLinejoin="round" />
       ) : (
-        <rect
-          x="20" y="10" width="270" height="100" rx="16" fill="none" pathLength={100}
+        <path
+          d={OUTLINE} fill="none" pathLength={100} strokeLinejoin="round"
           className={"battery-flow " + (flow === "charging" ? "" : "battery-flow-out ") + FLOW_STROKE[flow]}
           strokeWidth="3.5" strokeLinecap="round" strokeDasharray="1.5 1"
           style={{ animationDuration: `${stepSeconds.toFixed(2)}s` }}
