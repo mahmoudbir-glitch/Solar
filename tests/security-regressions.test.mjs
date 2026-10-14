@@ -959,3 +959,10 @@ test("battery bolt blinks while charging and takes the battery's colour on both 
   assert.match(flow, /<InverterIcon active=\{liveFlowActive\} mode=\{bolt\} \/>/);
   assert.match(css, /\.bolt-blink \{ animation: bolt-blink/);
 });
+
+test("home solar node uses the logo's tilted panel drawing", () => {
+  const icons = fs.readFileSync(new URL("../src/components/node-icons.tsx", import.meta.url), "utf8");
+  const mark = fs.readFileSync(new URL("../src/components/solar-mark.tsx", import.meta.url), "utf8");
+  const panel = 'd="M150 262 H362 L404 396 H108 Z"';
+  assert.ok(mark.includes(panel) && icons.includes(panel));
+});
