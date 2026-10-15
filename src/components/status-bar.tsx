@@ -39,18 +39,15 @@ export function StatusBar({ compact = false }: { compact?: boolean } = {}) {
     none: { dot: "bg-rose-500", text: "text-rose-700", label: "لا توجد قراءة من الإنفرتر" },
   }[status.kind];
 
-  // In the coloured top bar: a small white chip, "مباشر · 12:20".
+  // In the coloured top bar: just a dot, green (live), yellow (late) or red (no reading).
+  // The words stay available to screen readers and as a tooltip.
   if (compact) {
-    const chip = {
-      live: { dot: "bg-emerald-300", label: `مباشر · ${time}` },
-      stale: { dot: "bg-amber-300", label: `متأخرة · ${time}` },
-      none: { dot: "bg-rose-300", label: "لا قراءة" },
-    }[status.kind];
+    const dot = { live: "bg-emerald-400", stale: "bg-amber-300", none: "bg-rose-500" }[status.kind];
     return (
-      <div role="status" title={view.label} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-black text-white">
-        <span className={"h-2 w-2 shrink-0 rounded-full " + chip.dot + (status.kind === "live" ? " animate-pulse" : "")} aria-hidden="true" />
-        <bdi>{chip.label}</bdi>
-      </div>
+      <span role="status" title={view.label} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+        <span className={"h-3 w-3 rounded-full ring-2 ring-white/80 " + dot + (status.kind === "live" ? " animate-pulse" : "")} aria-hidden="true" />
+        <span className="sr-only">{view.label}</span>
+      </span>
     );
   }
 
