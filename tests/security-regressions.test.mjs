@@ -938,7 +938,7 @@ test("smart monitor: equipment and reserve alerts, night, a full battery and the
   // The card shows the reasons, and takes the stored history so the trend is there on opening.
   const card = read("src/components/intelligent-energy-card.tsx");
   assert.match(card, /insight\.details\.map/);
-  assert.ok(read("src/app/home/page.tsx").includes("<IntelligentEnergyCard snapshot={snapshot} history={history?.points} />"));
+  assert.ok(read("src/components/solar-dashboard-client.tsx").includes("<IntelligentEnergyCard snapshot={snapshot} history={historyPoints} />"));
 });
 
 test("battery outline runs a line whose colour and direction follow what the battery is doing", () => {

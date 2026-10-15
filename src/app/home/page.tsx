@@ -6,10 +6,9 @@ import { Lightbulb, Loader2, RefreshCw } from "lucide-react";
 import type { EnergySnapshot } from "@/lib/energy";
 import { PageHeader } from "@/components/page-header";
 import { LoadChart, type LoadPoint } from "@/components/load-chart";
-import { homeText, acAmps, acAmpHours } from "@/lib/energy";
+import { homeText, acAmps } from "@/lib/energy";
 import { AmpPill } from "@/components/amp-pill";
 import { startVisiblePolling } from "@/lib/visible-polling";
-import { IntelligentEnergyCard } from "@/components/intelligent-energy-card";
 
 const REFRESH_MS = 15_000;
 const HISTORY_REFRESH_MS = 5 * 60_000;
@@ -140,16 +139,12 @@ export default function HomeConsumptionPage() {
         )}
       </section>
 
-      {/* المراقبة الذكية: حكم واحد على حالة المنظومة الآن، وأسبابه عند الفتح */}
-      {snapshot && <IntelligentEnergyCard snapshot={snapshot} history={history?.points} />}
-
       {/* اليوم: الاستهلاك وأعلى حمل في بطاقة واحدة */}
       <section className="energy-card p-4">
         <div className="grid grid-cols-2 divide-x divide-x-reverse divide-slate-100">
           <div className="pl-3">
             <div className="text-[11px] font-bold text-slate-500">استهلاك اليوم</div>
             <div className="mt-1 whitespace-nowrap text-xl font-black leading-7 text-sky-700"><bdi dir="ltr">{snapshot?.todayHomeUsageKWh !== undefined ? snapshot.todayHomeUsageKWh.toFixed(1) : "—"}<small className="text-xs text-slate-500"> kWh</small></bdi></div>
-            <div className="mt-1.5"><AmpPill tone="sky" unit="Ah" amps={acAmpHours(snapshot?.todayHomeUsageKWh)} /></div>
             <div className="mt-1.5 text-[11px] font-semibold text-slate-400">منذ منتصف الليل</div>
           </div>
           <div className="pr-3">

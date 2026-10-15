@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Coins } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { moneyTone, semanticBg, semanticBorder, semanticText } from "@/lib/energy";
+import { moneyText, moneyTone, semanticBg, semanticBorder, semanticText } from "@/lib/energy";
 import { StatTile } from "@/components/stat-tile";
 import { percentsOf } from "@/lib/energy";
 
@@ -84,11 +84,6 @@ function periodLabel(period: Period, days: number) {
 /** Money with at most two decimals (0.325 -> 0.33), Latin digits. */
 const money = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: n % 1 ? 2 : 0 });
 
-/** "$12.50" for dollars, "12,500 ل.س" for Syrian pounds (no decimals there). */
-function moneyIn(currency: string, n: number) {
-  if (currency === "SYP") return `${Math.round(n).toLocaleString("en-US")} ل.س`;
-  return `$${money(n)}`;
-}
 
 export default function MoneyDashboard() {
   const [data, setData] = useState<FinanceData | null>(null);
@@ -150,7 +145,7 @@ export default function MoneyDashboard() {
   // grid charged the battery (paid once on import, "saved" again on discharge).
   const savedAmount = useMemo(() => hypotheticalCost - gridCost + exportIncome, [hypotheticalCost, gridCost, exportIncome]);
   const savedTone = moneyTone(savedAmount);
-  const formatMoney = (n: number) => <bdi dir="ltr">{moneyIn(currency, n)}</bdi>;
+  const formatMoney = (n: number) => <bdi dir="ltr">{moneyText(currency, n)}</bdi>;
 
   // Percentages from the kWh, rounded so the three always add up to 100.
   const [solarPct, batteryPct, gridPct] = data ? percentsOf([data.sources.solarKWh, data.sources.batteryKWh, data.sources.gridKWh]) : [0, 0, 0];

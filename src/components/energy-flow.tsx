@@ -4,7 +4,7 @@ import React, { useId, useState } from 'react';
 import { Battery, BatteryCharging, BatteryMedium } from 'lucide-react';
 import { GridTowerIcon, HouseIcon, InverterIcon, SolarPanelIcon } from '@/components/node-icons';
 import { boltMode, BOLT_LABELS } from '@/lib/bolt-mode';
-import { acAmpHours, acAmps, batteryText, homeText, solarText } from '@/lib/energy';
+import { acAmps, moneyText, batteryText, homeText, solarText } from '@/lib/energy';
 import { AmpPill } from '@/components/amp-pill';
 
 interface EnergyFlowProps {
@@ -21,6 +21,7 @@ interface EnergyFlowProps {
   todayProductionKWh?: number;
   todayHomeUsageKWh?: number;
   todayGridSavings?: number;
+  /** Currency code from the settings (USD or SYP). */
   savingsCurrency?: string;
   isLive?: boolean;
   /** Battery current in amps (measured when available). */
@@ -43,7 +44,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   todayProductionKWh,
   todayHomeUsageKWh,
   todayGridSavings,
-  savingsCurrency = '$',
+  savingsCurrency = 'USD',
   isLive = false,
   batteryAmps = null,
   batteryReservePct = 20,
@@ -94,7 +95,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   // <bdi dir="ltr"> keeps "1.23 kW" in that order inside the RTL layout.
   const formatKw = (value: number) => <bdi dir="ltr">{Math.abs(value).toFixed(2) + ' kW'}</bdi>;
   const formatKwh = (value?: number) => value === undefined ? '—' : <bdi dir="ltr">{value.toFixed(1) + ' kWh'}</bdi>;
-  const formatSavings = (value?: number) => value === undefined ? '—' : <bdi dir="ltr">{(value < 0 ? '-' : '') + savingsCurrency + Math.abs(value).toFixed(2)}</bdi>;
+  const formatSavings = (value?: number) => value === undefined ? '—' : <bdi dir="ltr">{(value < 0 ? '-' : '') + moneyText(savingsCurrency, Math.abs(value))}</bdi>;
 
   const operatingMode = !isLive
     ? { label: 'بانتظار البيانات الحية', className: 'border-slate-200 bg-slate-50 text-slate-600' }
@@ -344,8 +345,8 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
 
       <div className="relative border-t border-slate-100 bg-slate-50/70 px-3 py-4 sm:px-5">
         <div className="grid grid-cols-3 divide-x divide-x-reverse divide-slate-200 text-center">
-          <div className="px-2"><div className="text-[11px] font-bold text-slate-500">إنتاج اليوم</div><div className="mt-1 text-base font-black text-amber-600 sm:text-lg">{formatKwh(todayProductionKWh)}</div><div className="mt-1.5"><AmpPill tone="amber" unit="Ah" amps={acAmpHours(todayProductionKWh)} /></div></div>
-          <div className="px-2"><div className="text-[11px] font-bold text-slate-500">استهلاك اليوم</div><div className="mt-1 text-base font-black text-sky-700 sm:text-lg">{formatKwh(todayHomeUsageKWh)}</div><div className="mt-1.5"><AmpPill tone="sky" unit="Ah" amps={acAmpHours(todayHomeUsageKWh)} /></div></div>
+          <div className="px-2"><div className="text-[11px] font-bold text-slate-500">إنتاج اليوم</div><div className="mt-1 text-base font-black text-amber-600 sm:text-lg">{formatKwh(todayProductionKWh)}</div></div>
+          <div className="px-2"><div className="text-[11px] font-bold text-slate-500">استهلاك اليوم</div><div className="mt-1 text-base font-black text-sky-700 sm:text-lg">{formatKwh(todayHomeUsageKWh)}</div></div>
           <div className="px-2"><div className="text-[11px] font-bold text-slate-500">وفر اليوم</div><div className={"mt-1 text-base font-black sm:text-lg " + ((todayGridSavings ?? 0) < 0 ? "text-rose-600" : "text-emerald-600")}>{formatSavings(todayGridSavings)}</div></div>
         </div>
         {todayProductionKWh === undefined && todayHomeUsageKWh === undefined && <p className="mt-2 text-center text-[10px] font-semibold text-slate-400">تُحسب أرقام اليوم تلقائياً مع تجمّع القراءات.</p>}
