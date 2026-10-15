@@ -78,7 +78,7 @@ function TonightCard({
         : "قد لا تكفي حتى الصباح";
 
   return (
-    <section id="night" className={"energy-card scroll-mt-40 overflow-hidden bg-gradient-to-b to-white p-4 ring-2 " + toneRing + " " + toneClass}>
+    <section id="night" className={"energy-card scroll-mt-24 overflow-hidden bg-gradient-to-b to-white p-4 ring-2 " + toneRing + " " + toneClass}>
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs font-black text-slate-500">
           <MoonStar size={15} aria-hidden="true" /> الليلة الجارية · حتى الشروق <bdi dir="ltr">{siteClock(until)}</bdi>
@@ -139,9 +139,37 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
 
   // Arriving from the home card ("/energy#night"): the section only exists
   // after the forecast loads, so scroll once it is rendered.
+  // Cards above it (weather, calibration, best time for the sun) can still grow
+  // after the first scroll and push it down, so line it up again a few times
+  // as the page settles, then flash it so it is clear where the link landed.
+  const nightLanded = useRef(false);
   useEffect(() => {
-    if (!forecasts.length || typeof window === "undefined" || window.location.hash !== "#night") return;
-    requestAnimationFrame(() => document.getElementById("night")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    if (!forecasts.length || nightLanded.current || typeof window === "undefined" || window.location.hash !== "#night") return;
+    nightLanded.current = true;
+    let userMoved = false;
+    const stop = () => { userMoved = true; };
+    window.addEventListener("touchstart", stop, { once: true, passive: true });
+    window.addEventListener("wheel", stop, { once: true, passive: true });
+    const align = (smooth: boolean) => {
+      if (userMoved) return;
+      document.getElementById("night")?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+    };
+    const timers = [
+      window.setTimeout(() => align(true), 60),
+      window.setTimeout(() => align(false), 700),
+      window.setTimeout(() => align(false), 1600),
+      window.setTimeout(() => {
+        const target = document.getElementById("night");
+        if (!target) return;
+        target.classList.add("night-flash");
+        window.setTimeout(() => target.classList.remove("night-flash"), 1800);
+      }, 800),
+    ];
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener("touchstart", stop);
+      window.removeEventListener("wheel", stop);
+    };
   }, [forecasts.length]);
 
   // The night in progress (after sunset, or after midnight before sunrise).
