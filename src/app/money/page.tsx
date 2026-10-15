@@ -237,7 +237,7 @@ export default function MoneyDashboard() {
           {/* The money first: what the system saved, then how that figure is reached, in three plain lines. */}
           <section className="desktop-wide rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-black text-slate-950">💰 كم وفّرت</h2>
+              <h2 className="text-base font-black text-slate-950">💰 الوفر</h2>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-600">{periodLabel(period, data.periodDays)}</span>
             </div>
 
@@ -249,39 +249,39 @@ export default function MoneyDashboard() {
             ) : (
               <>
                 <div className={"mt-3 rounded-2xl border p-4 " + semanticBorder[savedTone] + " " + semanticBg[savedTone]}>
-                  <span className={"text-xs font-bold " + semanticText[savedTone]}>{savedAmount >= 0 ? "وفّرت" : "دفعت زيادة"}</span>
+                  <span className={"text-xs font-bold " + semanticText[savedTone]}>{savedAmount >= 0 ? "وفّرتَ" : "دفعتَ أكثر"}</span>
                   <strong className={"mt-1 block text-4xl font-black " + semanticText[savedTone]}>{formatMoney(Math.abs(savedAmount))}</strong>
-                  <span className="mt-1 block text-[11px] font-semibold opacity-75">مصاري ما دفعتها للشبكة بفضل الطاقة الشمسية</span>
+                  <span className="mt-1 block text-[11px] font-semibold opacity-75">مبلغ لم تدفعه للشبكة بفضل الطاقة الشمسية</span>
                 </div>
 
                 <dl className="mt-3 divide-y divide-slate-100 rounded-2xl border border-slate-200">
                   <div className="flex items-center justify-between gap-3 p-3">
-                    <dt className="text-xs font-bold text-slate-600">لو كل كهرباء البيت من الشبكة كنت دفعت</dt>
+                    <dt className="text-xs font-bold text-slate-600">لو أُخذت كل كهرباء المنزل من الشبكة لدفعتَ</dt>
                     <dd className="shrink-0 text-sm font-black text-slate-800">{formatMoney(hypotheticalCost)}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-3 p-3">
-                    <dt className="text-xs font-bold text-slate-600">دفعت فعلياً للشبكة <span className="font-semibold text-slate-400">(<bdi dir="ltr">{formatNumber(data.totals.gridImportKWh)} kWh</bdi>)</span></dt>
+                    <dt className="text-xs font-bold text-slate-600">ما دفعته فعلياً للشبكة <span className="font-semibold text-slate-400">(<bdi dir="ltr">{formatNumber(data.totals.gridImportKWh)} kWh</bdi>)</span></dt>
                     <dd className="shrink-0 text-sm font-black text-violet-700">− {formatMoney(gridCost)}</dd>
                   </div>
                   {exportIncome > 0 && (
                     <div className="flex items-center justify-between gap-3 p-3">
-                      <dt className="text-xs font-bold text-slate-600">ربحت من بيع الفائض <span className="font-semibold text-slate-400">(<bdi dir="ltr">{formatNumber(data.totals.gridExportKWh)} kWh</bdi>)</span></dt>
+                      <dt className="text-xs font-bold text-slate-600">عائد بيع الفائض <span className="font-semibold text-slate-400">(<bdi dir="ltr">{formatNumber(data.totals.gridExportKWh)} kWh</bdi>)</span></dt>
                       <dd className="shrink-0 text-sm font-black text-amber-700">+ {formatMoney(exportIncome)}</dd>
                     </div>
                   )}
                   <div className="flex items-center justify-between gap-3 bg-slate-50/70 p-3">
-                    <dt className="text-xs font-black text-slate-800">{savedAmount >= 0 ? "يعني وفّرت" : "يعني دفعت زيادة"}</dt>
+                    <dt className="text-xs font-black text-slate-800">{savedAmount >= 0 ? "إذن وفّرتَ" : "إذن دفعتَ أكثر"}</dt>
                     <dd className={"shrink-0 text-sm font-black " + semanticText[savedTone]}>{formatMoney(Math.abs(savedAmount))}</dd>
                   </div>
                 </dl>
-                <p className="mt-2 text-[11px] font-semibold text-slate-500">على سعر <bdi dir="ltr">{formatMoney(tariff)}</bdi> للكيلوواط ساعة من الشبكة.</p>
+                <p className="mt-2 text-[11px] font-semibold text-slate-500">محسوبة بسعر <bdi dir="ltr">{formatMoney(tariff)}</bdi> للكيلوواط ساعة من الشبكة.</p>
               </>
             )}
           </section>
 
           <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <div>
-              <h2 className="text-base font-black text-slate-950">⚡ من وين إجت كهرباء البيت</h2>
+              <h2 className="text-base font-black text-slate-950">⚡ من أين جاءت كهرباء المنزل</h2>
               <p className="mt-0.5 text-[11px] font-semibold text-slate-500">حصة كل مصدر من استهلاك المنزل</p>
             </div>
 
