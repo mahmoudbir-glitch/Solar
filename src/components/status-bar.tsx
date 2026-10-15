@@ -44,8 +44,8 @@ export function StatusBar({ compact = false }: { compact?: boolean } = {}) {
   if (compact) {
     const dot = { live: "bg-emerald-400", stale: "bg-amber-300", none: "bg-rose-500" }[status.kind];
     return (
-      <span role="status" title={view.label} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
-        <span className={"h-3 w-3 rounded-full ring-2 ring-white/80 " + dot + (status.kind === "live" ? " animate-pulse" : "")} aria-hidden="true" />
+      <span role="status" title={view.label} className="inline-flex shrink-0 items-center">
+        <span className={"h-2.5 w-2.5 rounded-full ring-2 ring-white/80 " + dot + (status.kind === "live" ? " animate-pulse" : "")} aria-hidden="true" />
         <span className="sr-only">{view.label}</span>
       </span>
     );
