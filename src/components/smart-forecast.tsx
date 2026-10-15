@@ -2,7 +2,7 @@
 
 import { toneText } from "@/lib/battery-tone";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, MoonStar, RefreshCw, SunMedium } from "lucide-react";
+import { Loader2, MoonStar, RefreshCw } from "lucide-react";
 import { useSharedSmartEnergy } from "@/components/smart-energy-provider";
 import { calculateAutonomy, siteClock, siteInstant, weatherIcon, weatherLabel } from "@/lib/smart-forecast";
 import { InfoTip } from "@/components/info-tip";
@@ -187,12 +187,10 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
 
       {/* 1 · Title, refresh, and the two facts that frame every number below. */}
       <header className="energy-card p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-1 ring-amber-200/70"><SunMedium className="h-5 w-5" aria-hidden="true" /></div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-black text-amber-600">Solar • الطاقة</p>
-            <h1 className="text-xl font-black tracking-tight text-slate-950">توقعات الطاقة</h1>
-          </div>
+        {/* The page title is in the coloured top bar; here: what the page shows, and refresh. */}
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="sr-only">توقعات الطاقة</h1>
+          <p className="text-xs font-semibold leading-5 text-slate-500">إنتاج الألواح المتوقع حسب الطقس، والبطارية خلال الأيام.</p>
           <button
             type="button"
             onClick={() => void handleRefresh()}

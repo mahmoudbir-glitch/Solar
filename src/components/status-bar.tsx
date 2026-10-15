@@ -11,7 +11,7 @@ type Status = { kind: "loading" } | { kind: "live" | "stale"; at: Date } | { kin
  * المصدر الوحيد لحالة الاتصال في التطبيق: نقطة خضراء (مباشر)، صفراء (القراءة
  * متأخرة)، حمراء (لا توجد قراءة). يحلّ محلّ الشارات المتفرقة في الصفحات.
  */
-export function StatusBar() {
+export function StatusBar({ compact = false }: { compact?: boolean } = {}) {
   const [status, setStatus] = useState<Status>({ kind: "loading" });
 
   const load = useCallback(async () => {
@@ -38,6 +38,21 @@ export function StatusBar() {
     stale: { dot: "bg-amber-500", text: "text-amber-700", label: `القراءة متأخرة · آخر قراءة ${time}` },
     none: { dot: "bg-rose-500", text: "text-rose-700", label: "لا توجد قراءة من الإنفرتر" },
   }[status.kind];
+
+  // In the coloured top bar: a small white chip, "مباشر · 12:20".
+  if (compact) {
+    const chip = {
+      live: { dot: "bg-emerald-300", label: `مباشر · ${time}` },
+      stale: { dot: "bg-amber-300", label: `متأخرة · ${time}` },
+      none: { dot: "bg-rose-300", label: "لا قراءة" },
+    }[status.kind];
+    return (
+      <div role="status" title={view.label} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-black text-white">
+        <span className={"h-2 w-2 shrink-0 rounded-full " + chip.dot + (status.kind === "live" ? " animate-pulse" : "")} aria-hidden="true" />
+        <bdi>{chip.label}</bdi>
+      </div>
+    );
+  }
 
   return (
     <div role="status" className={"flex items-center gap-2 text-[11px] font-black " + view.text}>

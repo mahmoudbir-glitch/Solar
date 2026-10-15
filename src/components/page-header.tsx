@@ -11,17 +11,15 @@ const TONES = {
   rose: { box: "bg-rose-50 text-rose-500 ring-rose-200/70", eyebrow: "text-rose-500" },
 } as const;
 
-/** ترويسة موحّدة لصفحات التطبيق: أيقونة + عنوان صغير + عنوان رئيسي + وصف + عنصر جانبي اختياري. */
-export function PageHeader({ icon: Icon, eyebrow, title, subtitle, tone = "amber", right }: { icon: LucideIcon; eyebrow: string; title: string; subtitle?: string; tone?: keyof typeof TONES; right?: React.ReactNode }) {
-  const t = TONES[tone];
+/**
+ * ترويسة الصفحة: العنوان صار في الشريط العلوي الملوّن بلون الصفحة، فتبقى هنا
+ * جملة الوصف وزر جانبي اختياري فقط (والعنوان مخفي لقارئات الشاشة).
+ */
+export function PageHeader({ title, subtitle, right }: { icon?: LucideIcon; eyebrow?: string; title: string; subtitle?: string; tone?: keyof typeof TONES; right?: React.ReactNode }) {
   return (
-    <header className="energy-card flex items-start gap-3 p-4 sm:p-5">
-      <div className={"flex h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 " + t.box}><Icon className="h-5 w-5" aria-hidden="true" /></div>
-      <div className="min-w-0 flex-1">
-        <p className={"text-[11px] font-black " + t.eyebrow}>{eyebrow}</p>
-        <h1 className="mt-0.5 text-xl font-black tracking-tight text-slate-950 sm:text-2xl">{title}</h1>
-        {subtitle && <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{subtitle}</p>}
-      </div>
+    <header className="flex min-h-9 items-center justify-between gap-3 px-1">
+      <h1 className="sr-only">{title}</h1>
+      {subtitle ? <p className="min-w-0 text-xs font-semibold leading-5 text-slate-500">{subtitle}</p> : <span />}
       {right}
     </header>
   );

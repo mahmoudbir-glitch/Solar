@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { BottomNav, DesktopNav } from '@/components/bottom-nav';
+import { BottomNav, DesktopNav, currentNav, navGradient } from '@/components/bottom-nav';
 import LogoutButton from '@/components/logout-button';
 import { StatusBar } from '@/components/status-bar';
 import { SolarMark } from '@/components/solar-mark';
@@ -66,32 +66,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen w-full bg-[linear-gradient(165deg,#eef0ff_0%,#f4f6fc_38%,#f5efff_70%,#fff8e5_100%)]">
-      <header className="sticky top-[calc(env(safe-area-inset-top)+0.5rem)] z-50 mx-2 mt-2 overflow-hidden rounded-[1.75rem] border border-slate-200/70 bg-white/90 shadow-[0_8px_28px_rgba(82,55,38,0.08)] backdrop-blur-xl sm:mx-auto sm:max-w-5xl lg:max-w-6xl">
-        <div className="mx-auto flex max-w-5xl items-center lg:max-w-6xl justify-between gap-4 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3" aria-label="Solar">
-            <SolarMark />
+      {/* One slim bar in the open page's colour: brand, page title, live status, logout. */}
+      <header className={"sticky top-0 z-50 rounded-b-[1.5rem] bg-gradient-to-l pt-[env(safe-area-inset-top)] text-white shadow-[0_8px_24px_rgba(15,23,42,0.14)] transition-colors " + navGradient(pathname || '/')}>
+        <div className="mx-auto flex min-h-[3.75rem] max-w-5xl items-center justify-between gap-3 px-3 py-2 sm:px-6 lg:max-w-6xl">
+          <div className="flex min-w-0 items-center gap-2.5" aria-label="Solar">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/90 shadow-sm"><SolarMark size={30} /></span>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="truncate text-xl font-black leading-tight tracking-tight text-slate-950 sm:text-2xl">Solar</div>
-                <span className="hidden rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-black text-emerald-700 sm:inline-flex">
-                  طاقة ذكية
-                </span>
-              </div>
-              <div className="truncate text-[11px] font-black leading-tight text-black sm:text-xs">
-                الطاقة البديلة
-              </div>
+              <div className="text-[10px] font-extrabold leading-none text-white/80">Solar</div>
+              <div className="truncate text-lg font-black leading-tight">{currentNav(pathname || '/')?.label ?? 'Solar'}</div>
             </div>
           </div>
-          <LogoutButton />
-        </div>
-        <div className="mx-auto max-w-5xl px-4 pb-2 sm:px-6 lg:max-w-6xl">
-          <StatusBar />
-        </div>
-        <div className="mx-auto max-w-5xl px-4 pb-3 sm:px-6 lg:max-w-6xl">
-          <DesktopNav />
+          <div className="flex shrink-0 items-center gap-2">
+            <StatusBar compact />
+            <LogoutButton onColor />
+          </div>
         </div>
       </header>
-      <main className="mx-auto min-h-[calc(100vh-120px)] w-full max-w-3xl px-3 py-4 pb-28 sm:px-5 sm:py-6 md:pb-8 lg:max-w-6xl">
+      <div className="mx-auto hidden max-w-5xl px-4 pt-3 sm:px-6 md:block lg:max-w-6xl">
+        <DesktopNav />
+      </div>
+      <main className="mx-auto min-h-[calc(100vh-120px)] w-full max-w-3xl px-3 py-3 pb-28 sm:px-5 sm:py-6 md:pb-8 lg:max-w-6xl">
         {children}
       </main>
       <BottomNav />

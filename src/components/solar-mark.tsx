@@ -1,11 +1,11 @@
 import { useId } from "react";
 
 /** Solar's logo: the app icon's sun over a solar panel, with no background. Only the sun blinks. */
-export function SolarMark({ large = false }: { large?: boolean }) {
+export function SolarMark({ large = false, size }: { large?: boolean; size?: number }) {
   const id = useId().replace(/:/g, "");
   const sun = `solar-mark-sun-${id}`;
   const panel = `solar-mark-panel-${id}`;
-  const px = large ? 80 : 44;
+  const px = size ?? (large ? 80 : 44);
   return (
     <svg
       aria-hidden="true"

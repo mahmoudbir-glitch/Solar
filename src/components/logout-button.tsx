@@ -3,7 +3,7 @@
 import { LogOut } from "lucide-react";
 import { useState } from "react";
 
-export default function LogoutButton(){
+export default function LogoutButton({ onColor = false }: { onColor?: boolean } = {}){
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState<string | null>(null);
 
@@ -40,9 +40,9 @@ export default function LogoutButton(){
         disabled={loading}
         aria-label="تسجيل الخروج"
         title="تسجيل الخروج"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-50 hover:text-red-600 disabled:opacity-50"
+        className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-xl disabled:opacity-50 " + (onColor ? "bg-white/15 text-white hover:bg-white/25" : "text-slate-500 hover:bg-slate-50 hover:text-red-600")}
       >
-        <LogOut size={20} className={loading ? "animate-pulse" : undefined}/>
+        <LogOut size={19} className={loading ? "animate-pulse" : undefined}/>
       </button>
       {error ? <span className="text-xs font-bold text-red-600" role="alert">{error}</span> : null}
     </div>
