@@ -1,8 +1,6 @@
 "use client";
 
 import { useSharedSmartEnergy } from "@/components/smart-energy-provider";
-import { AmpPill } from "@/components/amp-pill";
-import { acAmpHours } from "@/lib/energy";
 import { siteClock } from "@/lib/smart-forecast";
 
 export function SurplusRecommendations() {
@@ -82,7 +80,6 @@ export function SurplusRecommendations() {
               <div className="shrink-0 text-left">
                 <span className="block text-[11px] font-bold text-slate-500">فائض قابل للاستخدام</span>
                 <strong className="mt-0.5 block text-lg font-black text-slate-900"><bdi dir="ltr">{Math.round(best.kwh * 10) / 10} kWh</bdi></strong>
-                <AmpPill tone="amber" unit="Ah" amps={acAmpHours(best.kwh)} />
               </div>
             </div>
             {!todayBest && (
@@ -115,9 +112,9 @@ export function SurplusRecommendations() {
               <div className="border-t border-amber-100 px-3 pb-3">
                 <div className="grid grid-cols-[4.5rem_1fr_3rem_3rem] items-center gap-x-2 py-2 text-[10px] font-black text-slate-400">
                   <span>الساعة</span>
-                  <span>الشمس · <span className="text-amber-600">الفائض</span></span>
-                  <span className="text-center">فائض</span>
-                  <span className="text-center">🔋</span>
+                  <span>الشمس</span>
+                  <span className="text-center">الفائض</span>
+                  <span className="text-center">البطارية</span>
                 </div>
                 {detailHours.map((point) => {
                   const inWindow = point.time >= best.start && point.time <= best.end;
@@ -133,7 +130,7 @@ export function SurplusRecommendations() {
                     </div>
                   );
                 })}
-                <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">الأرقام بالـ kWh لكل ساعة. الفائض هو ما يبقى بعد البيت وشحن البطارية، و🔋 مستوى البطارية في آخر الساعة. الصفوف المظللة هي النافذة الأفضل.</p>
+                <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">الأرقام بالـ kWh لكل ساعة. في الشريط: الفاتح كل إنتاج الشمس، والغامق الفائض منه، أي ما يبقى بعد المنزل وشحن البطارية. «البطارية» نسبتها في آخر الساعة. الصفوف المظللة هي النافذة الأفضل.</p>
               </div>
             </details>
           )}

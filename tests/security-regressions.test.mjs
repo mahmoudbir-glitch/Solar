@@ -555,10 +555,10 @@ test("polling pauses while the app is hidden", () => {
   }
 });
 
-test("forecast day card shows the battery at sunrise/sunset and the full-charge time", () => {
-  const source = read("src/components/smart-forecast.tsx");
-  assert.match(source, /selected\.chargeAtSunsetPct/);
-  assert.match(source, /selected\.fullChargeTime/);
+test("battery-by-day card shows the battery at sunset and the full-charge time", () => {
+  const source = read("src/components/battery-timeline.tsx");
+  assert.match(source, /chargeAtSunsetPct/);
+  assert.match(source, /fullChargeTime/);
 });
 
 test("panel power uses the largest PV figure (Mains mode reports it only as PV Charge Power)", () => {
@@ -965,4 +965,9 @@ test("home solar node uses the logo's tilted panel drawing", () => {
   const mark = fs.readFileSync(new URL("../src/components/solar-mark.tsx", import.meta.url), "utf8");
   const panel = 'd="M150 262 H362 L404 396 H108 Z"';
   assert.ok(mark.includes(panel) && icons.includes(panel));
+});
+
+test("calibration accepts panels giving half the theoretical output or more", () => {
+  const core = fs.readFileSync(new URL("../src/lib/solar-core.ts", import.meta.url), "utf8");
+  assert.match(core, /export const CALIBRATION_PLAUSIBLE_MIN = 0\.5;/);
 });

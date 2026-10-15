@@ -55,7 +55,7 @@ export const CALIBRATION_MIN_HOURS = 8;
 /** Enough days that one stormy day cannot drag the factor down on its own. */
 export const CALIBRATION_MIN_DAYS = 5;
 /** Below this the result is reported but not applied (see "suspect"). */
-export const CALIBRATION_PLAUSIBLE_MIN = 0.65;
+export const CALIBRATION_PLAUSIBLE_MIN = 0.5;
 /** LiFePO4 starts tapering its charge current around here, throttling the panels. */
 const TAPER_SOC = 90;
 
