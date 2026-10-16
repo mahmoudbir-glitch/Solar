@@ -363,7 +363,7 @@ test("the reader never switches to a device other than the saved datalogger", ()
   assert.match(lib, /return devices\.length === 1 \? devices\[0\] : undefined;/);
   const sync = read("src/lib/smartess-sync.ts");
   assert.match(sync, /pickDevice\(devices, wanted\)/);
-  assert.match(sync, /if \(!device\) return await fail\(describeNoDevice\(devices, wanted\)\);/);
+  assert.match(sync, /if \(!device\) return await fail\(describeNoDevice\(devices, wanted\)(, "no_device")?\);/);
   // A remembered device is dropped once the owner saves a different PN.
   assert.match(sync, /\(!wanted \|\| remembered\.pn === wanted\)/);
   const route = read("src/app/api/inverter/test/route.ts");
