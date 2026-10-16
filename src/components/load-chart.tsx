@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { StatTile } from "@/components/stat-tile";
 import { AC_VOLTS } from "@/lib/energy";
 
-export type LoadPoint = { t: number; loadW: number; solarW: number; soc?: number; batteryW?: number };
+export type LoadPoint = { t: number; loadW: number; solarW: number; soc?: number; batteryW?: number; gridW?: number };
 
 const HOUR = 3_600_000;
 

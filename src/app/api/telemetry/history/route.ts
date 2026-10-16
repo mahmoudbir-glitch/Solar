@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth-session";
-import { loadSettings, localDayStart } from "@/lib/telemetry-store";
+import { loadSettings, localDayStart, effectiveGridW } from "@/lib/telemetry-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,17 +24,19 @@ export async function GET(request: NextRequest) {
     const rows = await prisma.telemetryLog.findMany({
       where: { timestamp: { gte: new Date(now - WINDOW_MS) } },
       orderBy: { timestamp: "asc" },
-      select: { timestamp: true, loadPowerW: true, pvPowerW: true, batterySoc: true, batteryPowerW: true },
+      select: { timestamp: true, loadPowerW: true, pvPowerW: true, batterySoc: true, batteryPowerW: true, gridPowerW: true, gridConnected: true, operatingMode: true },
     });
 
-    const buckets = new Map<number, { load: number; solar: number; soc: number; battery: number; n: number }>();
+    const buckets = new Map<number, { load: number; solar: number; soc: number; battery: number; grid: number; n: number }>();
     for (const row of rows) {
       const key = Math.floor(row.timestamp.getTime() / BUCKET_MS) * BUCKET_MS;
-      const bucket = buckets.get(key) ?? { load: 0, solar: 0, soc: 0, battery: 0, n: 0 };
+      const bucket = buckets.get(key) ?? { load: 0, solar: 0, soc: 0, battery: 0, grid: 0, n: 0 };
       bucket.load += row.loadPowerW;
       bucket.solar += row.pvPowerW;
       bucket.soc += row.batterySoc;
       bucket.battery += row.batteryPowerW;
+      // Grid power as the daily totals count it (measured, or the shortfall while on mains).
+      bucket.grid += effectiveGridW({ timestamp: row.timestamp, pvPowerW: row.pvPowerW, loadPowerW: row.loadPowerW, batteryPowerW: row.batteryPowerW, batterySoc: row.batterySoc, gridPowerW: row.gridPowerW, gridConnected: row.gridConnected, operatingMode: row.operatingMode });
       bucket.n += 1;
       buckets.set(key, bucket);
     }
@@ -44,6 +46,7 @@ export async function GET(request: NextRequest) {
       solarW: Math.round(b.solar / b.n),
       soc: Math.round((b.soc / b.n) * 10) / 10,
       batteryW: Math.round(b.battery / b.n),
+      gridW: Math.round(b.grid / b.n),
     }));
 
     const dayStart = localDayStart(new Date(now), settings?.timezone);

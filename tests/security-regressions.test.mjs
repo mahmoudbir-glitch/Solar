@@ -445,8 +445,8 @@ test("QA fixes: today totals, finance split, blank values, gateway token", () =>
   assert.match(telemetry, /todayProductionKWh: today \?/);
   // Each kWh of house use is counted once: grid, then battery, rest solar.
   const finance = read("src/app/api/finance/route.ts");
-  assert.match(finance, /const gridKWh = Math\.min\(home, Math\.max\(0, totals\.gridImportKWh\)\)/);
-  assert.match(finance, /const directSolarKWh = Math\.max\(0, home - gridKWh - batteryKWh\)/);
+  assert.match(finance, /gridKWh = Math\.min\(home, Math\.max\(0, totals\.gridImportKWh\)\)/);
+  assert.match(finance, /directSolarKWh = Math\.max\(0, home - gridKWh - batteryKWh\)/);
   assert.match(read("src/lib/dessmonitor.ts"), /if \(!\/\\d\/\.test\(cleaned\)\) return undefined;/);
   assert.match(read("src/lib/telemetry-store.ts"), /if \(hours <= 0 \|\| hours > 0\.25\) return;/);
   assert.match(read("src/app/api/inverter/connection/route.ts"), /gatewayTokenHash: null, gatewayTokenCipher: null/);
@@ -976,4 +976,20 @@ test("smart monitor treats twilight light after sunset as real production, not a
   const card = fs.readFileSync(new URL("../src/components/intelligent-energy-card.tsx", import.meta.url), "utf8");
   assert.match(card, /const TWILIGHT_MS = 45 \* 60_000;/);
   assert.match(card, /t > sunset\.getTime\(\) \+ TWILIGHT_MS/);
+});
+
+test("money page splits house energy by source reading by reading, not from day totals", () => {
+  const route = fs.readFileSync(new URL("../src/app/api/finance/route.ts", import.meta.url), "utf8");
+  assert.match(route, /async function splitHouseSources\(since: Date\)/);
+  assert.match(route, /LEAST\(load, grid\) AS from_grid/);
+  assert.match(route, /const scale = home \/ split\.homeKWh;/);
+});
+
+test("house source splits put the measured grid first and never call inverter loss grid", () => {
+  const split = fs.readFileSync(new URL("../src/components/energy-split.tsx", import.meta.url), "utf8");
+  const house = fs.readFileSync(new URL("../src/app/home/page.tsx", import.meta.url), "utf8");
+  const history = fs.readFileSync(new URL("../src/app/api/telemetry/history/route.ts", import.meta.url), "utf8");
+  assert.match(split, /const homeGrid = Math\.min\(load, grid\);/);
+  assert.match(house, /const fromGrid = Math\.min\(homeW, Math\.max\(0, snapshot\?\.gridPowerW \?\? 0\)\);/);
+  assert.match(history, /gridW: Math\.round\(b\.grid \/ b\.n\)/);
 });

@@ -41,10 +41,12 @@ function SplitBar({ title, parts, footer }: { title: string; parts: Part[]; foot
 
 /**
  * Energy over the last 24 hours, reading by reading. Battery power is
- * positive while charging. The house takes the sun first, then the battery,
- * and the grid covers the rest; the battery charges from spare sun first,
- * and from the grid for the rest. Gaps over 15 minutes are skipped rather
- * than filled in.
+ * positive while charging. The measured grid power goes to the house first
+ * (on mains the inverter feeds the house from the grid and sends the sun to
+ * the battery), then the battery covers what it can, and the sun the rest.
+ * Grid power beyond the house went into the battery. Nothing is called "from
+ * the grid" unless the grid really delivered it: the small remainder on an
+ * off-grid day is the inverter's own loss. Gaps over 15 minutes are skipped.
  */
 function totals(points: LoadPoint[], now: number) {
   const from = now - 24 * HOUR;
@@ -60,11 +62,13 @@ function totals(points: LoadPoint[], now: number) {
     const charge = Math.max(0, battery);
     const discharge = Math.max(0, -battery);
 
-    const homeSun = Math.min(load, solar);
-    const homeBattery = Math.min(load - homeSun, discharge);
-    const homeGrid = load - homeSun - homeBattery;
-    const chargeSun = Math.min(charge, Math.max(0, solar - homeSun));
-    const chargeGrid = charge - chargeSun;
+    const grid = Math.max(0, p.gridW ?? 0);
+
+    const homeGrid = Math.min(load, grid);
+    const homeBattery = Math.min(load - homeGrid, discharge);
+    const homeSun = Math.min(load - homeGrid - homeBattery, solar);
+    const chargeGrid = Math.min(charge, Math.max(0, grid - homeGrid));
+    const chargeSun = Math.min(charge - chargeGrid, solar);
 
     sum.homeSun += homeSun * hours;
     sum.homeBattery += homeBattery * hours;
