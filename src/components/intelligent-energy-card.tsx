@@ -14,6 +14,8 @@ const HISTORY_KEY = "solar_intelligent_energy_history_v2";
 const MAX_HISTORY_SAMPLES = 120;
 /** Around sunrise and sunset production moves on its own; a fall then is not a fault. */
 const SUN_LOW_MS = 90 * 60_000;
+/** How long after sunset (and before sunrise) the panels can still see usable light. */
+const TWILIGHT_MS = 45 * 60_000;
 
 type TrendSample = { timestamp: string; batterySoc: number; homePowerW: number; solarPowerW: number };
 type SolarLocation = { latitude: number; longitude: number };
@@ -95,8 +97,13 @@ export function IntelligentEnergyCard({ snapshot, history }: { snapshot: EnergyS
     const instant = new Date(snapshot.timestamp);
     if (!Number.isFinite(instant.getTime())) return { isNight: false, sunLow: false };
     const { sunrise, sunset } = sunTimes(instant, solarLocation.latitude, solarLocation.longitude);
-    const isNight = instant < sunrise || instant > sunset;
-    const sunLow = !isNight && (instant.getTime() - sunrise.getTime() < SUN_LOW_MS || sunset.getTime() - instant.getTime() < SUN_LOW_MS);
+    // Twilight: for a while after sunset (and before sunrise) the sky is still
+    // light and the panels really do give a few hundred watts, more so facing
+    // west over an open horizon. That is low sun, not night: the reading is
+    // real production and nothing to warn about.
+    const t = instant.getTime();
+    const isNight = t < sunrise.getTime() - TWILIGHT_MS || t > sunset.getTime() + TWILIGHT_MS;
+    const sunLow = !isNight && (t - sunrise.getTime() < SUN_LOW_MS || sunset.getTime() - t < SUN_LOW_MS);
     return { isNight, sunLow };
   }, [snapshot, solarLocation]);
 

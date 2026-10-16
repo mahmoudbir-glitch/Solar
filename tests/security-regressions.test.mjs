@@ -971,3 +971,9 @@ test("calibration accepts panels giving half the theoretical output or more", ()
   const core = fs.readFileSync(new URL("../src/lib/solar-core.ts", import.meta.url), "utf8");
   assert.match(core, /export const CALIBRATION_PLAUSIBLE_MIN = 0\.5;/);
 });
+
+test("smart monitor treats twilight light after sunset as real production, not a night anomaly", () => {
+  const card = fs.readFileSync(new URL("../src/components/intelligent-energy-card.tsx", import.meta.url), "utf8");
+  assert.match(card, /const TWILIGHT_MS = 45 \* 60_000;/);
+  assert.match(card, /t > sunset\.getTime\(\) \+ TWILIGHT_MS/);
+});
