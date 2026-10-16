@@ -9,6 +9,7 @@ export const MONITORING_ACTIONS = {
   CONNECTION_TEST_SUCCESS: "CONNECTION_TEST_SUCCESS",
   CONNECTION_TEST_FAILED: "CONNECTION_TEST_FAILED",
   TELEMETRY_RECEIVED: "TELEMETRY_RECEIVED",
+  SYNC_FAILED: "SYNC_FAILED",
 } as const;
 
 let monitoringStorageReady = false;
@@ -42,6 +43,8 @@ export async function ensureMonitoringStorage() {
 
 /** One TELEMETRY_RECEIVED event is written per hour of readings (about 24 a day). */
 const TELEMETRY_EVENT_DAYS = 7;
+/** Why a sync run stored nothing (at most a few rows an hour while a fault lasts). */
+const SYNC_FAILED_DAYS = 30;
 /** Everything else: sign-ins, app opens, alerts, night checks. */
 const EVENT_DAYS = 365;
 
@@ -51,6 +54,7 @@ export async function pruneMonitoringEvents(now = Date.now()) {
     where: {
       OR: [
         { action: MONITORING_ACTIONS.TELEMETRY_RECEIVED, timestamp: { lt: new Date(now - TELEMETRY_EVENT_DAYS * 86_400_000) } },
+        { action: MONITORING_ACTIONS.SYNC_FAILED, timestamp: { lt: new Date(now - SYNC_FAILED_DAYS * 86_400_000) } },
         { timestamp: { lt: new Date(now - EVENT_DAYS * 86_400_000) } },
       ],
     },
