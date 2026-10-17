@@ -39,13 +39,16 @@ export function StatusBar({ compact = false }: { compact?: boolean } = {}) {
     none: { dot: "bg-rose-500", text: "text-rose-700", label: "لا توجد قراءة من الإنفرتر" },
   }[status.kind];
 
-  // In the coloured top bar: just a steady dot, green (live), yellow (late) or red (no reading).
-  // The words stay available to screen readers and as a tooltip.
+  // In the coloured top bar, beside the app name: a small frosted chip with the
+  // connection dot (green live, yellow late, red no reading) and the time of
+  // the last reading, so it is always clear how fresh the numbers are.
   if (compact) {
     const dot = { live: "bg-emerald-400", stale: "bg-amber-300", none: "bg-rose-500" }[status.kind];
+    const text = status.kind === "none" ? "لا قراءة" : status.kind === "stale" ? `متأخرة · ${time}` : time;
     return (
-      <span role="status" title={view.label} className="inline-flex shrink-0 items-center">
-        <span className={"h-2.5 w-2.5 rounded-full ring-2 ring-white/80 " + dot} aria-hidden="true" />
+      <span role="status" title={view.label} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-black leading-5 text-white ring-1 ring-white/25 backdrop-blur-sm">
+        <span className={"h-2 w-2 rounded-full ring-2 ring-white/70 " + dot} aria-hidden="true" />
+        <bdi dir="ltr" aria-hidden="true">{text}</bdi>
         <span className="sr-only">{view.label}</span>
       </span>
     );
