@@ -88,6 +88,7 @@ export default function SolarDashboardClient() {
         isLive={isLive}
         batteryAmps={batteryAmps(snapshot, battery?.nominal)}
         batteryReservePct={battery?.reservePct}
+        lastReadingAt={snapshot?.timestamp}
         savingsCurrency={snapshot?.currency}
       />
 

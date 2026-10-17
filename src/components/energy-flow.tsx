@@ -26,6 +26,8 @@ interface EnergyFlowProps {
   isLive?: boolean;
   /** Battery current in amps (measured when available). */
   batteryAmps?: number | null;
+  /** When the shown reading was taken (ISO). */
+  lastReadingAt?: string;
   /** Reserve limit (%), so the centre bolt turns red near it. */
   batteryReservePct?: number;
 }
@@ -48,6 +50,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   isLive = false,
   batteryAmps = null,
   batteryReservePct = 20,
+  lastReadingAt,
 }) => {
   const [activeNode, setActiveNode] = useState<'solar' | 'battery' | 'home' | 'grid' | 'inverter' | null>(null);
   const flowId = useId().replace(/:/g, '');
@@ -139,11 +142,17 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(245,156,0,0.10),transparent_30%),radial-gradient(circle_at_14%_50%,rgba(133,72,242,0.08),transparent_28%),radial-gradient(circle_at_86%_50%,rgba(32,119,240,0.08),transparent_28%),radial-gradient(circle_at_50%_82%,rgba(16,171,90,0.09),transparent_30%)]" />
 
       <div className="relative px-4 pt-4 sm:px-6 sm:pt-5">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col items-start gap-1">
           <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-extrabold text-emerald-700">
             <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
             تدفق الطاقة الآن
           </span>
+          {/* When the numbers below were read from the inverter (not the clock). */}
+          {lastReadingAt && Number.isFinite(new Date(lastReadingAt).getTime()) && (
+            <span className={"text-[11px] font-bold " + (isLive ? "text-slate-500" : "text-amber-700")}>
+              آخر قراءة <bdi dir="ltr">{new Date(lastReadingAt).toLocaleTimeString("ar-LB-u-nu-latn", { hour: "2-digit", minute: "2-digit" })}</bdi>{!isLive && " · متأخرة"}
+            </span>
+          )}
         </div>
       </div>
 
