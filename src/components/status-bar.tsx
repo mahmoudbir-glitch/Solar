@@ -44,11 +44,12 @@ export function StatusBar({ compact = false }: { compact?: boolean } = {}) {
   // the last reading, so it is always clear how fresh the numbers are.
   if (compact) {
     const dot = { live: "bg-emerald-400", stale: "bg-amber-300", none: "bg-rose-500" }[status.kind];
-    const text = status.kind === "none" ? "لا قراءة" : status.kind === "stale" ? `متأخرة · ${time}` : time;
+    // "آخر قراءة 09:42", so it is not mistaken for the clock.
+    const prefix = status.kind === "none" ? "لا قراءة" : status.kind === "stale" ? "متأخرة ·" : "آخر قراءة";
     return (
       <span role="status" title={view.label} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-black leading-5 text-white ring-1 ring-white/25 backdrop-blur-sm">
         <span className={"h-2 w-2 rounded-full ring-2 ring-white/70 " + dot} aria-hidden="true" />
-        <bdi dir="ltr" aria-hidden="true">{text}</bdi>
+        <span aria-hidden="true">{prefix}{status.kind !== "none" && <> <bdi dir="ltr">{time}</bdi></>}</span>
         <span className="sr-only">{view.label}</span>
       </span>
     );
