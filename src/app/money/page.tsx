@@ -76,9 +76,14 @@ function lastDays(n: number) {
   return `آخر ${n} ${n >= 3 && n <= 10 ? "أيام" : "يوماً"}`;
 }
 
+/** How many local days each period asks for (same values as /api/finance). */
+const PERIOD_DAYS: Record<Period, number> = { day: 1, week: 7, month: 30 };
+
 /** The badge for the chosen period: today, or the days that really have readings. */
 function periodLabel(period: Period, days: number) {
-  return period === "day" ? "اليوم" : lastDays(days);
+  if (period === "day") return "اليوم";
+  const requested = PERIOD_DAYS[period];
+  return days < requested ? `${lastDays(days)} من أصل ${requested}` : lastDays(days);
 }
 
 /** Money with at most two decimals (0.325 -> 0.33), Latin digits. */
@@ -270,6 +275,11 @@ export default function MoneyDashboard() {
                   </div>
                 </dl>
                 <p className="mt-2 text-[11px] font-semibold text-slate-500">محسوبة بسعر <bdi dir="ltr">{formatMoney(tariff)}</bdi> للكيلوواط ساعة من الشبكة.</p>
+                {period !== "day" && data.periodDays < PERIOD_DAYS[period] && (
+                  <p className="mt-1 text-[11px] font-semibold text-amber-700">
+                    الرقم يخص <bdi dir="ltr">{data.periodDays}</bdi> أيام فقط لها قراءات، وليس {PERIOD_DAYS[period]} يوماً كاملة.
+                  </p>
+                )}
               </>
             )}
           </section>
