@@ -37,7 +37,7 @@ type Settings = {
 
 const defaults: Settings = {
   panelPowerW: 6000, batteryCapacityWh: 4800, gridTariff: 0, exportTariff: 0, currency: "USD",
-  latitude: 33.8938, longitude: 35.5018, timezone: "Asia/Beirut", panelTilt: null, panelAzimuth: null,
+  latitude: 33.5911, longitude: 35.4061, timezone: "Asia/Beirut", panelTilt: null, panelAzimuth: null,
   batteryNominalVoltage: 48, batteryChemistry: "LiFePO4", batteryMinReservePct: 20,
   bulkChargeVoltage: 56.4, floatChargeVoltage: 54.0, lowDcCutoffVoltage: 44.0, backToGridVoltage: 52.0,
   maxChargeCurrentA: 50, outputSourcePriority: "SBU", chargerSourcePriority: "CSO",
@@ -205,7 +205,13 @@ export default function SettingsPage() {
     return () => clearTimeout(timer);
   }, [error]);
 
-  const dirty = useMemo(() => JSON.stringify(settings) !== JSON.stringify(saved), [settings, saved]);
+  // The inverter form counts too: a SmartESS password typed but not saved is an unsaved change.
+  const dirty = useMemo(() => {
+    if (JSON.stringify(settings) !== JSON.stringify(saved)) return true;
+    if (!draft) return false;
+    const stored = inverters.find((item) => item.id === draft.id);
+    return !stored || JSON.stringify(draft) !== JSON.stringify(stored);
+  }, [settings, saved, draft, inverters]);
   const resetSection = (keys: Array<keyof Settings>, label: string) => {
     setSettings((old) => {
       const next = { ...old } as Record<string, unknown>;
@@ -439,7 +445,7 @@ export default function SettingsPage() {
         </div>}
       </SettingsSection>
 
-      <SettingsSection icon={Cpu} tone="amber" summary={<bdi dir="ltr">{`${(settings.panelPowerW / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })} kW · ${(settings.batteryCapacityWh / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 })} kWh · ${settings.currency}`}</bdi>} query={query} keywords="ألواح بطارية سعة جهد كيلوواط شبكة طور ميل اتجاه موقع خط العرض خط الطول منطقة زمنية عملة" onReset={() => resetSection(["panelPowerW","batteryCapacityWh","batteryNominalVoltage","batteryChemistry","batteryMinReservePct","inverterRatedPowerKw","gridType","gridPhase","panelTilt","panelAzimuth","latitude","longitude","timezone","currency"], "مواصفات العتاد")} title="مواصفات العتاد" subtitle="الألواح والبطارية والإنفرتر والموقع">
+      <SettingsSection icon={Cpu} tone="amber" summary={<>ألواح <bdi dir="ltr">{(settings.panelPowerW / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })} kW</bdi> · بطارية <bdi dir="ltr">{(settings.batteryCapacityWh / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 })} kWh</bdi>{settings.inverterRatedPowerKw ? <> · إنفرتر <bdi dir="ltr">{settings.inverterRatedPowerKw} kW</bdi></> : null}</>} query={query} keywords="ألواح بطارية سعة جهد كيلوواط شبكة طور ميل اتجاه موقع خط العرض خط الطول منطقة زمنية عملة" onReset={() => resetSection(["panelPowerW","batteryCapacityWh","batteryNominalVoltage","batteryChemistry","batteryMinReservePct","inverterRatedPowerKw","gridType","gridPhase","panelTilt","panelAzimuth","latitude","longitude","timezone","currency"], "مواصفات العتاد")} title="مواصفات العتاد" subtitle="الألواح والبطارية والإنفرتر والموقع">
         <div className="grid gap-3 sm:grid-cols-2">
           <SettingsField label={<>إجمالي قدرة الألواح <bdi dir="ltr">(kW)</bdi></>}><input type="number" min={0.1} max={100} step={0.1} value={settings.panelPowerW / 1000} onChange={(e) => updateSetting("panelPowerW", Number(e.target.value) * 1000)} className={input} /><span className="mt-1.5 block"><AmpPill tone="amber" amps={settings.panelPowerW / AC_VOLTS} /></span>{settings.panelPowerW > 100_000 && <p className="mt-1 text-xs font-bold text-rose-600">القيمة بالكيلوواط وليس بالواط: لألواح 6000 واط اكتب 6.</p>}</SettingsField>
           <SettingsField label={<>سعة البطاريات <bdi dir="ltr">(kWh)</bdi></>}><input type="number" min={0.1} step="0.1" value={settings.batteryCapacityWh / 1000} onChange={(e) => { if (e.target.value !== "") updateSetting("batteryCapacityWh", Number(e.target.value) * 1000); }} className={input} /><span className="mt-1.5 block"><AmpPill tone="emerald" unit="Ah" amps={batteryAmpHours(settings.batteryCapacityWh / 1000, settings.batteryNominalVoltage)} /></span></SettingsField>

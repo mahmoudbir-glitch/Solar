@@ -44,10 +44,11 @@ type WeatherResponse = {
   };
 };
 
-const DEFAULT_LAT = 33.8938;
-const DEFAULT_LON = 35.5018;
+const DEFAULT_LAT = 33.5911;
+const DEFAULT_LON = 35.4061;
 const DEFAULT_TIMEZONE = "Asia/Beirut";
-const SAFETY_RESERVE = 10;
+// Same as the stored default (schema.prisma), used only if Settings cannot be read.
+const SAFETY_RESERVE = 20;
 const LOAD_HISTORY_KEY = "solar_home_load_history_v1";
 const LOAD_HISTORY_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 type LoadSample = { timestamp: string; homePowerW: number };

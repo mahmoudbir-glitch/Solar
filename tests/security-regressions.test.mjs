@@ -835,9 +835,11 @@ test("money page source percentages come from the kWh and add up to 100", () => 
   assert.ok(page.includes("percentsOf([data.sources.solarKWh, data.sources.batteryKWh, data.sources.gridKWh])"));
 });
 
-test("battery-by-day header says 'من يومين', not 'من 2 أيام'", () => {
+test("battery-by-day header counts nights in Arabic: 'من ليلتين', not 'من 2 أيام'", () => {
   const timeline = read("src/components/battery-timeline.tsx");
-  assert.ok(timeline.includes('withNight.length === 2 ? "يومين"'));
+  assert.ok(timeline.includes('if (n === 2) return "ليلتين";'));
+  assert.ok(timeline.includes("nightsWord(withNight.length)"));
+  assert.doesNotMatch(timeline, /أيام`/);
 });
 
 test("cron sync accepts the secret only in the Authorization header, never in the URL", () => {

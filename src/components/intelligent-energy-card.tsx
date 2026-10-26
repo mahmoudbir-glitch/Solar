@@ -8,8 +8,8 @@ import { AmpPill } from "@/components/amp-pill";
 import { analyzeEnergy, trendContext, TREND_WINDOW_MS, type IntelligentEnergyContext, type IntelligentEnergySettings, type TrendPoint } from "@/lib/intelligent-energy";
 import { sunTimes } from "@/lib/solar-core";
 
-const DEFAULT_SETTINGS: IntelligentEnergySettings = { batteryCapacityWh: 4800, batteryMinReservePct: 10, inverterRatedPowerKw: null };
-const DEFAULT_LOCATION = { latitude: 33.8938, longitude: 35.5018 };
+const DEFAULT_SETTINGS: IntelligentEnergySettings = { batteryCapacityWh: 4800, batteryMinReservePct: 20, inverterRatedPowerKw: null };
+const DEFAULT_LOCATION = { latitude: 33.5911, longitude: 35.4061 };
 const HISTORY_KEY = "solar_intelligent_energy_history_v2";
 const MAX_HISTORY_SAMPLES = 120;
 /** Around sunrise and sunset production moves on its own; a fall then is not a fault. */
@@ -120,10 +120,10 @@ export function IntelligentEnergyCard({ snapshot, history }: { snapshot: EnergyS
   const Icon = insight.tone === "green" ? CheckCircle2 : insight.tone === "red" ? AlertTriangle : insight.tone === "amber" ? BatteryCharging : sun.isNight ? Moon : Sun;
 
   return (
-    <section className={`overflow-hidden rounded-2xl border ${tone.border} ${tone.bg} ${tone.ring} ${tone.shadow} transition-colors duration-500`} dir="rtl" aria-label="مراقبة Solar الذكي">
+    <section className={`overflow-hidden rounded-2xl border ${tone.border} ${tone.bg} ${tone.ring} ${tone.shadow} transition-colors duration-500`} dir="rtl" aria-label="مراقبة Solar الذكية">
       <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex w-full items-center gap-3 p-3.5 text-right transition hover:bg-white/40 active:bg-white/60">
         <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/80 ${tone.icon}`}><Sparkles size={17} /></div>
-        <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className={`whitespace-nowrap text-xs font-black ${tone.title}`}>مراقبة Solar الذكي</span>{insight.alert && <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-black text-rose-700">تنبيه</span>}<Icon size={15} className={"hidden min-[360px]:block " + tone.icon} aria-hidden="true" /></div><div className={`mt-1 text-sm font-black ${tone.title}`}>{insight.title}</div></div>
+        <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className={`whitespace-nowrap text-xs font-black ${tone.title}`}>مراقبة Solar الذكية</span>{insight.alert && <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-black text-rose-700">تنبيه</span>}<Icon size={15} className={"hidden min-[360px]:block " + tone.icon} aria-hidden="true" /></div><div className={`mt-1 text-sm font-black ${tone.title}`}>{insight.title}</div></div>
         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/70 ${tone.icon} transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true"><ChevronDown size={17} /></span>
       </button>
       {open && <div className="border-t border-white/70 px-3.5 pb-3.5 pt-1">

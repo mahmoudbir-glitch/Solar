@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   // Only the owner's own account may see who else uses the app.
   if (!isOwner(session.username)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  if (!process.env.DATABASE_URL) return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+  if (!(process.env.DATABASE_URL || process.env.PRISMA_DATABASE_URL || process.env.POSTGRES_URL)) return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
   try {
     const device = deviceFromRequest(request);
     let devices = await listDevices(device.deviceId);

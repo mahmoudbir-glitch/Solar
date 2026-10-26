@@ -7,7 +7,7 @@ import type { EnergySnapshot } from "@/lib/energy";
 import { PageHeader } from "@/components/page-header";
 import { StatTile } from "@/components/stat-tile";
 import { LoadChart, type LoadPoint } from "@/components/load-chart";
-import { homeText, acAmps, acAmpHours } from "@/lib/energy";
+import { homeText, acAmps, acAmpHours, percentsOf } from "@/lib/energy";
 import { AmpPill } from "@/components/amp-pill";
 import { startVisiblePolling } from "@/lib/visible-polling";
 import { IntelligentEnergyCard } from "@/components/intelligent-energy-card";
@@ -72,11 +72,8 @@ export default function HomeConsumptionPage() {
   // while on mains). Off-grid the small leftover is the inverter's own loss,
   // so it must not show up as "from the grid".
   const fromGrid = Math.min(Math.max(0, homeW - fromSolar - fromBattery), Math.max(0, snapshot?.gridPowerW ?? 0));
-  const served = fromSolar + fromBattery + fromGrid;
   // Rounded so the three always add up to 100 (33 + 33 + 33 left 1% unexplained).
-  const solarPct = served > 0 ? Math.round((fromSolar / served) * 100) : 0;
-  const batteryPct = served > 0 ? Math.min(100 - solarPct, Math.round((fromBattery / served) * 100)) : 0;
-  const gridPct = served > 0 ? 100 - solarPct - batteryPct : 0;
+  const [solarPct, batteryPct, gridPct] = percentsOf([fromSolar, fromBattery, fromGrid]);
   const sources = [
     { label: "الشمس", w: fromSolar, pct: solarPct, bar: "bg-amber-400", text: "text-amber-700", tone: "amber" as const },
     { label: "البطارية", w: fromBattery, pct: batteryPct, bar: "bg-emerald-500", text: "text-emerald-700", tone: "emerald" as const },
@@ -118,7 +115,7 @@ export default function HomeConsumptionPage() {
           </>
         ) : (
           <>
-            <span className={"mt-2 block text-4xl font-black tracking-tight sm:text-5xl " + toneText}>{homeW.toLocaleString("en-US")} واط</span>
+            <span className={"mt-2 block text-4xl font-black tracking-tight sm:text-5xl " + toneText}><bdi dir="ltr">{Math.round(homeW).toLocaleString("en-US")}</bdi> واط</span>
             <span className={"mt-1 block text-sm font-bold " + toneText}><bdi dir="ltr">{homeKw.toFixed(2)} kW</bdi></span>
             <span className="mt-2 block"><AmpPill tone="sky" amps={acAmps(homeW)} /></span>
           </>

@@ -354,6 +354,8 @@ export default function MoneyDashboard() {
                 <option value="USD">دولار أمريكي ($)</option>
                 <option value="LBP">ليرة لبنانية (LBP)</option>
                 <option value="SYP">ليرة سورية (SYP)</option>
+                {/* A currency saved elsewhere stays selectable instead of silently showing USD. */}
+                {!["USD", "LBP", "SYP"].includes(currency) && <option value={currency}>{currency}</option>}
               </select>
             </label>
 
