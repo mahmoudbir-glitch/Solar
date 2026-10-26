@@ -993,3 +993,24 @@ test("house source splits put the measured grid first and never call inverter lo
   assert.match(house, /const fromGrid = Math\.min\(homeW, Math\.max\(0, snapshot\?\.gridPowerW \?\? 0\)\);/);
   assert.match(history, /gridW: Math\.round\(b\.grid \/ b\.n\)/);
 });
+
+
+test("Arabic counts use the right plural forms (no '1 أيام' or '7 يوماً')", () => {
+  const money = read("src/app/money/page.tsx");
+  assert.ok(money.includes("daysCount(data.periodDays)"));
+  assert.doesNotMatch(money, /\{PERIOD_DAYS\[period\]\} يوماً كاملة/);
+});
+
+test("the money page can edit the export tariff it already prices", () => {
+  const money = read("src/app/money/page.tsx");
+  assert.ok(money.includes("setExportTariff(Number(e.target.value))"));
+});
+
+test("the inverter model list keeps a saved model that is not in the presets", () => {
+  const page = read("src/app/settings/page.tsx");
+  assert.ok(page.includes("includes(draft.inverterModel)"));
+});
+
+test("device times follow the viewer's clock, not a fixed Beirut zone", () => {
+  assert.doesNotMatch(read("src/components/devices-list.tsx"), /Asia\/Beirut/);
+});

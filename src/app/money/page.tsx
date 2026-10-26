@@ -86,9 +86,12 @@ function periodLabel(period: Period, days: number) {
   return days < requested ? `${lastDays(days)} من أصل ${requested}` : lastDays(days);
 }
 
-/** Money with at most two decimals (0.325 -> 0.33), Latin digits. */
-const money = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: n % 1 ? 2 : 0 });
-
+/** "يوم" / "يومين" / "3 أيام" / "12 يوماً": the Arabic count of days. */
+function daysCount(n: number) {
+  if (n === 1) return "يوم";
+  if (n === 2) return "يومين";
+  return `${n} ${n >= 3 && n <= 10 ? "أيام" : "يوماً"}`;
+}
 
 export default function MoneyDashboard() {
   const [data, setData] = useState<FinanceData | null>(null);
@@ -277,7 +280,7 @@ export default function MoneyDashboard() {
                 <p className="mt-2 text-[11px] font-semibold text-slate-500">محسوبة بسعر <bdi dir="ltr">{formatMoney(tariff)}</bdi> للكيلوواط ساعة من الشبكة.</p>
                 {period !== "day" && data.periodDays < PERIOD_DAYS[period] && (
                   <p className="mt-1 text-[11px] font-semibold text-amber-700">
-                    الرقم يخص <bdi dir="ltr">{data.periodDays}</bdi> أيام فقط لها قراءات، وليس {PERIOD_DAYS[period]} يوماً كاملة.
+                    الرقم يخص {daysCount(data.periodDays)} فقط فيها قراءات، وليس كل أيام الفترة ({daysCount(PERIOD_DAYS[period])}).
                   </p>
                 )}
               </>
@@ -349,6 +352,12 @@ export default function MoneyDashboard() {
             <label className="space-y-1.5">
               <span className="text-[11px] font-black text-slate-700">سعر الكيلوواط ساعة من الشبكة</span>
               <input type="number" inputMode="decimal" min="0" step="0.01" value={tariff} onChange={(e) => setTariff(Number(e.target.value))} className={inputClass} />
+            </label>
+
+            <label className="space-y-1.5 sm:col-span-2">
+              <span className="text-[11px] font-black text-slate-700">سعر بيع الفائض للشبكة (لكل كيلوواط ساعة)</span>
+              <input type="number" inputMode="decimal" min="0" step="0.01" value={exportTariff} onChange={(e) => setExportTariff(Number(e.target.value))} className={inputClass} />
+              <span className="block text-[11px] font-semibold leading-4 text-slate-500">اتركه 0 إن كنت لا تبيع الكهرباء للشبكة؛ لن يُحتسب أي عائد.</span>
             </label>
           </div>
         </div>
