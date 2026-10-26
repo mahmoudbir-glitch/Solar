@@ -67,7 +67,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen w-full bg-[linear-gradient(165deg,#eef0ff_0%,#f4f6fc_38%,#f5efff_70%,#fff8e5_100%)]">
       {/* One bar in the open page's colour: brand (with the connection dot beside the name) and tagline, logout. */}
-      <header className={"sticky top-0 z-50 rounded-b-[1.25rem] border-b border-slate-200/80 bg-white/95 pt-[env(safe-area-inset-top)] text-slate-900 shadow-[0_6px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl"}>
+      <header className={"sticky top-0 z-50 rounded-b-[1.25rem] border-b border-slate-200/80 bg-white pt-[env(safe-area-inset-top)] text-slate-900 shadow-[0_6px_24px_rgba(15,23,42,0.08)]"}>
         <div className="mx-auto flex min-h-[4.5rem] max-w-5xl items-center justify-between gap-3 px-3 py-2.5 sm:px-6 lg:max-w-6xl">
           <div className="flex min-w-0 items-center gap-2.5" aria-label="Solar">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-50 ring-1 ring-slate-200/80"><SolarMark size={36} /></span>
