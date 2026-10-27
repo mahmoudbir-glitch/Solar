@@ -1,23 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, RotateCw } from "lucide-react";
-import { moneyText, moneyTone, semanticText } from "@/lib/energy";
+import { Coins } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { moneyText, moneyTone, semanticBg, semanticBorder, semanticText } from "@/lib/energy";
+import { StatTile } from "@/components/stat-tile";
 import { percentsOf } from "@/lib/energy";
 
-type Period = "day" | "week" | "month" | "custom";
+type Period = "day" | "week" | "month";
 
 const PERIODS: { key: Period; label: string }[] = [
-  { key: "day", label: "اليوم" },
+  { key: "day", label: "يوم" },
   { key: "week", label: "أسبوع" },
   { key: "month", label: "شهر" },
-  { key: "custom", label: "مخصّصة" },
 ];
 
 type FinanceData = {
   period?: Period;
   periodDays: number;
-  range?: { from: string; to: string; requestedDays: number; firstDataDay: string | null; lastDataDay: string | null };
   totals: {
     solarKWh: number;
     homeKWh: number;
@@ -32,15 +32,34 @@ type FinanceData = {
     solarKWh: number;
     batteryKWh: number;
     gridKWh: number;
-    gridToBatteryKWh?: number;
   };
 };
 
-/* One colour per source: amber the sun, emerald the battery, violet the grid. */
 const sourceStyles = [
-  { key: "solar", name: "الشمس مباشرة", color: "bg-amber-400", soft: "bg-amber-50", text: "text-amber-700" },
-  { key: "battery", name: "البطارية", color: "bg-emerald-500", soft: "bg-emerald-50", text: "text-emerald-700" },
-  { key: "grid", name: "الشبكة", color: "bg-violet-500", soft: "bg-violet-50", text: "text-violet-700" },
+  {
+    key: "solar",
+    name: "الشمس مباشرة",
+    short: "شمس",
+    color: "bg-amber-400",
+    soft: "bg-amber-50",
+    text: "text-amber-700",
+  },
+  {
+    key: "battery",
+    name: "البطارية",
+    short: "بطارية",
+    color: "bg-emerald-500",
+    soft: "bg-emerald-50",
+    text: "text-emerald-700",
+  },
+  {
+    key: "grid",
+    name: "الشبكة",
+    short: "شبكة",
+    color: "bg-violet-500",
+    soft: "bg-violet-50",
+    text: "text-violet-700",
+  },
 ] as const;
 
 function formatNumber(value: number, digits = Math.abs(value) >= 100 ? 0 : 1) {
@@ -50,10 +69,22 @@ function formatNumber(value: number, digits = Math.abs(value) >= 100 ? 0 : 1) {
   });
 }
 
-/** How many local days each fixed period asks for (same values as /api/finance). */
-const PERIOD_DAYS: Record<Exclude<Period, "custom">, number> = { day: 1, week: 7, month: 30 };
-/** Fewer days with readings than this and a monthly/yearly projection would mostly be noise. */
-const MIN_DAYS_FOR_ESTIMATE = 3;
+/** "آخر يوم" / "آخر يومين" / "آخر 5 أيام" / "آخر 12 يوماً": Arabic plural for the period. */
+function lastDays(n: number) {
+  if (n === 1) return "آخر يوم";
+  if (n === 2) return "آخر يومين";
+  return `آخر ${n} ${n >= 3 && n <= 10 ? "أيام" : "يوماً"}`;
+}
+
+/** How many local days each period asks for (same values as /api/finance). */
+const PERIOD_DAYS: Record<Period, number> = { day: 1, week: 7, month: 30 };
+
+/** The badge for the chosen period: today, or the days that really have readings. */
+function periodLabel(period: Period, days: number) {
+  if (period === "day") return "اليوم";
+  const requested = PERIOD_DAYS[period];
+  return days < requested ? `${lastDays(days)} من أصل ${requested}` : lastDays(days);
+}
 
 /** "يوم" / "يومين" / "3 أيام" / "12 يوماً": the Arabic count of days. */
 function daysCount(n: number) {
@@ -62,42 +93,14 @@ function daysCount(n: number) {
   return `${n} ${n >= 3 && n <= 10 ? "أيام" : "يوماً"}`;
 }
 
-/** A local day "YYYY-MM-DD" as "3 تشرين الأول" (Levantine month names) (the year only when it is not this year). */
-function dayLabel(day: string) {
-  const date = new Date(day + "T00:00:00Z");
-  if (!Number.isFinite(date.getTime())) return day;
-  const sameYear = date.getUTCFullYear() === new Date().getFullYear();
-  return date.toLocaleDateString("ar-SY-u-nu-latn", { day: "numeric", month: "long", ...(sameYear ? {} : { year: "numeric" }), timeZone: "UTC" });
-}
-
-/** Today in the browser's own calendar, as "YYYY-MM-DD". */
-function localToday() {
-  return new Date().toLocaleDateString("en-CA");
-}
-function shiftDay(day: string, days: number) {
-  const date = new Date(day + "T00:00:00Z");
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
-const ERRORS: Record<string, string> = {
-  invalid_range: "نطاق التواريخ غير صالح. تأكد أن تاريخ البداية قبل تاريخ النهاية وليس بعد اليوم.",
-  range_too_long: "أقصى مدة يمكن عرضها 366 يوماً. اختر نطاقاً أقصر.",
-};
-
 export default function MoneyDashboard() {
   const [data, setData] = useState<FinanceData | null>(null);
   const [period, setPeriod] = useState<Period>("month");
-  const [customFrom, setCustomFrom] = useState(() => shiftDay(localToday(), -13));
-  const [customTo, setCustomTo] = useState(() => localToday());
-  const [customRange, setCustomRange] = useState<{ from: string; to: string } | null>(null);
   const [tariff, setTariff] = useState(0);
   const [exportTariff, setExportTariff] = useState(0);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [currency, setCurrency] = useState("USD");
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -119,34 +122,17 @@ export default function MoneyDashboard() {
   }, []);
 
   // The figures follow the chosen period; a late answer for an older choice
-  // must not replace the current one. A custom period waits for its dates.
+  // must not replace the current one.
   useEffect(() => {
-    if (period === "custom" && !customRange) {
-      setLoading(false);
-      setLoadError("");
-      setData(null);
-      return;
-    }
     let cancelled = false;
     setLoading(true);
-    setLoadError("");
-    const query = period === "custom" && customRange ? `period=custom&from=${customRange.from}&to=${customRange.to}` : `period=${period}`;
-    fetch(`/api/finance?${query}`, { cache: "no-store" })
+    fetch(`/api/finance?period=${period}`, { cache: "no-store" })
       .then(async (financeResponse) => {
-        if (cancelled) return;
-        if (!financeResponse.ok) {
-          const body = (await financeResponse.json().catch(() => ({}))) as { error?: string };
-          setData(null);
-          setLoadError(ERRORS[body.error ?? ""] ?? "تعذّر تحميل أرقام المال الآن. تحقق من الاتصال ثم أعد المحاولة.");
-          return;
-        }
-        setData((await financeResponse.json()) as FinanceData);
+        const next = financeResponse.ok ? ((await financeResponse.json()) as FinanceData) : null;
+        if (!cancelled) setData(next);
       })
       .catch(() => {
-        if (!cancelled) {
-          setData(null);
-          setLoadError("تعذّر تحميل أرقام المال الآن. تحقق من الاتصال ثم أعد المحاولة.");
-        }
+        if (!cancelled) setData(null);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -154,27 +140,20 @@ export default function MoneyDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [period, customRange, reloadKey]);
+  }, [period]);
 
-  // What the house used, priced at the grid tariff: the cost without the system.
+  // What the house used, priced at the grid tariff: the bill without the system.
   const hypotheticalCost = data
     ? (data.sources.solarKWh + data.sources.batteryKWh + data.sources.gridKWh) * tariff
     : 0;
   const gridCost = data ? data.totals.gridImportKWh * tariff : 0;
   const exportIncome = data ? data.totals.gridExportKWh * exportTariff : 0;
-  // Saving = the cost without the system − what was really paid + export income.
+  // Saving = the bill without the system − what was really paid + export income.
   // Pricing the battery's share as saved counted grid energy twice whenever the
   // grid charged the battery (paid once on import, "saved" again on discharge).
   const savedAmount = useMemo(() => hypotheticalCost - gridCost + exportIncome, [hypotheticalCost, gridCost, exportIncome]);
   const savedTone = moneyTone(savedAmount);
   const formatMoney = (n: number) => <bdi dir="ltr">{moneyText(currency, n)}</bdi>;
-
-  const perDaySaved = data && data.periodDays > 0 ? savedAmount / data.periodDays : 0;
-  const homeKWh = data ? data.sources.solarKWh + data.sources.batteryKWh + data.sources.gridKWh : 0;
-  const requestedDays = data?.range?.requestedDays ?? (period === "custom" ? 0 : PERIOD_DAYS[period]);
-  const missingDays = data ? Math.max(0, requestedDays - data.periodDays) : 0;
-  // The newest day with readings is older than the end of the range: the latest figures are missing, not zero.
-  const staleData = Boolean(data?.range?.lastDataDay && data.range.to && data.range.lastDataDay < data.range.to && data.periodDays > 0);
 
   // Percentages from the kWh, rounded so the three always add up to 100.
   const [solarPct, batteryPct, gridPct] = data ? percentsOf([data.sources.solarKWh, data.sources.batteryKWh, data.sources.gridKWh]) : [0, 0, 0];
@@ -189,8 +168,6 @@ export default function MoneyDashboard() {
         return { ...style, pct: values.pct, kwh: values.kwh };
       })
     : [];
-
-  const customInvalid = !customFrom || !customTo || customFrom > customTo || customFrom > localToday();
 
   const handleSave = async () => {
     if (!settingsLoaded) {
@@ -221,15 +198,12 @@ export default function MoneyDashboard() {
   const inputClass =
     "w-full min-h-12 rounded-xl border border-slate-200 bg-slate-50 px-3 text-base font-bold text-slate-800 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-100";
   const selectClass = inputClass + " appearance-auto";
-  const card = "rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5";
 
   return (
     <div className="desktop-grid w-full space-y-3 pb-4 text-right" dir="rtl">
-      <header className="px-1">
-        <h1 className="text-xl font-black text-slate-950">المال والوفر</h1>
-      </header>
+      <PageHeader icon={Coins} tone="teal" eyebrow="Solar • المال" title="المال والوفر" subtitle={data?.periodDays ? `مصادر الكهرباء والوفر خلال ${periodLabel(period, data.periodDays)}.` : "مصادر الكهرباء والوفر من قراءات منظومتك."} />
 
-      <div role="tablist" aria-label="فترة التحليل" className="grid grid-cols-4 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+      <div role="tablist" aria-label="فترة التحليل" className="grid grid-cols-3 gap-2">
         {PERIODS.map((item) => (
           <button
             key={item.key}
@@ -238,8 +212,8 @@ export default function MoneyDashboard() {
             aria-selected={period === item.key}
             onClick={() => setPeriod(item.key)}
             className={
-              "min-h-10 rounded-xl text-sm font-black transition " +
-              (period === item.key ? "bg-teal-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50")
+              "min-h-11 rounded-2xl border text-sm font-black transition " +
+              (period === item.key ? "border-teal-600 bg-teal-600 text-white shadow-sm" : "border-slate-200 bg-white text-slate-600")
             }
           >
             {item.label}
@@ -247,144 +221,118 @@ export default function MoneyDashboard() {
         ))}
       </div>
 
-      {period === "custom" && (
-        <form
-          className={card + " desktop-wide"}
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!customInvalid) setCustomRange({ from: customFrom, to: customTo });
-          }}
-        >
-          <div className="grid grid-cols-2 gap-2">
-            <label className="space-y-1">
-              <span className="text-[11px] font-black text-slate-700">من</span>
-              <input type="date" value={customFrom} max={localToday()} onChange={(e) => setCustomFrom(e.target.value)} className={inputClass} />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[11px] font-black text-slate-700">إلى</span>
-              <input type="date" value={customTo} max={localToday()} onChange={(e) => setCustomTo(e.target.value)} className={inputClass} />
-            </label>
-          </div>
-          {customInvalid && <p className="mt-2 text-[11px] font-bold text-rose-600">اختر تاريخ بداية قبل تاريخ النهاية، وليس بعد اليوم.</p>}
-          <button type="submit" disabled={customInvalid} className="mt-3 min-h-11 w-full rounded-xl bg-teal-600 text-sm font-black text-white transition hover:bg-teal-700 disabled:opacity-50">
-            عرض هذه الفترة
-          </button>
-        </form>
-      )}
-
-      {/* Which days the figures cover, and how many of them have readings. */}
-      {data?.range && data.periodDays > 0 && !loading && (
-        <p className="px-1 text-[11px] font-semibold text-slate-500">
-          {data.range.from === data.range.to ? dayLabel(data.range.from) : `${dayLabel(data.range.from)} – ${dayLabel(data.range.to)}`}
-          {missingDays > 0 && <span className="text-amber-700"> · فيها قراءات {daysCount(data.periodDays)} من {requestedDays}</span>}
-          {staleData && data.range.lastDataDay && <span className="text-amber-700"> · آخر قراءة {dayLabel(data.range.lastDataDay)}</span>}
-        </p>
-      )}
-
       {loading ? (
-        <section className={card + " desktop-wide animate-pulse space-y-3"} aria-busy="true" aria-label="جاري التحميل">
-          <div className="h-4 w-24 rounded bg-slate-100" />
-          <div className="h-24 rounded-2xl bg-slate-100" />
-          <div className="h-4 rounded-full bg-slate-100" />
-          <div className="h-10 rounded-xl bg-slate-100" />
-        </section>
-      ) : loadError ? (
-        <section role="alert" className="desktop-wide rounded-[1.5rem] border border-rose-200 bg-rose-50 p-5 text-center">
-          <h2 className="text-sm font-black text-rose-800">لم تُحمَّل الأرقام</h2>
-          <p className="mt-1 text-xs font-semibold leading-5 text-rose-700">{loadError}</p>
-          <button type="button" onClick={() => setReloadKey((k) => k + 1)} className="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-white px-4 text-xs font-black text-rose-700 ring-1 ring-rose-200">
-            <RotateCw className="h-3.5 w-3.5" aria-hidden="true" /> إعادة المحاولة
-          </button>
-        </section>
-      ) : period === "custom" && !customRange ? (
-        <section className={card + " desktop-wide text-center"}>
-          <p className="text-xs font-bold text-slate-600">اختر تاريخ البداية والنهاية ثم اضغط «عرض هذه الفترة».</p>
+        <section className="desktop-wide rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <div className="text-sm font-black text-slate-600">جاري تجهيز التحليل…</div>
         </section>
       ) : !data || !data.periodDays ? (
-        <section className={card + " desktop-wide text-center"}>
-          <h2 className="text-base font-black text-slate-900">{period === "day" ? "لا قراءات لليوم بعد" : "لا توجد قراءات لهذه الفترة"}</h2>
+        <section className="desktop-wide rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-xl">📊</div>
+          <h2 className="mt-3 text-base font-black text-slate-900">{period === "day" ? "لا قراءات لليوم بعد" : "لا توجد بيانات كافية بعد"}</h2>
           <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
             {period === "day"
               ? "تظهر أرقام اليوم مع وصول أول قراءات منظومتك. جرّب الأسبوع أو الشهر."
-              : "يُحسب الوفر ومصادر الكهرباء من الأيام التي فيها قراءات فقط، ولا تُعدّ الأيام الفارغة صفراً."}
+              : "يُحسب الوفر ومصادر الكهرباء بعد تجمّع يوم كامل من القراءات، وستظهر هنا تلقائياً بدل الأصفار."}
           </p>
         </section>
       ) : (
         <>
-          {/* The money: one big figure and one sentence. */}
-          <section className={card + " desktop-wide"}>
+          {/* The money first: what the system saved, then how that figure is reached, in three plain lines. */}
+          <section className="desktop-wide rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-black text-slate-950">💰 الوفر</h2>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-600">{periodLabel(period, data.periodDays)}</span>
+            </div>
+
+            {/* With no price saved every amount is zero, which reads like "no savings". */}
             {settingsLoaded && tariff <= 0 ? (
-              <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
-                أدخل سعر كيلوواط الشبكة من «سعر الكهرباء والعملة» في الأسفل ليُحسب الوفر.
+              <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+                لم يُحدَّد سعر كيلوواط الشبكة بعد، لذلك لا يمكن حساب الوفر. افتح «سعر الكهرباء والعملة» في الأسفل وأدخل السعر.
               </p>
             ) : (
               <>
-                <span className="text-xs font-bold text-slate-500">{savedAmount >= 0 ? "وفّرتَ" : "دفعتَ أكثر بـ"}</span>
-                <strong className={"mt-1 block text-4xl font-black leading-tight " + semanticText[savedTone]}>{formatMoney(Math.abs(savedAmount))}</strong>
-                <p className="mt-3 text-sm font-semibold leading-7 text-slate-600">
-                  لولا المنظومة لدفعتَ <span className="font-black text-slate-900">{formatMoney(hypotheticalCost)}</span>، ودفعتَ فعلياً <span className="font-black text-violet-700">{formatMoney(gridCost)}</span> فقط{exportIncome > 0 ? <>، وربحتَ من بيع الفائض <span className="font-black text-amber-700">{formatMoney(exportIncome)}</span></> : null}.
-                </p>
-                {savedAmount > 0 && data.periodDays >= MIN_DAYS_FOR_ESTIMATE && (
-                  <p className="mt-3 border-t border-slate-100 pt-3 text-xs font-semibold text-slate-500">
-                    بهذا المعدّل توفّر تقريباً <span className="font-black text-emerald-700">{formatMoney(Math.round(perDaySaved * 30))}</span> في الشهر.
+                <div className={"mt-3 rounded-2xl border p-4 " + semanticBorder[savedTone] + " " + semanticBg[savedTone]}>
+                  <span className={"text-xs font-bold " + semanticText[savedTone]}>{savedAmount >= 0 ? "وفّرتَ" : "دفعتَ أكثر"}</span>
+                  <strong className={"mt-1 block text-4xl font-black " + semanticText[savedTone]}>{formatMoney(Math.abs(savedAmount))}</strong>
+                  <span className="mt-1 block text-[11px] font-semibold opacity-75">مبلغ لم تدفعه للشبكة بفضل الطاقة الشمسية</span>
+                </div>
+
+                <dl className="mt-3 divide-y divide-slate-100 rounded-2xl border border-slate-200">
+                  <div className="flex items-center justify-between gap-3 p-3">
+                    <dt className="text-xs font-bold text-slate-600">لو أُخذت كل كهرباء المنزل من الشبكة لدفعتَ</dt>
+                    <dd className="shrink-0 text-sm font-black text-slate-800">{formatMoney(hypotheticalCost)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 p-3">
+                    <dt className="text-xs font-bold text-slate-600">ما دفعته فعلياً للشبكة <span className="font-semibold text-slate-400">(<bdi dir="ltr">{formatNumber(data.totals.gridImportKWh)} kWh</bdi>)</span></dt>
+                    <dd className="shrink-0 text-sm font-black text-violet-700">− {formatMoney(gridCost)}</dd>
+                  </div>
+                  {exportIncome > 0 && (
+                    <div className="flex items-center justify-between gap-3 p-3">
+                      <dt className="text-xs font-bold text-slate-600">عائد بيع الفائض <span className="font-semibold text-slate-400">(<bdi dir="ltr">{formatNumber(data.totals.gridExportKWh)} kWh</bdi>)</span></dt>
+                      <dd className="shrink-0 text-sm font-black text-amber-700">+ {formatMoney(exportIncome)}</dd>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3 bg-slate-50/70 p-3">
+                    <dt className="text-xs font-black text-slate-800">{savedAmount >= 0 ? "إذن وفّرتَ" : "إذن دفعتَ أكثر"}</dt>
+                    <dd className={"shrink-0 text-sm font-black " + semanticText[savedTone]}>{formatMoney(Math.abs(savedAmount))}</dd>
+                  </div>
+                </dl>
+                <p className="mt-2 text-[11px] font-semibold text-slate-500">محسوبة بسعر <bdi dir="ltr">{formatMoney(tariff)}</bdi> للكيلوواط ساعة من الشبكة.</p>
+                {period !== "day" && data.periodDays < PERIOD_DAYS[period] && (
+                  <p className="mt-1 text-[11px] font-semibold text-amber-700">
+                    الرقم يخص {daysCount(data.periodDays)} فقط فيها قراءات، وليس كل أيام الفترة ({daysCount(PERIOD_DAYS[period])}).
                   </p>
                 )}
               </>
             )}
           </section>
 
-          <section className={card}>
-            <h2 className="text-sm font-black text-slate-950">من أين جاءت كهرباء بيتك</h2>
-            <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-slate-100">
+          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div>
+              <h2 className="text-base font-black text-slate-950">⚡ من أين جاءت كهرباء المنزل</h2>
+              <p className="mt-0.5 text-[11px] font-semibold text-slate-500">حصة كل مصدر من استهلاك المنزل</p>
+            </div>
+
+            <div className="mt-4 flex h-4 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200/60">
               {sourceRows.map((row) => (
-                <div key={row.key} className={row.color} style={{ width: String(Math.max(0, Math.min(100, row.pct))) + "%" }} title={row.name} />
+                <div
+                  key={row.key}
+                  className={row.color}
+                  style={{ width: String(Math.max(0, Math.min(100, row.pct))) + "%" }}
+                  title={row.name}
+                />
               ))}
             </div>
-            <ul className="mt-3 divide-y divide-slate-100">
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
               {sourceRows.map((row) => (
-                <li key={row.key} className="flex items-center justify-between gap-3 py-2">
-                  <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                    <span className={"h-2.5 w-2.5 shrink-0 rounded-full " + row.color} />
-                    {row.name}
-                  </span>
-                  <span className="flex items-baseline gap-3">
-                    <span className="text-xs font-semibold text-slate-400"><bdi dir="ltr">{formatNumber(row.kwh)} kWh</bdi></span>
-                    <strong className="w-10 text-left text-sm font-black text-slate-900"><bdi dir="ltr">{row.pct}%</bdi></strong>
-                  </span>
-                </li>
+                <div key={row.key} className={"flex items-center justify-between gap-2 rounded-xl p-3 " + row.soft}>
+                  <div className="flex items-center gap-2">
+                    <span className={"h-2.5 w-2.5 rounded-full " + row.color} />
+                    <span className={"text-xs font-black " + row.text}>{row.name}</span>
+                  </div>
+                  <div className="text-left">
+                    <strong className={"block text-sm font-black " + row.text}>{row.pct}%</strong>
+                    <span className="text-[11px] font-bold text-slate-500"><bdi dir="ltr">{formatNumber(row.kwh)} kWh</bdi></span>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           </section>
 
-          {/* How the saving is worked out, for whoever wants the details; closed by default. */}
-          <details className="group rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
-              <span className="text-sm font-black text-slate-950">كيف حسبنا الوفر؟</span>
-              <ChevronDown className="h-4 w-4 text-slate-400 transition group-open:rotate-180" aria-hidden="true" />
-            </summary>
-            <div className="space-y-3 border-t border-slate-100 p-4 text-xs font-semibold leading-6 text-slate-600">
-              <p>الوفر = ما كنت ستدفعه لو أخذت كل كهرباء بيتك من الشبكة − ما دفعته فعلاً{exportIncome > 0 ? " + عائد البيع" : ""}.</p>
-              <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-left font-bold text-slate-700" dir="ltr">
-                <div>{formatNumber(homeKWh)} kWh × {moneyText(currency, tariff)} = {moneyText(currency, hypotheticalCost)}</div>
-                <div>{formatNumber(data.totals.gridImportKWh)} kWh × {moneyText(currency, tariff)} = {moneyText(currency, gridCost)}</div>
-                {exportIncome > 0 && <div>{formatNumber(data.totals.gridExportKWh)} kWh × {moneyText(currency, exportTariff)} = {moneyText(currency, exportIncome)}</div>}
-                <div className="border-t border-slate-200 pt-1">
-                  {moneyText(currency, hypotheticalCost)} − {moneyText(currency, gridCost)}{exportIncome > 0 ? ` + ${moneyText(currency, exportIncome)}` : ""} = {moneyText(currency, savedAmount)}
-                </div>
-              </div>
-              <p>محسوب من {daysCount(data.periodDays)} فيها قراءات، ولا يشمل ثمن المنظومة وصيانتها.</p>
-            </div>
-          </details>
+          {/* Totals for the period. */}
+          <section className="desktop-wide grid grid-cols-2 gap-3">
+            <StatTile card big tone="amber" label="إنتاج الألواح" value={formatNumber(data.totals.solarKWh)} unit="kWh" />
+            <StatTile card big tone="sky" label="استهلاك المنزل" value={formatNumber(data.totals.homeKWh)} unit="kWh" />
+          </section>
         </>
       )}
 
       <details onToggle={(e) => { const open = e.currentTarget.open; setPrefsOpen(open); }} className="group rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
           <div>
-            <h2 className="text-sm font-black text-slate-950">سعر الكهرباء والعملة</h2>
-            <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
-              {tariff > 0 ? <>الآن: {formatMoney(tariff)} للكيلوواط ساعة</> : "لم يُحدَّد السعر بعد"}
-            </p>
+            <h2 className="text-base font-black text-slate-950">⚙️ سعر الكهرباء والعملة</h2>
+            <p className="mt-0.5 text-[11px] font-semibold text-slate-500">يُحسب الوفر على هذا السعر</p>
           </div>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-600 group-open:bg-teal-50 group-open:text-teal-700">
             تعديل
