@@ -300,60 +300,70 @@ export default function MoneyDashboard() {
 
                 {/* How the figure is reached, one numbered step at a time. */}
                 <h3 className="mt-5 text-xs font-black text-slate-900">كيف حُسب الوفر؟</h3>
-                <ol className="mt-2 space-y-2">
-                  <li className="flex gap-3 rounded-2xl border border-slate-200 p-3">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-700">1</span>
+                <ol className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                  <li className="flex items-start gap-3 px-3.5 py-3">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-600">1</span>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-black text-slate-800">استهلك منزلك <bdi dir="ltr">{formatNumber(homeKWh)} kWh</bdi></div>
-                      <p className="mt-0.5 text-[11px] font-semibold leading-5 text-slate-500">
-                        جاءت من الشمس <bdi dir="ltr">{formatNumber(data.sources.solarKWh)}</bdi> + البطارية <bdi dir="ltr">{formatNumber(data.sources.batteryKWh)}</bdi> + الشبكة <bdi dir="ltr">{formatNumber(data.sources.gridKWh)}</bdi>.
-                      </p>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-xs font-black text-slate-800">استهلاك منزلك</span>
+                        <strong className="shrink-0 text-sm font-black text-slate-900"><bdi dir="ltr">{formatNumber(homeKWh)} kWh</bdi></strong>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold text-slate-500">
+                        {sourceRows.map((row) => (
+                          <span key={row.key} className="inline-flex items-center gap-1">
+                            <span className={"h-2 w-2 rounded-full " + row.color} />
+                            {row.short} <bdi dir="ltr">{formatNumber(row.kwh)}</bdi>
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </li>
-                  <li className="flex gap-3 rounded-2xl border border-slate-200 p-3">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-700">2</span>
+                  <li className="flex items-start gap-3 px-3.5 py-3">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-600">2</span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-black text-slate-800">لو أُخذت كلها من الشبكة لدفعتَ</span>
-                        <strong className="shrink-0 text-sm font-black text-slate-800">{formatMoney(hypotheticalCost)}</strong>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-xs font-black text-slate-800">كلفتها لو أُخذت كلها من الشبكة</span>
+                        <strong className="shrink-0 text-sm font-black text-slate-900">{formatMoney(hypotheticalCost)}</strong>
                       </div>
-                      <p className="mt-0.5 text-[11px] font-semibold leading-5 text-slate-500"><bdi dir="ltr">{formatNumber(homeKWh)} kWh × {formatMoney(tariff)}</bdi></p>
+                      <p className="mt-1 text-[11px] font-semibold text-slate-500"><bdi dir="ltr">{formatNumber(homeKWh)} kWh × {moneyText(currency, tariff)}</bdi></p>
                     </div>
                   </li>
-                  <li className="flex gap-3 rounded-2xl border border-slate-200 p-3">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[11px] font-black text-violet-700">3</span>
+                  <li className="flex items-start gap-3 px-3.5 py-3">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[11px] font-black text-violet-700">3</span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-black text-slate-800">لكنك دفعتَ فعلياً للشبكة</span>
-                        <strong className="shrink-0 text-sm font-black text-violet-700">− {formatMoney(gridCost)}</strong>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-xs font-black text-slate-800">ما دفعته فعلياً للشبكة</span>
+                        <strong className="shrink-0 text-sm font-black text-violet-700"><bdi dir="ltr">− {moneyText(currency, gridCost)}</bdi></strong>
                       </div>
-                      <p className="mt-0.5 text-[11px] font-semibold leading-5 text-slate-500">
-                        <bdi dir="ltr">{formatNumber(data.totals.gridImportKWh)} kWh × {formatMoney(tariff)}</bdi>
-                        {gridToBatteryKWh >= 0.5 && <> — منها نحو <bdi dir="ltr">{formatNumber(gridToBatteryKWh)} kWh</bdi> ذهبت غالباً لشحن البطارية، وتُحسب هنا مرة واحدة فقط.</>}
-                      </p>
+                      <p className="mt-1 text-[11px] font-semibold text-slate-500"><bdi dir="ltr">{formatNumber(data.totals.gridImportKWh)} kWh × {moneyText(currency, tariff)}</bdi></p>
+                      {gridToBatteryKWh >= 0.5 && (
+                        <p className="mt-1.5 rounded-lg bg-violet-50 px-2.5 py-1.5 text-[11px] font-semibold leading-5 text-violet-800">
+                          يشمل نحو <bdi dir="ltr">{formatNumber(gridToBatteryKWh)} kWh</bdi> لشحن البطارية، وتُحسب مرة واحدة.
+                        </p>
+                      )}
                     </div>
                   </li>
                   {exportIncome > 0 && (
-                    <li className="flex gap-3 rounded-2xl border border-slate-200 p-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[11px] font-black text-amber-700">+</span>
+                    <li className="flex items-start gap-3 px-3.5 py-3">
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[11px] font-black text-amber-700">4</span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-baseline justify-between gap-3">
                           <span className="text-xs font-black text-slate-800">عائد بيع الفائض للشبكة</span>
-                          <strong className="shrink-0 text-sm font-black text-amber-700">+ {formatMoney(exportIncome)}</strong>
+                          <strong className="shrink-0 text-sm font-black text-amber-700"><bdi dir="ltr">+ {moneyText(currency, exportIncome)}</bdi></strong>
                         </div>
-                        <p className="mt-0.5 text-[11px] font-semibold leading-5 text-slate-500"><bdi dir="ltr">{formatNumber(data.totals.gridExportKWh)} kWh × {formatMoney(exportTariff)}</bdi></p>
+                        <p className="mt-1 text-[11px] font-semibold text-slate-500"><bdi dir="ltr">{formatNumber(data.totals.gridExportKWh)} kWh × {moneyText(currency, exportTariff)}</bdi></p>
                       </div>
                     </li>
                   )}
-                  <li className={"flex gap-3 rounded-2xl border p-3 " + semanticBorder[savedTone] + " " + semanticBg[savedTone]}>
-                    <span className={"flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-black " + semanticText[savedTone]}>=</span>
+                  <li className={"flex items-start gap-3 px-3.5 py-3.5 " + semanticBg[savedTone]}>
+                    <span className={"mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black " + semanticText[savedTone]}>=</span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-black text-slate-800">{savedAmount >= 0 ? "إذن وفّرتَ" : "إذن دفعتَ أكثر"}</span>
-                        <strong className={"shrink-0 text-base font-black " + semanticText[savedTone]}>{formatMoney(Math.abs(savedAmount))}</strong>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-sm font-black text-slate-900">{savedAmount >= 0 ? "الوفر" : "الزيادة"}</span>
+                        <strong className={"shrink-0 text-lg font-black " + semanticText[savedTone]}>{formatMoney(Math.abs(savedAmount))}</strong>
                       </div>
-                      <p className="mt-0.5 text-[11px] font-semibold leading-5 text-slate-600">
-                        الوفر = ما كنت ستدفعه لولا المنظومة − ما دفعته فعلاً{exportIncome > 0 ? " + عائد البيع" : ""}.
+                      <p className="mt-1 text-[11px] font-semibold text-slate-600">
+                        {exportIncome > 0 ? "الخطوة 2 ناقص الخطوة 3 زائد الخطوة 4" : "الخطوة 2 ناقص الخطوة 3"}
                       </p>
                     </div>
                   </li>
