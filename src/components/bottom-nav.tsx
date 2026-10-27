@@ -87,7 +87,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="التنقل السفلي"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-white/70 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_30px_rgba(15,23,42,0.05)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-white/70 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_30px_rgba(15,23,42,0.05)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/85 md:hidden"
     >
       <div className="mx-auto grid max-w-lg grid-cols-6 px-1 pt-1.5">
         {navItems.map(({ href, label, Icon, tone }) => {
