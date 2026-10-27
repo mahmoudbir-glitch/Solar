@@ -153,15 +153,12 @@ export default function MoneyDashboard() {
   // grid charged the battery (paid once on import, "saved" again on discharge).
   const savedAmount = useMemo(() => hypotheticalCost - gridCost + exportIncome, [hypotheticalCost, gridCost, exportIncome]);
   const savedTone = moneyTone(savedAmount);
-  // Plain-language extras for the saving: its share of the no-system bill, the daily average and what the sun and
-  // the battery covered. The bill bar splits the no-system bill into what was paid and what was saved.
-  const homeKWh = data ? data.sources.solarKWh + data.sources.batteryKWh + data.sources.gridKWh : 0;
+  // Plain-language extras: the saving's share of the no-system bill and its daily average; the bill bar splits the
+  // no-system bill into what was paid and what was saved.
   const savedPctOfBill = hypotheticalCost > 0 ? Math.round((savedAmount / hypotheticalCost) * 100) : 0;
   const perDaySaved = data && data.periodDays > 0 ? savedAmount / data.periodDays : 0;
   const paidBarPct = hypotheticalCost > 0 ? Math.max(0, Math.min(100, (gridCost / hypotheticalCost) * 100)) : 0;
   const savedBarPct = savedAmount > 0 ? 100 - paidBarPct : 0;
-  // Grid energy bought beyond what the house itself drew from the grid: mostly the grid charging the battery.
-  const gridToBatteryKWh = data ? Math.max(0, data.totals.gridImportKWh - data.sources.gridKWh) : 0;
   const formatMoney = (n: number) => <bdi dir="ltr">{moneyText(currency, n)}</bdi>;
 
   // Percentages from the kWh, rounded so the three always add up to 100.
@@ -266,111 +263,34 @@ export default function MoneyDashboard() {
                   <span className="mt-1 block text-[11px] font-semibold opacity-75">مبلغ لم تدفعه للشبكة بفضل الطاقة الشمسية</span>
                 </div>
 
-                {/* The saving in three quick numbers. */}
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-xl bg-slate-50 p-2.5">
-                    <strong className={"block text-base font-black " + semanticText[savedTone]}><bdi dir="ltr">{savedPctOfBill}%</bdi></strong>
-                    <span className="mt-0.5 block text-[10px] font-bold leading-4 text-slate-500">من فاتورتك المتوقعة</span>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 p-2.5">
-                    <strong className={"block text-base font-black " + semanticText[savedTone]}>{formatMoney(Math.abs(perDaySaved))}</strong>
-                    <span className="mt-0.5 block text-[10px] font-bold leading-4 text-slate-500">معدّل الوفر اليومي</span>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 p-2.5">
-                    <strong className="block text-base font-black text-amber-700"><bdi dir="ltr">{solarPct + batteryPct}%</bdi></strong>
-                    <span className="mt-0.5 block text-[10px] font-bold leading-4 text-slate-500">غطّته الشمس والبطارية</span>
-                  </div>
-                </div>
-
-                {/* The no-system bill as one bar: the part still paid to the grid and the part saved. */}
+                {/* The no-system bill as one bar, with the two amounts on it: what was still paid and what was saved. */}
                 <div className="mt-4">
                   <div className="flex items-center justify-between text-[11px] font-black text-slate-700">
                     <span>فاتورتك لولا المنظومة</span>
-                    <span><bdi dir="ltr">{formatMoney(hypotheticalCost)}</bdi></span>
+                    <span>{formatMoney(hypotheticalCost)}</span>
                   </div>
                   <div className="mt-1.5 flex h-4 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200/60" role="img" aria-label={"دفعتَ " + Math.round(paidBarPct) + "% ووفّرتَ " + Math.round(savedBarPct) + "% من الفاتورة"}>
                     <div className="bg-violet-500" style={{ width: paidBarPct + "%" }} />
                     <div className="bg-emerald-500" style={{ width: savedBarPct + "%" }} />
                   </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[11px] font-bold">
-                    <span className="flex items-center gap-1.5 text-violet-700"><span className="h-2.5 w-2.5 rounded-full bg-violet-500" />دفعتَه للشبكة</span>
-                    <span className="flex items-center gap-1.5 text-emerald-700"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />وفّرتَه</span>
+                  <div className="mt-2 flex items-start justify-between gap-3">
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold text-violet-700"><span className="h-2.5 w-2.5 shrink-0 rounded-full bg-violet-500" />دفعتَ للشبكة <strong className="font-black">{formatMoney(gridCost)}</strong></span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700"><span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />وفّرتَ <strong className="font-black">{formatMoney(Math.max(0, savedAmount))}</strong></span>
                   </div>
                 </div>
 
-                {/* How the figure is reached, one numbered step at a time. */}
-                <h3 className="mt-5 text-xs font-black text-slate-900">كيف حُسب الوفر؟</h3>
-                <ol className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                  <li className="flex items-start gap-3 px-3.5 py-3">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-600">1</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-xs font-black text-slate-800">استهلاك منزلك</span>
-                        <strong className="shrink-0 text-sm font-black text-slate-900"><bdi dir="ltr">{formatNumber(homeKWh)} kWh</bdi></strong>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold text-slate-500">
-                        {sourceRows.map((row) => (
-                          <span key={row.key} className="inline-flex items-center gap-1">
-                            <span className={"h-2 w-2 rounded-full " + row.color} />
-                            {row.short} <bdi dir="ltr">{formatNumber(row.kwh)}</bdi>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3 px-3.5 py-3">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-600">2</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-xs font-black text-slate-800">كلفتها لو أُخذت كلها من الشبكة</span>
-                        <strong className="shrink-0 text-sm font-black text-slate-900">{formatMoney(hypotheticalCost)}</strong>
-                      </div>
-                      <p className="mt-1 text-[11px] font-semibold text-slate-500"><bdi dir="ltr">{formatNumber(homeKWh)} kWh × {moneyText(currency, tariff)}</bdi></p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3 px-3.5 py-3">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[11px] font-black text-violet-700">3</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-xs font-black text-slate-800">ما دفعته فعلياً للشبكة</span>
-                        <strong className="shrink-0 text-sm font-black text-violet-700"><bdi dir="ltr">− {moneyText(currency, gridCost)}</bdi></strong>
-                      </div>
-                      <p className="mt-1 text-[11px] font-semibold text-slate-500"><bdi dir="ltr">{formatNumber(data.totals.gridImportKWh)} kWh × {moneyText(currency, tariff)}</bdi></p>
-                      {gridToBatteryKWh >= 0.5 && (
-                        <p className="mt-1.5 rounded-lg bg-violet-50 px-2.5 py-1.5 text-[11px] font-semibold leading-5 text-violet-800">
-                          يشمل نحو <bdi dir="ltr">{formatNumber(gridToBatteryKWh)} kWh</bdi> لشحن البطارية، وتُحسب مرة واحدة.
-                        </p>
-                      )}
-                    </div>
-                  </li>
-                  {exportIncome > 0 && (
-                    <li className="flex items-start gap-3 px-3.5 py-3">
-                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[11px] font-black text-amber-700">4</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <span className="text-xs font-black text-slate-800">عائد بيع الفائض للشبكة</span>
-                          <strong className="shrink-0 text-sm font-black text-amber-700"><bdi dir="ltr">+ {moneyText(currency, exportIncome)}</bdi></strong>
-                        </div>
-                        <p className="mt-1 text-[11px] font-semibold text-slate-500"><bdi dir="ltr">{formatNumber(data.totals.gridExportKWh)} kWh × {moneyText(currency, exportTariff)}</bdi></p>
-                      </div>
-                    </li>
-                  )}
-                  <li className={"flex items-start gap-3 px-3.5 py-3.5 " + semanticBg[savedTone]}>
-                    <span className={"mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black " + semanticText[savedTone]}>=</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-sm font-black text-slate-900">{savedAmount >= 0 ? "الوفر" : "الزيادة"}</span>
-                        <strong className={"shrink-0 text-lg font-black " + semanticText[savedTone]}>{formatMoney(Math.abs(savedAmount))}</strong>
-                      </div>
-                      <p className="mt-1 text-[11px] font-semibold text-slate-600">
-                        {exportIncome > 0 ? "الخطوة 2 ناقص الخطوة 3 زائد الخطوة 4" : "الخطوة 2 ناقص الخطوة 3"}
-                      </p>
-                    </div>
-                  </li>
-                </ol>
-                <p className="mt-3 text-[11px] font-semibold leading-5 text-slate-500">
-                  الكهرباء التي جاءت من الشمس أو البطارية لا تدفع عنها للشبكة شيئاً، وهذا هو الوفر. محسوب بسعر <bdi dir="ltr">{formatMoney(tariff)}</bdi> للكيلوواط ساعة من الشبكة، ويمكنك تعديله من «سعر الكهرباء والعملة» أسفل الصفحة.
-                </p>
+                {/* The saving in plain words: three short sentences, no formulas. */}
+                {savedAmount > 0 && (
+                  <div className="mt-4 rounded-2xl bg-slate-50 p-3.5">
+                    <h3 className="text-xs font-black text-slate-900">بكلام بسيط</h3>
+                    <ul className="mt-2 space-y-2 text-[13px] font-bold leading-6 text-slate-700">
+                      <li className="flex gap-2"><span aria-hidden="true">💵</span><span>من كل 100 {currency === "SYP" ? "ليرة" : "دولار"} كانت ستذهب للكهرباء، وفّرتَ <strong className="font-black text-emerald-700"><bdi dir="ltr">{savedPctOfBill}</bdi></strong> ودفعتَ <bdi dir="ltr">{100 - savedPctOfBill}</bdi> فقط.</span></li>
+                      <li className="flex gap-2"><span aria-hidden="true">📅</span><span>بهذا المعدل توفّر تقريباً <strong className="font-black text-emerald-700">{formatMoney(Math.round(perDaySaved * 30))}</strong> في الشهر، و<strong className="font-black text-emerald-700">{formatMoney(Math.round(perDaySaved * 365))}</strong> في السنة.</span></li>
+                      <li className="flex gap-2"><span aria-hidden="true">☀️</span><span><strong className="font-black text-amber-700"><bdi dir="ltr">{solarPct + batteryPct}%</bdi></strong> من كهرباء بيتك جاءت من الشمس والبطارية، والباقي من الشبكة.</span></li>
+                    </ul>
+                  </div>
+                )}
+                <p className="mt-3 text-[11px] font-semibold text-slate-500">محسوب بسعر {formatMoney(tariff)} للكيلوواط ساعة من الشبكة.</p>
                 {period !== "day" && data.periodDays < PERIOD_DAYS[period] && (
                   <p className="mt-1 text-[11px] font-semibold text-amber-700">
                     الرقم يخص {daysCount(data.periodDays)} فقط فيها قراءات، وليس كل أيام الفترة ({daysCount(PERIOD_DAYS[period])}).
