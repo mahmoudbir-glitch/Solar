@@ -4,6 +4,8 @@ import { patchConnectionExtras } from "@/lib/connection-extras";
 import { authenticate, DessError, describeDessError, describeNoDevice, discoverDevices, listCollectors, pickDevice, readLastData, type DessAuth, type DessDevice, type DessReading } from "@/lib/dessmonitor";
 import { ingestSample } from "@/lib/telemetry-store";
 import { adoptEnvCloudAccount, defaultConnectionData, envCloudAccount } from "@/lib/smartess-env";
+import { MONITORING_ACTIONS, recordMonitoringEvent } from "@/lib/monitoring";
+import { isDatabaseError, shouldLogSyncFailure, type SyncFailureCategory } from "@/lib/sync-health";
 
 /**
  * Pulls the latest reading from the SmartESS cloud and stores it as telemetry,
@@ -13,7 +15,12 @@ import { adoptEnvCloudAccount, defaultConnectionData, envCloudAccount } from "@/
 const MIN_GAP_MS = 60_000;
 export const SMARTESS_SOURCE = "smartess-cloud";
 
-export type SyncResult = { ok: true; stored: true } | { ok: false; skipped?: boolean; reason: string };
+export type SyncResult = { ok: true; stored: true } | { ok: false; skipped?: boolean; reason: string; category?: SyncFailureCategory };
+
+/** When each failure cause was last written to the event log (see sync-health.ts). */
+const loggedFailureAt = new Map<SyncFailureCategory, number>();
+/** Set by the non-SmartESS error branch so a database outage is told apart from a timeout. */
+let lastTransientWasDatabase = false;
 
 let cachedAuth: { key: string; auth: DessAuth } | null = null;
 let lastStatusCheckAt = 0;
@@ -143,14 +150,14 @@ async function run(deadline: number): Promise<SyncResult> {
     found = await prisma.inverterConnection.create({ data: defaultConnectionData() });
   }
   const row = found ? await adoptEnvCloudAccount(found) : null;
-  if (!row) return { ok: false, skipped: true, reason: "no_wifi_datalogger_connection" };
+  if (!row) return { ok: false, skipped: true, reason: "no_wifi_datalogger_connection", category: "no_connection" };
 
-  const fail = async (reason: string): Promise<SyncResult> => {
+  const fail = async (reason: string, category: SyncFailureCategory): Promise<SyncResult> => {
     console.warn("[smartess] sync_not_stored", reason);
     await prisma.inverterConnection
       .update({ where: { id: row.id }, data: { lastStatus: "error", lastTestReason: reason } })
       .catch(() => {});
-    return { ok: false, reason };
+    return { ok: false, reason, category };
   };
 
   let extras: Record<string, unknown> = {};
@@ -164,14 +171,14 @@ async function run(deadline: number): Promise<SyncResult> {
   const password = typeof extras.cloudPassword === "string" ? extras.cloudPassword : "";
   if (!username || !password) {
     console.warn("[smartess] sync_skipped cloud_credentials_missing");
-    return { ok: false, skipped: true, reason: "cloud_credentials_missing" };
+    return { ok: false, skipped: true, reason: "cloud_credentials_missing", category: "credentials_missing" };
   }
   // Wrong credentials are retried every 30 minutes, not every minute, so the
   // account is not hammered (and possibly locked). Saving the connection form
   // rewrites these extras and clears the pause at once.
   const authFailedAt = Number(extras.authFailedAt ?? 0);
   if (authFailedAt && Date.now() - authFailedAt < AUTH_BACKOFF_MS) {
-    return { ok: false, skipped: true, reason: "auth_backoff" };
+    return { ok: false, skipped: true, reason: "auth_backoff", category: "auth_backoff" };
   }
 
   const cloudUrl = process.env.SOLAR_DESSMONITOR_URL || undefined;
@@ -248,18 +255,18 @@ async function run(deadline: number): Promise<SyncResult> {
           .catch(() => undefined);
         if (collector) lastSeenOffline = Number(collector.status) === 1;
         if (collector && Number(collector.status) === 1) {
-          return await fail("الدنجل غير متصل في SmartESS (Offline)، لذلك لم تُحفظ قراءة.");
+          return await fail("الدنجل غير متصل في SmartESS (Offline)، لذلك لم تُحفظ قراءة.", "offline");
         }
       }
     } else {
       const { devices } = await discoverDevices(auth, cloudUrl, timeout);
       device = pickDevice(devices, wanted);
-      if (!device) return await fail(describeNoDevice(devices, wanted));
+      if (!device) return await fail(describeNoDevice(devices, wanted), "no_device");
 
       // SmartESS reports an offline device's last known values as if current.
       // Storing them would show hours-old numbers as live, so refuse.
       if (Number(device.status) === 1) {
-        return await fail("الجهاز غير متصل في SmartESS (Offline)، لذلك لم تُحفظ قراءة.");
+        return await fail("الجهاز غير متصل في SmartESS (Offline)، لذلك لم تُحفظ قراءة.", "offline");
       }
       target = {
         pn: String(device.pn ?? wanted),
@@ -288,12 +295,12 @@ async function run(deadline: number): Promise<SyncResult> {
     console.info(`[smartess] sig pvV=${reading.parameters["PV Voltage"]?.value ?? "-"} grid=${reading.gridPowerW ?? "-"} load=${reading.loadPowerW ?? "-"} soc=${reading.batterySoc ?? "-"}`);
     // The platform may resume this run after the request already answered;
     // a reading that arrives that late must not be stored as "now".
-    if (Date.now() > deadline) return { ok: false, reason: "transient" };
+    if (Date.now() > deadline) return { ok: false, reason: "transient", category: "transient" };
     if (await isFrozen(reading)) {
-      return await fail(FROZEN_REASON);
+      return await fail(FROZEN_REASON, "frozen");
     }
     const stored = await storeReading(reading, device);
-    if (!stored.ok) return await fail(stored.reason);
+    if (!stored.ok) return await fail(stored.reason, "missing_fields");
     await prisma.inverterConnection
       .update({ where: { id: row.id }, data: { lastStatus: "connected", lastSeenAt: new Date(), lastTestReason: null } })
       .catch(() => {});
@@ -303,6 +310,7 @@ async function run(deadline: number): Promise<SyncResult> {
     // current status instead of flipping the badge to "not connected".
     if (!(error instanceof DessError)) {
       console.error("[smartess] sync_transient", error);
+      lastTransientWasDatabase = isDatabaseError(error);
       return { ok: false, reason: "transient" };
     }
     // A rejected login must be retried with fresh credentials, not a cached token.
@@ -320,8 +328,28 @@ async function run(deadline: number): Promise<SyncResult> {
       await savePersistedAuth(null);
     }
     console.error("[smartess] sync_failed", error);
-    return await fail(describeDessError(error));
+    return await fail(describeDessError(error), "smartess_error");
   }
+}
+
+/**
+ * Writes why a run stored nothing to the event log (the hosting plan keeps
+ * runtime logs for only an hour). Throttled per cause, never throws, and never
+ * waits long: a database outage must not slow the sync's answer.
+ */
+async function logSyncFailure(result: SyncResult) {
+  if (result.ok) return;
+  const category: SyncFailureCategory | undefined =
+    result.category ?? (result.reason === "transient" ? (lastTransientWasDatabase ? "database" : "transient") : undefined);
+  if (!category || !shouldLogSyncFailure(loggedFailureAt, category, Date.now())) return;
+  await Promise.race([
+    recordMonitoringEvent({
+      action: MONITORING_ACTIONS.SYNC_FAILED,
+      success: false,
+      details: `category=${category}; reason=${result.reason.slice(0, 200)}`,
+    }),
+    new Promise<void>((resolve) => setTimeout(resolve, 3_000)),
+  ]).catch(() => {});
 }
 
 /** Safe to call on every dashboard poll: it throttles itself and never throws. */
@@ -337,6 +365,7 @@ export async function syncSmartEss(): Promise<SyncResult> {
   if (now - lastAttemptAt < MIN_GAP_MS - 10_000) return { ok: false, skipped: true, reason: "throttled" };
   lastAttemptAt = now;
   inFlightSince = now;
+  lastTransientWasDatabase = false;
 
   const attempt = (async (): Promise<SyncResult> => {
     try {
@@ -352,16 +381,17 @@ export async function syncSmartEss(): Promise<SyncResult> {
         return { ok: false, skipped: true, reason: "recent_sample_exists" };
       }
       // Stay inside the function's time limit; a slow SmartESS is transient.
-      const budget = new Promise<SyncResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: "transient" }), RUN_BUDGET_MS));
+      const budget = new Promise<SyncResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: "transient", category: "run_budget_exceeded" }), RUN_BUDGET_MS));
       return await Promise.race([run(now + RUN_BUDGET_MS), budget]);
     } catch (error) {
       console.error("[smartess] sync_crashed", error);
-      return { ok: false, reason: "sync_crashed" };
+      return { ok: false, reason: "sync_crashed", category: "sync_crashed" };
     }
   })();
 
-  inFlight = attempt.then((result) => {
+  inFlight = attempt.then(async (result) => {
     if (!(result.ok === false && result.skipped)) console.info("[smartess] sync_result", result.ok ? "stored" : result.reason.slice(0, 200));
+    await logSyncFailure(result);
     return result;
   }).finally(() => {
     inFlight = null;

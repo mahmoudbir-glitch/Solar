@@ -5,12 +5,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Lightbulb, Loader2, RefreshCw } from "lucide-react";
 import type { EnergySnapshot } from "@/lib/energy";
 import { PageHeader } from "@/components/page-header";
-import { StatTile } from "@/components/stat-tile";
 import { LoadChart, type LoadPoint } from "@/components/load-chart";
-import { homeText, acAmps, acAmpHours, percentsOf } from "@/lib/energy";
+import { homeText, acAmps, percentsOf } from "@/lib/energy";
 import { AmpPill } from "@/components/amp-pill";
 import { startVisiblePolling } from "@/lib/visible-polling";
-import { IntelligentEnergyCard } from "@/components/intelligent-energy-card";
 
 const REFRESH_MS = 15_000;
 const HISTORY_REFRESH_MS = 5 * 60_000;
@@ -65,13 +63,14 @@ export default function HomeConsumptionPage() {
   const homeKw = homeW / 1000;
   const toneText = homeText(homeKw);
 
-  // من أين يأتي حمل المنزل الآن: الشمس أولاً، ثم البطارية، والباقي من الشبكة.
-  const fromSolar = Math.min(homeW, Math.max(0, snapshot?.solarPowerW ?? 0));
-  const fromBattery = Math.min(homeW - fromSolar, Math.max(0, -(snapshot?.batteryPowerW ?? 0)));
-  // The grid only counts what it really delivers (measured, or the shortfall
-  // while on mains). Off-grid the small leftover is the inverter's own loss,
-  // so it must not show up as "from the grid".
-  const fromGrid = Math.min(Math.max(0, homeW - fromSolar - fromBattery), Math.max(0, snapshot?.gridPowerW ?? 0));
+  // من أين يأتي حمل المنزل الآن: الشبكة أولاً (إن كانت تغذّيه)، ثم البطارية، ثم الشمس.
+  // The grid covers the house first: on mains the inverter feeds the house
+  // from the grid and sends the sun to the battery. Then the battery, then the
+  // sun. Only power really delivered is counted, so off-grid the small leftover
+  // (the inverter's own loss) never shows up as "from the grid".
+  const fromGrid = Math.min(homeW, Math.max(0, snapshot?.gridPowerW ?? 0));
+  const fromBattery = Math.min(homeW - fromGrid, Math.max(0, -(snapshot?.batteryPowerW ?? 0)));
+  const fromSolar = Math.min(homeW - fromGrid - fromBattery, Math.max(0, snapshot?.solarPowerW ?? 0));
   // Rounded so the three always add up to 100 (33 + 33 + 33 left 1% unexplained).
   const [solarPct, batteryPct, gridPct] = percentsOf([fromSolar, fromBattery, fromGrid]);
   const sources = [
@@ -99,14 +98,11 @@ export default function HomeConsumptionPage() {
         }
       />
 
-      {/* المراقبة الذكية: حكم واحد على حالة المنظومة الآن، وأسبابه عند الفتح */}
-      {snapshot && <IntelligentEnergyCard snapshot={snapshot} history={history?.points} />}
-
-      {/* إجمالي السحب الحالي */}
-      <section className="energy-card p-6 text-center">
-        <span className="block text-sm font-semibold text-slate-400">إجمالي سحب المنزل الآن</span>
+      {/* الآن: كم يسحب البيت، ومن أين تأتي هذه الطاقة */}
+      <section className="energy-card p-4">
+        <span className="block text-xs font-bold text-slate-500">إجمالي سحب المنزل الآن</span>
         {loading && !snapshot ? (
-          <Loader2 className="mx-auto mt-5 h-10 w-10 animate-spin text-sky-500" aria-label="جاري تحميل القراءة" />
+          <Loader2 className="mx-auto my-6 h-10 w-10 animate-spin text-sky-500" aria-label="جاري تحميل القراءة" />
         ) : !snapshot ? (
           // No reading is not "your house uses nothing": say so instead of 0 W.
           <>
@@ -115,44 +111,48 @@ export default function HomeConsumptionPage() {
           </>
         ) : (
           <>
-            <span className={"mt-2 block text-4xl font-black tracking-tight sm:text-5xl " + toneText}><bdi dir="ltr">{Math.round(homeW).toLocaleString("en-US")}</bdi> واط</span>
-            <span className={"mt-1 block text-sm font-bold " + toneText}><bdi dir="ltr">{homeKw.toFixed(2)} kW</bdi></span>
-            <span className="mt-2 block"><AmpPill tone="sky" amps={acAmps(homeW)} /></span>
+            <div className="mt-1 flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+              <span className={"text-4xl font-black leading-none tracking-tight " + toneText}><bdi dir="ltr">{Math.round(homeW).toLocaleString("en-US")}</bdi> <small className="text-base">واط</small></span>
+              <span className="flex items-center gap-1.5">
+                <span className={"text-sm font-black " + toneText}><bdi dir="ltr">{homeKw.toFixed(2)} kW</bdi></span>
+                <AmpPill tone="sky" amps={acAmps(homeW)} />
+              </span>
+            </div>
+
+            <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+              {sources.map((source) => source.w > 0 && <div key={source.label} className={source.bar} style={{ width: `${source.pct}%` }} />)}
+            </div>
+            <ul className="mt-3 divide-y divide-slate-100" aria-label="من أين يأتي استهلاكك الآن">
+              {sources.map((source) => (
+                <li key={source.label} className="flex items-center gap-2 py-2">
+                  <span className={"h-2.5 w-2.5 shrink-0 rounded-full " + source.bar} aria-hidden="true" />
+                  <span className="min-w-0 flex-1 text-sm font-bold text-slate-700">{source.label}</span>
+                  <span className="text-xs font-semibold text-slate-400"><bdi dir="ltr">{Math.round(source.w).toLocaleString("en-US")}</bdi> واط</span>
+                  <AmpPill tone={source.tone} amps={acAmps(source.w)} muted={source.w <= 0} />
+                  <span className={"w-11 text-left text-sm font-black " + source.text}><bdi dir="ltr">{source.pct}%</bdi></span>
+                </li>
+              ))}
+            </ul>
           </>
         )}
       </section>
 
-      {/* من أين يأتي الاستهلاك الآن */}
-      <section className="energy-card space-y-3 p-4">
-        <h2 className="text-sm font-black text-slate-900">من أين يأتي استهلاكك الآن</h2>
-        <div className="flex h-3 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
-          {sources.map((source) => source.w > 0 && <div key={source.label} className={source.bar} style={{ width: `${source.pct}%` }} />)}
-        </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          {sources.map((source) => (
-            <div key={source.label}>
-              <div className="text-[11px] font-bold text-slate-500">{source.label}</div>
-              <div className={"text-base font-black " + source.text}>{snapshot ? `${source.pct}%` : "—"}</div>
-              <div className="text-[11px] font-semibold text-slate-400">{snapshot ? `${Math.round(source.w)} واط` : "—"}</div>
-              <div className="mt-1.5"><AmpPill tone={source.tone} amps={snapshot ? acAmps(source.w) : null} muted={snapshot ? source.w <= 0 : false} /></div>
-            </div>
-          ))}
+      {/* اليوم: الاستهلاك وأعلى حمل في بطاقة واحدة */}
+      <section className="energy-card p-4">
+        <div className="grid grid-cols-2 divide-x divide-x-reverse divide-slate-100">
+          <div className="pl-3">
+            <div className="text-[11px] font-bold text-slate-500">استهلاك اليوم</div>
+            <div className="mt-1 whitespace-nowrap text-xl font-black leading-7 text-sky-700"><bdi dir="ltr">{snapshot?.todayHomeUsageKWh !== undefined ? snapshot.todayHomeUsageKWh.toFixed(1) : "—"}<small className="text-xs text-slate-500"> kWh</small></bdi></div>
+            <div className="mt-1.5 text-[11px] font-semibold text-slate-400">منذ منتصف الليل</div>
+          </div>
+          <div className="pr-3">
+            <div className="text-[11px] font-bold text-slate-500">أعلى حمل اليوم</div>
+            <div className="mt-1 whitespace-nowrap text-xl font-black leading-7 text-sky-700"><bdi dir="ltr">{history?.peak ? (history.peak.w / 1000).toFixed(2) : "—"}<small className="text-xs text-slate-500"> kW</small></bdi></div>
+            <div className="mt-1.5"><AmpPill tone="sky" amps={history?.peak ? acAmps(history.peak.w) : null} /></div>
+            <div className="mt-1.5 text-[11px] font-semibold text-slate-400">{history?.peak ? <>{peakTime}{peakPct !== null && <> · <bdi dir="ltr">{peakPct}%</bdi> من الإنفرتر</>}</> : "لا قراءات كافية بعد"}</div>
+          </div>
         </div>
       </section>
-
-      <div className="grid auto-rows-fr grid-cols-2 gap-3">
-        <StatTile card tone="sky" label="استهلاك اليوم" value={snapshot?.todayHomeUsageKWh !== undefined ? snapshot.todayHomeUsageKWh.toFixed(1) : "—"} unit="kWh" ampTone="sky" ampUnit="Ah" amps={acAmpHours(snapshot?.todayHomeUsageKWh)} hint="منذ منتصف الليل" />
-        <StatTile
-          card
-          tone="sky"
-          label="أعلى حمل اليوم"
-          value={history?.peak ? (history.peak.w / 1000).toFixed(2) : "—"}
-          unit="kW"
-          ampTone="sky"
-          amps={history?.peak ? acAmps(history.peak.w) : null}
-          hint={history?.peak ? <>{peakTime}{peakPct !== null && <> · <bdi dir="ltr">{peakPct}%</bdi> من الإنفرتر</>}</> : undefined}
-        />
-      </div>
 
       {/* منحنى آخر 24 ساعة */}
       <section className="energy-card space-y-2 p-4">

@@ -103,7 +103,7 @@ export function BatteryTimeline({ anchor }: { anchor?: string } = {}) {
       id={anchor}
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
-      className="energy-card group scroll-mt-40 p-4"
+      className="energy-card group scroll-mt-24 p-4"
       dir="rtl"
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">

@@ -207,3 +207,9 @@ export function percentsOf(values: number[]): number[] {
   }
   return floors;
 }
+
+/** Money in the owner's currency: "$12.50" for dollars, "12,500 ل.س" for Syrian pounds (no decimals). */
+export function moneyText(currency: string | undefined, n: number) {
+  if (currency === "SYP") return `${Math.round(n).toLocaleString("en-US")} ل.س`;
+  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: n % 1 ? 2 : 0 });
+}

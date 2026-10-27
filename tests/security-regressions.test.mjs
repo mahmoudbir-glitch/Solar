@@ -363,7 +363,7 @@ test("the reader never switches to a device other than the saved datalogger", ()
   assert.match(lib, /return devices\.length === 1 \? devices\[0\] : undefined;/);
   const sync = read("src/lib/smartess-sync.ts");
   assert.match(sync, /pickDevice\(devices, wanted\)/);
-  assert.match(sync, /if \(!device\) return await fail\(describeNoDevice\(devices, wanted\)\);/);
+  assert.match(sync, /if \(!device\) return await fail\(describeNoDevice\(devices, wanted\)(, "no_device")?\);/);
   // A remembered device is dropped once the owner saves a different PN.
   assert.match(sync, /\(!wanted \|\| remembered\.pn === wanted\)/);
   const route = read("src/app/api/inverter/test/route.ts");
@@ -445,8 +445,8 @@ test("QA fixes: today totals, finance split, blank values, gateway token", () =>
   assert.match(telemetry, /todayProductionKWh: today \?/);
   // Each kWh of house use is counted once: grid, then battery, rest solar.
   const finance = read("src/app/api/finance/route.ts");
-  assert.match(finance, /const gridKWh = Math\.min\(home, Math\.max\(0, totals\.gridImportKWh\)\)/);
-  assert.match(finance, /const directSolarKWh = Math\.max\(0, home - gridKWh - batteryKWh\)/);
+  assert.match(finance, /gridKWh = Math\.min\(home, Math\.max\(0, totals\.gridImportKWh\)\)/);
+  assert.match(finance, /directSolarKWh = Math\.max\(0, home - gridKWh - batteryKWh\)/);
   assert.match(read("src/lib/dessmonitor.ts"), /if \(!\/\\d\/\.test\(cleaned\)\) return undefined;/);
   assert.match(read("src/lib/telemetry-store.ts"), /if \(hours <= 0 \|\| hours > 0\.25\) return;/);
   assert.match(read("src/app/api/inverter/connection/route.ts"), /gatewayTokenHash: null, gatewayTokenCipher: null/);
@@ -555,10 +555,10 @@ test("polling pauses while the app is hidden", () => {
   }
 });
 
-test("forecast day card shows the battery at sunrise/sunset and the full-charge time", () => {
-  const source = read("src/components/smart-forecast.tsx");
-  assert.match(source, /selected\.chargeAtSunsetPct/);
-  assert.match(source, /selected\.fullChargeTime/);
+test("battery-by-day card shows the battery at sunset and the full-charge time", () => {
+  const source = read("src/components/battery-timeline.tsx");
+  assert.match(source, /chargeAtSunsetPct/);
+  assert.match(source, /fullChargeTime/);
 });
 
 test("panel power uses the largest PV figure (Mains mode reports it only as PV Charge Power)", () => {
@@ -940,5 +940,79 @@ test("smart monitor: equipment and reserve alerts, night, a full battery and the
   // The card shows the reasons, and takes the stored history so the trend is there on opening.
   const card = read("src/components/intelligent-energy-card.tsx");
   assert.match(card, /insight\.details\.map/);
-  assert.ok(read("src/app/home/page.tsx").includes("<IntelligentEnergyCard snapshot={snapshot} history={history?.points} />"));
+  assert.ok(read("src/components/solar-dashboard-client.tsx").includes("<IntelligentEnergyCard snapshot={snapshot} history={historyPoints} />"));
+});
+
+test("battery outline runs a line whose colour and direction follow what the battery is doing", () => {
+  const page = read("src/app/battery/page.tsx");
+  assert.match(page, /const flow: Flow = !snapshot \|\| state === "idle" \? "idle" : state === "charging" \? "charging" : soc <= reservePct \+ 5 \? "low" : "discharging";/);
+  assert.match(page, /battery-flow-out/);
+  const css = read("src/app/globals.css");
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.battery-flow \{ animation: none; \} \}/);
+});
+
+test("battery bolt blinks while charging and takes the battery's colour on both pages", () => {
+  const mode = fs.readFileSync(new URL("../src/lib/bolt-mode.ts", import.meta.url), "utf8");
+  const battery = fs.readFileSync(new URL("../src/app/battery/page.tsx", import.meta.url), "utf8");
+  const flow = fs.readFileSync(new URL("../src/components/energy-flow.tsx", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  assert.match(mode, /export const boltBlinks = \(mode: BoltMode\) => mode === "solar" \|\| mode === "grid";/);
+  assert.match(battery, /className=\{boltBlinks\(bolt\) \? "bolt-blink" : undefined\}/);
+  assert.match(flow, /<InverterIcon active=\{liveFlowActive\} mode=\{bolt\} \/>/);
+  assert.match(css, /\.bolt-blink \{ animation: bolt-blink/);
+});
+
+test("home solar node uses the logo's tilted panel drawing", () => {
+  const icons = fs.readFileSync(new URL("../src/components/node-icons.tsx", import.meta.url), "utf8");
+  const mark = fs.readFileSync(new URL("../src/components/solar-mark.tsx", import.meta.url), "utf8");
+  const panel = 'd="M150 262 H362 L404 396 H108 Z"';
+  assert.ok(mark.includes(panel) && icons.includes(panel));
+});
+
+test("calibration accepts panels giving half the theoretical output or more", () => {
+  const core = fs.readFileSync(new URL("../src/lib/solar-core.ts", import.meta.url), "utf8");
+  assert.match(core, /export const CALIBRATION_PLAUSIBLE_MIN = 0\.5;/);
+});
+
+test("smart monitor treats twilight light after sunset as real production, not a night anomaly", () => {
+  const card = fs.readFileSync(new URL("../src/components/intelligent-energy-card.tsx", import.meta.url), "utf8");
+  assert.match(card, /const TWILIGHT_MS = 45 \* 60_000;/);
+  assert.match(card, /t > sunset\.getTime\(\) \+ TWILIGHT_MS/);
+});
+
+test("money page splits house energy by source reading by reading, not from day totals", () => {
+  const route = fs.readFileSync(new URL("../src/app/api/finance/route.ts", import.meta.url), "utf8");
+  assert.match(route, /async function splitHouseSources\(since: Date\)/);
+  assert.match(route, /LEAST\(load, grid\) AS from_grid/);
+  assert.match(route, /const scale = home \/ split\.homeKWh;/);
+});
+
+test("house source splits put the measured grid first and never call inverter loss grid", () => {
+  const split = fs.readFileSync(new URL("../src/components/energy-split.tsx", import.meta.url), "utf8");
+  const house = fs.readFileSync(new URL("../src/app/home/page.tsx", import.meta.url), "utf8");
+  const history = fs.readFileSync(new URL("../src/app/api/telemetry/history/route.ts", import.meta.url), "utf8");
+  assert.match(split, /const homeGrid = Math\.min\(load, grid\);/);
+  assert.match(house, /const fromGrid = Math\.min\(homeW, Math\.max\(0, snapshot\?\.gridPowerW \?\? 0\)\);/);
+  assert.match(history, /gridW: Math\.round\(b\.grid \/ b\.n\)/);
+});
+
+
+test("Arabic counts use the right plural forms (no '1 أيام' or '7 يوماً')", () => {
+  const money = read("src/app/money/page.tsx");
+  assert.ok(money.includes("daysCount(data.periodDays)"));
+  assert.doesNotMatch(money, /\{PERIOD_DAYS\[period\]\} يوماً كاملة/);
+});
+
+test("the money page can edit the export tariff it already prices", () => {
+  const money = read("src/app/money/page.tsx");
+  assert.ok(money.includes("setExportTariff(Number(e.target.value))"));
+});
+
+test("the inverter model list keeps a saved model that is not in the presets", () => {
+  const page = read("src/app/settings/page.tsx");
+  assert.ok(page.includes("includes(draft.inverterModel)"));
+});
+
+test("device times follow the viewer's clock, not a fixed Beirut zone", () => {
+  assert.doesNotMatch(read("src/components/devices-list.tsx"), /Asia\/Beirut/);
 });

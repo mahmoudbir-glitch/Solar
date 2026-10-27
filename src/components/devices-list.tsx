@@ -30,14 +30,14 @@ function placeOf(d: Device) {
 
 function when(iso: string) {
   const date = new Date(iso);
-  const tz = "Asia/Beirut";
-  const day = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
-  const time = new Intl.DateTimeFormat("ar-LB-u-nu-latn", { timeZone: tz, hour: "2-digit", minute: "2-digit" }).format(date);
+  // The viewer's own clock: a fixed Beirut zone shifted the hour for anyone in Syria.
+  const day = (d: Date) => new Intl.DateTimeFormat("en-CA").format(d);
+  const time = new Intl.DateTimeFormat("ar-LB-u-nu-latn", { hour: "2-digit", minute: "2-digit" }).format(date);
   const today = day(new Date());
   const yesterday = day(new Date(Date.now() - 86_400_000));
   if (day(date) === today) return `اليوم ${time}`;
   if (day(date) === yesterday) return `أمس ${time}`;
-  return new Intl.DateTimeFormat("ar-LB-u-nu-latn", { timeZone: tz, day: "numeric", month: "short" }).format(date) + ` ${time}`;
+  return new Intl.DateTimeFormat("ar-LB-u-nu-latn", { day: "numeric", month: "short" }).format(date) + ` ${time}`;
 }
 
 /** Devices that used the account recently, newest first; this device is marked. */

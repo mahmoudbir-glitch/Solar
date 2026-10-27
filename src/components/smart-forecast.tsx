@@ -1,14 +1,12 @@
 "use client";
 
-import { sunsetTone, tonePill, toneText } from "@/lib/battery-tone";
+import { toneText } from "@/lib/battery-tone";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, MoonStar, RefreshCw, SunMedium } from "lucide-react";
+import { Loader2, MoonStar, RefreshCw } from "lucide-react";
 import { useSharedSmartEnergy } from "@/components/smart-energy-provider";
 import { calculateAutonomy, siteClock, siteInstant, weatherIcon, weatherLabel } from "@/lib/smart-forecast";
 import { InfoTip } from "@/components/info-tip";
 import { BatteryTimeline } from "@/components/battery-timeline";
-import { AmpPill } from "@/components/amp-pill";
-import { acAmpHours } from "@/lib/energy";
 
 /** The forecast's dates are the site's own calendar days; UTC keeps them from shifting. */
 function formatDate(iso: string) {
@@ -80,13 +78,13 @@ function TonightCard({
         : "قد لا تكفي حتى الصباح";
 
   return (
-    <section id="night" className={"energy-card scroll-mt-40 overflow-hidden bg-gradient-to-b to-white p-4 ring-2 " + toneRing + " " + toneClass}>
+    <section id="night" className={"energy-card scroll-mt-24 overflow-hidden bg-gradient-to-b to-white p-4 ring-2 " + toneRing + " " + toneClass}>
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs font-black text-slate-500">
           <MoonStar size={15} aria-hidden="true" /> الليلة الجارية · حتى الشروق <bdi dir="ltr">{siteClock(until)}</bdi>
         </p>
         <InfoTip label="كيف نحسب كفاية الليل" title="كفاية الليل">
-          من نسبة البطارية الآن وسعتها ومتوسط استهلاك بيتك بالليل (<bdi dir="ltr">{Math.round(effectiveLoadW)} W</bdi>، من {sampleCount} قراءة) حتى الشروق، مع إبقاء حد الاحتياطي <bdi dir="ltr">{reservePct}%</bdi>.
+          من نسبة البطارية الآن وسعتها ومتوسط استهلاك منزلك ليلاً (<bdi dir="ltr">{Math.round(effectiveLoadW)} W</bdi>، من {sampleCount} قراءة) حتى الشروق، مع إبقاء حد الاحتياطي <bdi dir="ltr">{reservePct}%</bdi>.
         </InfoTip>
       </div>
       <h2 className="mt-1.5 text-xl font-black">{tone === "emerald" ? "✓ " : tone === "slate" ? "" : "⚠ "}{verdict}</h2>
@@ -137,14 +135,41 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
   }, [forecasts, utcOffsetSeconds]);
 
   const selected = forecasts[selectedIndex];
-  const todayAfterSunset = selectedIndex === 0 && (selected?.sunset ? Date.now() > siteInstant(selected.sunset, utcOffsetSeconds) : false);
   const current = weather?.current;
 
   // Arriving from the home card ("/energy#night"): the section only exists
   // after the forecast loads, so scroll once it is rendered.
+  // Cards above it (weather, calibration, best time for the sun) can still grow
+  // after the first scroll and push it down, so line it up again a few times
+  // as the page settles, then flash it so it is clear where the link landed.
+  const nightLanded = useRef(false);
   useEffect(() => {
-    if (!forecasts.length || typeof window === "undefined" || window.location.hash !== "#night") return;
-    requestAnimationFrame(() => document.getElementById("night")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    if (!forecasts.length || nightLanded.current || typeof window === "undefined" || window.location.hash !== "#night") return;
+    nightLanded.current = true;
+    let userMoved = false;
+    const stop = () => { userMoved = true; };
+    window.addEventListener("touchstart", stop, { once: true, passive: true });
+    window.addEventListener("wheel", stop, { once: true, passive: true });
+    const align = (smooth: boolean) => {
+      if (userMoved) return;
+      document.getElementById("night")?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+    };
+    const timers = [
+      window.setTimeout(() => align(true), 60),
+      window.setTimeout(() => align(false), 700),
+      window.setTimeout(() => align(false), 1600),
+      window.setTimeout(() => {
+        const target = document.getElementById("night");
+        if (!target) return;
+        target.classList.add("night-flash");
+        window.setTimeout(() => target.classList.remove("night-flash"), 1800);
+      }, 800),
+    ];
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener("touchstart", stop);
+      window.removeEventListener("wheel", stop);
+    };
   }, [forecasts.length]);
 
   // The night in progress (after sunset, or after midnight before sunrise).
@@ -174,7 +199,7 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
 
   const split = selected
     ? [
-        { key: "home", label: "للبيت", pct: selected.homePct, kwh: selected.homeKWh, bar: "bg-sky-500", dot: "bg-sky-500", text: "text-sky-700" },
+        { key: "home", label: "للمنزل", pct: selected.homePct, kwh: selected.homeKWh, bar: "bg-sky-500", dot: "bg-sky-500", text: "text-sky-700" },
         { key: "battery", label: "للبطارية", pct: selected.batteryPct, kwh: selected.batteryKWh, bar: "bg-emerald-500", dot: "bg-emerald-500", text: "text-emerald-700" },
         { key: "surplus", label: "فائض", pct: selected.surplusPct, kwh: selected.surplusKWh, bar: "bg-amber-400", dot: "bg-amber-400", text: "text-amber-700" },
       ]
@@ -190,12 +215,10 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
 
       {/* 1 · Title, refresh, and the two facts that frame every number below. */}
       <header className="energy-card p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-1 ring-amber-200/70"><SunMedium className="h-5 w-5" aria-hidden="true" /></div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-black text-amber-600">Solar • الطاقة</p>
-            <h1 className="text-xl font-black tracking-tight text-slate-950">توقعات الطاقة</h1>
-          </div>
+        {/* The page title is in the coloured top bar; here: what the page shows, and refresh. */}
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="sr-only">توقعات الطاقة</h1>
+          <p className="text-xs font-semibold leading-5 text-slate-500">إنتاج الألواح المتوقع حسب الطقس، والبطارية خلال الأيام.</p>
           <button
             type="button"
             onClick={() => void handleRefresh()}
@@ -226,7 +249,7 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
                   {calibration.status === "calibrated"
                     ? <>في آخر {daysWord(calibration.days)} أعطت ألواحك <bdi dir="ltr">{Math.round(calibration.factor * 100)}%</bdi> من التقدير النظري، فعُدّل التوقع على ذلك.</>
                     : calibration.status === "suspect"
-                      ? <>أعطت ألواحك في آخر {daysWord(calibration.days)} <bdi dir="ltr">{Math.round(calibration.ratio * 100)}%</bdi> فقط من التقدير النظري، وهذا أقل من أي منظومة سليمة. غالباً لم تجد الشمس مكاناً تذهب إليه أو أن قدرة الألواح في الإعدادات غير دقيقة، لذلك لم نعدّل التوقع.</>
+                      ? <>أعطت ألواحك في آخر {daysWord(calibration.days)} <bdi dir="ltr">{Math.round(calibration.ratio * 100)}%</bdi> فقط من التقدير النظري، وهذا أقل بكثير من المعتاد، فلم نعدّل التوقع عليه. افحص الألواح: ظل أو غبار عليها، أو قاطع مفصول، أو قدرة الألواح في الإعدادات غير دقيقة.</>
                       : <>يبدأ تعديل التوقع على إنتاج ألواحك الفعلي بعد حوالي أسبوع من القراءات.</>}
                 </InfoTip>
               </span>
@@ -294,18 +317,11 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
                   {/* What the big number is: the panels' expected output for the chosen day. */}
                   <span className="mb-1 block max-w-[8.5rem] text-[10px] font-bold leading-tight text-slate-500">إنتاج الألواح المتوقع حسب الطقس</span>
                   <strong className="block text-3xl font-black leading-none text-amber-700"><bdi dir="ltr">{selected.productionKWh}<small className="text-sm"> kWh</small></bdi></strong>
-                  <span className="mt-1.5 block"><AmpPill tone="amber" unit="Ah" amps={acAmpHours(selected.productionKWh)} /></span>
                 </div>
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className={"rounded-full px-2.5 py-1 text-[11px] font-black ring-1 " + confidenceTone[selected.confidence]}>ثقة التوقع: {selected.confidence}</span>
-                {/* The chosen day's battery in one line; every day side by side is in the battery card below. */}
-                {!todayAfterSunset && (
-                  <span className={"rounded-full px-2.5 py-1 text-[11px] font-black ring-1 " + tonePill[sunsetTone(selected.chargeAtSunsetPct, Boolean(selected.fullChargeTime))]}>
-                    🔋 {selected.fullChargeTime ? <>تمتلئ <bdi dir="ltr">{siteClock(selected.fullChargeTime)}</bdi></> : "لا تمتلئ"} · الغروب <bdi dir="ltr">{selected.chargeAtSunsetPct}%</bdi>
-                  </span>
-                )}
               </div>
 
               {/* Where the sun goes. Today only splits the hours still ahead. */}
@@ -333,11 +349,11 @@ export function SmartForecast({ afterDay }: { afterDay?: React.ReactNode } = {})
         </section>
       )}
 
-      {/* 4 · The battery day by day, then 5 · when to use the sun. */}
+      {/* 4 · The battery day by day and 5 · when to use the sun. */}
       {selected && (
         <>
-          <BatteryTimeline anchor={tonight ? undefined : "night"} />
-          {afterDay}
+          {/* By day the actionable card (when to use the sun) comes first; at night the battery does. */}
+          {tonight ? <><BatteryTimeline />{afterDay}</> : <>{afterDay}<BatteryTimeline anchor="night" /></>}
         </>
       )}
     </section>

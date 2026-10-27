@@ -3,7 +3,8 @@
 import React, { useId, useState } from 'react';
 import { Battery, BatteryCharging, BatteryMedium } from 'lucide-react';
 import { GridTowerIcon, HouseIcon, InverterIcon, SolarPanelIcon } from '@/components/node-icons';
-import { acAmpHours, acAmps, batteryText, homeText, solarText } from '@/lib/energy';
+import { boltMode, BOLT_LABELS } from '@/lib/bolt-mode';
+import { acAmps, moneyText, batteryText, homeText, solarText } from '@/lib/energy';
 import { AmpPill } from '@/components/amp-pill';
 
 interface EnergyFlowProps {
@@ -20,10 +21,15 @@ interface EnergyFlowProps {
   todayProductionKWh?: number;
   todayHomeUsageKWh?: number;
   todayGridSavings?: number;
+  /** Currency code from the settings (USD or SYP). */
   savingsCurrency?: string;
   isLive?: boolean;
   /** Battery current in amps (measured when available). */
   batteryAmps?: number | null;
+  /** When the shown reading was taken (ISO). */
+  lastReadingAt?: string;
+  /** Reserve limit (%), so the centre bolt turns red near it. */
+  batteryReservePct?: number;
 }
 
 const FLOW_THRESHOLD = 0.05;
@@ -40,9 +46,11 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   todayProductionKWh,
   todayHomeUsageKWh,
   todayGridSavings,
-  savingsCurrency = '$',
+  savingsCurrency = 'USD',
   isLive = false,
   batteryAmps = null,
+  batteryReservePct = 20,
+  lastReadingAt,
 }) => {
   const [activeNode, setActiveNode] = useState<'solar' | 'battery' | 'home' | 'grid' | 'inverter' | null>(null);
   const flowId = useId().replace(/:/g, '');
@@ -74,6 +82,8 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   // battery no longer shows a charging bolt.
   const BatteryStateIcon = batteryCharging ? BatteryCharging : batteryDischarging ? BatteryMedium : Battery;
   const batteryIconTone = batteryCharging ? "text-emerald-500" : batteryDischarging ? "text-amber-500" : "text-slate-400";
+  // The bolt in the hub follows the battery: blinking yellow/violet while it charges from the sun/grid.
+  const bolt = boltMode({ batteryW: batteryKw * 1000, solarW: solarKw * 1000, soc: batteryPercentage, reservePct: batteryReservePct, live: liveFlowActive });
   const gridImporting = liveFlowActive && gridConnected !== false && gridKw > FLOW_THRESHOLD;
   const gridExporting = liveFlowActive && gridConnected !== false && gridKw < -FLOW_THRESHOLD;
   // In off-grid (battery) mode this inverter still reports ~230 V on "Grid
@@ -88,7 +98,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   // <bdi dir="ltr"> keeps "1.23 kW" in that order inside the RTL layout.
   const formatKw = (value: number) => <bdi dir="ltr">{Math.abs(value).toFixed(2) + ' kW'}</bdi>;
   const formatKwh = (value?: number) => value === undefined ? '—' : <bdi dir="ltr">{value.toFixed(1) + ' kWh'}</bdi>;
-  const formatSavings = (value?: number) => value === undefined ? '—' : <bdi dir="ltr">{(value < 0 ? '-' : '') + savingsCurrency + Math.abs(value).toFixed(2)}</bdi>;
+  const formatSavings = (value?: number) => value === undefined ? '—' : <bdi dir="ltr">{(value < 0 ? '-' : '') + moneyText(savingsCurrency, Math.abs(value))}</bdi>;
 
   const operatingMode = !isLive
     ? { label: 'بانتظار البيانات الحية', className: 'border-slate-200 bg-slate-50 text-slate-600' }
@@ -134,13 +144,21 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(245,156,0,0.10),transparent_30%),radial-gradient(circle_at_14%_50%,rgba(133,72,242,0.08),transparent_28%),radial-gradient(circle_at_86%_50%,rgba(32,119,240,0.08),transparent_28%),radial-gradient(circle_at_50%_82%,rgba(16,171,90,0.09),transparent_30%)]" />
 
       <div className="relative px-4 pt-4 sm:px-6 sm:pt-5">
-        <div className="flex items-center justify-between gap-3">
-          <span className={"inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold " + (isLive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600")}>
-            <span className={"h-2 w-2 rounded-full " + (isLive ? "animate-pulse bg-emerald-500" : "bg-slate-400")} />
-            تدفق الطاقة الآن
-          </span>
-          {/* What is feeding the house right now, in one line. */}
-          {isLive && <span className={"min-w-0 truncate rounded-full border px-3 py-1.5 text-[11px] font-black " + operatingMode.className}>{operatingMode.label}</span>}
+        <div className="flex flex-col items-start gap-1">
+          <div className="flex w-full items-center justify-between gap-3">
+            <span className={"inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold " + (isLive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600")}>
+              <span className={"h-2 w-2 rounded-full " + (isLive ? "animate-pulse bg-emerald-500" : "bg-slate-400")} />
+              تدفق الطاقة الآن
+            </span>
+            {/* What is feeding the house right now, in one line. */}
+            {isLive && <span className={"min-w-0 truncate rounded-full border px-3 py-1.5 text-[11px] font-black " + operatingMode.className}>{operatingMode.label}</span>}
+          </div>
+          {/* When the numbers below were read from the inverter (not the clock). */}
+          {lastReadingAt && Number.isFinite(new Date(lastReadingAt).getTime()) && (
+            <span className={"text-[11px] font-bold " + (isLive ? "text-slate-500" : "text-amber-700")}>
+              آخر قراءة <bdi dir="ltr">{new Date(lastReadingAt).toLocaleTimeString("ar-LB-u-nu-latn", { hour: "2-digit", minute: "2-digit" })}</bdi>{!isLive && " · متأخرة"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -275,7 +293,8 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
 
         <div className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
           <button type="button" onClick={() => setActiveNode("inverter")} aria-label="عرض تفاصيل الإنفرتر" className={"relative flex h-14 w-14 items-center justify-center rounded-full border-2 transition-transform active:scale-95 " + (liveFlowActive ? "border-indigo-200 bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-[0_8px_24px_rgba(77,71,224,0.35)]" : "border-slate-200 bg-slate-100")}>
-            <InverterIcon active={liveFlowActive} />
+            <InverterIcon active={liveFlowActive} mode={bolt} />
+            <span className="sr-only">البطارية {BOLT_LABELS[bolt]}</span>
           </button>
         </div>
       </div>
@@ -341,8 +360,8 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
 
       <div className="relative border-t border-slate-100 bg-slate-50/70 px-3 py-4 sm:px-5">
         <div className="grid grid-cols-3 divide-x divide-x-reverse divide-slate-200 text-center">
-          <div className="px-2"><div className="text-[11px] font-bold text-slate-500">إنتاج اليوم</div><div className="mt-1 text-base font-black text-amber-600 sm:text-lg">{formatKwh(todayProductionKWh)}</div><div className="mt-1.5"><AmpPill tone="amber" unit="Ah" amps={acAmpHours(todayProductionKWh)} /></div></div>
-          <div className="px-2"><div className="text-[11px] font-bold text-slate-500">استهلاك اليوم</div><div className="mt-1 text-base font-black text-sky-700 sm:text-lg">{formatKwh(todayHomeUsageKWh)}</div><div className="mt-1.5"><AmpPill tone="sky" unit="Ah" amps={acAmpHours(todayHomeUsageKWh)} /></div></div>
+          <div className="px-2"><div className="text-[11px] font-bold text-slate-500">إنتاج اليوم</div><div className="mt-1 text-base font-black text-amber-600 sm:text-lg">{formatKwh(todayProductionKWh)}</div></div>
+          <div className="px-2"><div className="text-[11px] font-bold text-slate-500">استهلاك اليوم</div><div className="mt-1 text-base font-black text-sky-700 sm:text-lg">{formatKwh(todayHomeUsageKWh)}</div></div>
           <div className="px-2"><div className="text-[11px] font-bold text-slate-500">وفر اليوم</div><div className={"mt-1 text-base font-black sm:text-lg " + ((todayGridSavings ?? 0) < 0 ? "text-rose-600" : "text-emerald-600")}>{formatSavings(todayGridSavings)}</div></div>
         </div>
         {todayProductionKWh === undefined && todayHomeUsageKWh === undefined && <p className="mt-2 text-center text-[10px] font-semibold text-slate-400">تُحسب أرقام اليوم تلقائياً مع تجمّع القراءات.</p>}

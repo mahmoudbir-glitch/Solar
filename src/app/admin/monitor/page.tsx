@@ -16,6 +16,7 @@ const actionLabels: Record<string, string> = {
   CONNECTION_TEST_SUCCESS: "نجح اختبار الاتصال",
   CONNECTION_TEST_FAILED: "فشل اختبار الاتصال",
   TELEMETRY_RECEIVED: "وصول Telemetry",
+  SYNC_FAILED: "فشل المزامنة",
 };
 
 function formatDate(date: Date | null) {

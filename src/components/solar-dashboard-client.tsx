@@ -3,12 +3,15 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Cpu, Moon } from "lucide-react";
+import { IntelligentEnergyCard } from "@/components/intelligent-energy-card";
+import type { LoadPoint } from "@/components/load-chart";
 import { EnergyFlow } from "@/components/energy-flow";
 import type { EnergySnapshot } from "@/lib/energy";
 import { arabicDuration, chargerPriorityLabel, inverterModeLabel, outputPriorityLabel, batteryAmps, AC_VOLTS } from "@/lib/energy";
 import { startVisiblePolling } from "@/lib/visible-polling";
 
 const REFRESH_MS = 15_000;
+const HISTORY_REFRESH_MS = 5 * 60_000;
 
 /** الرئيسية = «الآن»: مخطط التدفق وأرقام اليوم، والحالة في الشريط العلوي الموحّد. */
 export default function SolarDashboardClient() {
@@ -21,6 +24,17 @@ export default function SolarDashboardClient() {
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => { if (data?.batteryCapacityWh) setBattery({ capacityWh: data.batteryCapacityWh, reservePct: data.batteryMinReservePct ?? 20, nominal: data.batteryNominalVoltage }); })
       .catch(() => {});
+  }, []);
+
+  // The last 24 hours feed the smart monitoring card (its trend checks).
+  const [historyPoints, setHistoryPoints] = useState<LoadPoint[] | undefined>(undefined);
+  useEffect(() => {
+    const loadHistory = () => void fetch("/api/telemetry/history", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { points?: LoadPoint[] } | null) => { if (data?.points) setHistoryPoints(data.points); })
+      .catch(() => {});
+    loadHistory();
+    return startVisiblePolling(loadHistory, HISTORY_REFRESH_MS);
   }, []);
 
   const loadTelemetry = useCallback(async () => {
@@ -73,11 +87,16 @@ export default function SolarDashboardClient() {
         todayGridSavings={snapshot?.todayGridSavings}
         isLive={isLive}
         batteryAmps={batteryAmps(snapshot, battery?.nominal)}
-        savingsCurrency={snapshot?.currency ? `${snapshot.currency} ` : undefined}
+        batteryReservePct={battery?.reservePct}
+        lastReadingAt={snapshot?.timestamp}
+        savingsCurrency={snapshot?.currency}
       />
 
       {/* On a computer these cards sit beside the flow diagram. */}
       <div className="space-y-3 lg:space-y-4">
+      {/* المراقبة الذكية: حكم واحد على حالة المنظومة الآن (ومنه تنبيه حرارة الإنفرتر وحمله الزائد)، وأسبابه عند الفتح */}
+      {snapshot && <IntelligentEnergyCard snapshot={snapshot} history={historyPoints} />}
+
       {/* الليلة: جواب مباشر من القراءة الحالية، والتفاصيل في قسم الليل بصفحة الطاقة */}
       <Link href="/energy#night" className="energy-card flex items-center gap-3 p-4 transition hover:border-indigo-200 hover:shadow-md">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500"><Moon className="h-5 w-5" aria-hidden="true" /></span>

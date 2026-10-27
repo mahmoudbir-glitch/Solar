@@ -1,4 +1,5 @@
 import React from "react";
+import { BOLT_COLORS, boltBlinks, type BoltMode } from "@/lib/bolt-mode";
 
 /*
  * Solar's icons for the energy-flow nodes. Each sits on a filled circle in its
@@ -10,27 +11,37 @@ const WHITE = "#ffffff";
 const IDLE = "#96a1c0";
 
 export function SolarPanelIcon({ active = true, className = "h-10 w-10" }: { active?: boolean; className?: string }) {
-  const ink = active ? WHITE : IDLE;
-  const cell = active ? "#f59c00" : "#eaeef8";
+  // The same drawing as the logo beside the "Solar" name (solar-mark.tsx): a sun
+  // over a tilted panel seen in perspective, rather than a flat front view.
+  const id = React.useId().replace(/:/g, "");
+  const sun = active ? WHITE : IDLE;
+  const top = active ? "#1f3a8a" : "#d5dbea";
+  const bottom = active ? "#0f1f55" : "#b4bdd4";
+  const lines = active ? "#7ea6ff" : "#eef1f8";
   return (
-    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
-      {/* sun in the corner */}
-      <circle cx="14" cy="13" r="5.5" fill={ink} />
-      <g stroke={ink} strokeWidth="2.2" strokeLinecap="round">
-        <line x1="14" y1="3" x2="14" y2="5" />
-        <line x1="4" y1="13" x2="6" y2="13" />
-        <line x1="6.9" y1="5.9" x2="8.3" y2="7.3" />
-        <line x1="21.1" y1="5.9" x2="19.7" y2="7.3" />
+    <svg viewBox="96 60 320 390" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id={`panel-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={top} />
+          <stop offset="1" stopColor={bottom} />
+        </linearGradient>
+      </defs>
+      <g stroke={sun} strokeWidth="18" strokeLinecap="round">
+        <line x1="256" y1="72" x2="256" y2="100" />
+        <line x1="339" y1="107" x2="320" y2="126" />
+        <line x1="173" y1="107" x2="192" y2="126" />
+        <line x1="374" y1="190" x2="346" y2="190" />
+        <line x1="138" y1="190" x2="166" y2="190" />
       </g>
-      {/* panel seen from the front: a frame with six cells */}
-      <rect x="9" y="22" width="32" height="19" rx="3.5" fill={ink} />
-      <g fill={cell}>
-        <rect x="12" y="25" width="7.6" height="5.4" rx="1" />
-        <rect x="21.2" y="25" width="7.6" height="5.4" rx="1" />
-        <rect x="30.4" y="25" width="7.6" height="5.4" rx="1" />
-        <rect x="12" y="32.6" width="7.6" height="5.4" rx="1" />
-        <rect x="21.2" y="32.6" width="7.6" height="5.4" rx="1" />
-        <rect x="30.4" y="32.6" width="7.6" height="5.4" rx="1" />
+      <circle cx="256" cy="190" r="66" fill={sun} />
+      <path d="M256 392 L256 430 M206 432 H306" stroke={active ? WHITE : IDLE} strokeWidth="16" strokeLinecap="round" />
+      <path d="M150 262 H362 L404 396 H108 Z" fill={`url(#panel-${id})`} stroke={WHITE} strokeWidth="10" strokeLinejoin="round" />
+      <g stroke={lines} strokeWidth="5" fill="none">
+        <path d="M136 307 H376" />
+        <path d="M122 352 H390" />
+        <path d="M203 262 L182 396" />
+        <path d="M256 262 V396" />
+        <path d="M309 262 L330 396" />
       </g>
     </svg>
   );
@@ -74,17 +85,19 @@ export function HouseIcon({ className = "h-10 w-10" }: { className?: string }) {
  * The inverter as an energy core: a bold amber lightning bolt for the power it
  * handles, the same mark Shamsak uses. Grey when no power is flowing.
  */
-export function InverterIcon({ active = true, className = "h-10 w-10" }: { active?: boolean; className?: string }) {
+export function InverterIcon({ active = true, mode, className = "h-10 w-10" }: { active?: boolean; mode?: BoltMode; className?: string }) {
   const id = React.useId().replace(/:/g, "");
+  // With a battery mode the bolt takes that mode's colour and blinks while charging (see bolt-mode.ts).
+  const colors = mode ? BOLT_COLORS[mode] : active ? { top: "#fcd34d", bottom: "#f97316", edge: "#ea580c" } : BOLT_COLORS.idle;
   return (
-    <svg viewBox="0 0 48 48" className={className} aria-hidden="true" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 48 48" className={className + (mode && boltBlinks(mode) ? " bolt-blink" : "")} aria-hidden="true" strokeLinecap="round" strokeLinejoin="round">
       <defs>
         <linearGradient id={`bolt-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={active ? "#fcd34d" : "#e2e8f0"} />
-          <stop offset="100%" stopColor={active ? "#f97316" : "#94a3b8"} />
+          <stop offset="0%" stopColor={colors.top} />
+          <stop offset="100%" stopColor={colors.bottom} />
         </linearGradient>
       </defs>
-      <path transform="translate(0 2)" d="M27.5 3 L12 25.5 H22.5 L19.5 41 L36 17.5 H25.5 Z" fill={`url(#bolt-${id})`} stroke={active ? "#ea580c" : "#94a3b8"} strokeWidth="1.6" />
+      <path transform="translate(0 2)" d="M27.5 3 L12 25.5 H22.5 L19.5 41 L36 17.5 H25.5 Z" fill={`url(#bolt-${id})`} stroke={colors.edge} strokeWidth="1.6" />
     </svg>
   );
 }

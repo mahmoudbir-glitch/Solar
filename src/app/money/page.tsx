@@ -3,10 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Coins } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { moneyTone, semanticBg, semanticBorder, semanticText } from "@/lib/energy";
-import { AmpPill } from "@/components/amp-pill";
+import { moneyText, moneyTone, semanticBg, semanticBorder, semanticText } from "@/lib/energy";
 import { StatTile } from "@/components/stat-tile";
-import { acAmpHours, percentsOf } from "@/lib/energy";
+import { percentsOf } from "@/lib/energy";
 
 type Period = "day" | "week" | "month";
 
@@ -77,13 +76,22 @@ function lastDays(n: number) {
   return `آخر ${n} ${n >= 3 && n <= 10 ? "أيام" : "يوماً"}`;
 }
 
+/** How many local days each period asks for (same values as /api/finance). */
+const PERIOD_DAYS: Record<Period, number> = { day: 1, week: 7, month: 30 };
+
 /** The badge for the chosen period: today, or the days that really have readings. */
 function periodLabel(period: Period, days: number) {
-  return period === "day" ? "اليوم" : lastDays(days);
+  if (period === "day") return "اليوم";
+  const requested = PERIOD_DAYS[period];
+  return days < requested ? `${lastDays(days)} من أصل ${requested}` : lastDays(days);
 }
 
-/** Money with at most two decimals (0.325 -> 0.33), Latin digits. */
-const money = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: n % 1 ? 2 : 0 });
+/** "يوم" / "يومين" / "3 أيام" / "12 يوماً": the Arabic count of days. */
+function daysCount(n: number) {
+  if (n === 1) return "يوم";
+  if (n === 2) return "يومين";
+  return `${n} ${n >= 3 && n <= 10 ? "أيام" : "يوماً"}`;
+}
 
 export default function MoneyDashboard() {
   const [data, setData] = useState<FinanceData | null>(null);
@@ -107,7 +115,7 @@ export default function MoneyDashboard() {
         const settings = await settingsResponse.json();
         setTariff(Number(settings.gridTariff || 0));
         setExportTariff(Number(settings.exportTariff || 0));
-        setCurrency(String(settings.currency || "USD"));
+        setCurrency(settings.currency === "SYP" ? "SYP" : "USD");
         setSettingsLoaded(true);
       })
       .catch(() => undefined);
@@ -145,6 +153,7 @@ export default function MoneyDashboard() {
   // grid charged the battery (paid once on import, "saved" again on discharge).
   const savedAmount = useMemo(() => hypotheticalCost - gridCost + exportIncome, [hypotheticalCost, gridCost, exportIncome]);
   const savedTone = moneyTone(savedAmount);
+  const formatMoney = (n: number) => <bdi dir="ltr">{moneyText(currency, n)}</bdi>;
 
   // Percentages from the kWh, rounded so the three always add up to 100.
   const [solarPct, batteryPct, gridPct] = data ? percentsOf([data.sources.solarKWh, data.sources.batteryKWh, data.sources.gridKWh]) : [0, 0, 0];
@@ -228,21 +237,60 @@ export default function MoneyDashboard() {
         </section>
       ) : (
         <>
-          {/* Totals for the period; how the house was covered is in the sources card below. */}
-          <section className="desktop-wide grid grid-cols-2 gap-3">
-            <StatTile card big tone="amber" label="إنتاج الألواح" value={formatNumber(data.totals.solarKWh)} unit="kWh" ampTone="amber" ampUnit="Ah" amps={acAmpHours(data.totals.solarKWh)} />
-            <StatTile card big tone="sky" label="استهلاك المنزل" value={formatNumber(data.totals.homeKWh)} unit="kWh" ampTone="sky" ampUnit="Ah" amps={acAmpHours(data.totals.homeKWh)} />
+          {/* The money first: what the system saved, then how that figure is reached, in three plain lines. */}
+          <section className="desktop-wide rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-black text-slate-950">💰 الوفر</h2>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-600">{periodLabel(period, data.periodDays)}</span>
+            </div>
+
+            {/* With no price saved every amount is zero, which reads like "no savings". */}
+            {settingsLoaded && tariff <= 0 ? (
+              <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+                لم يُحدَّد سعر كيلوواط الشبكة بعد، لذلك لا يمكن حساب الوفر. افتح «سعر الكهرباء والعملة» في الأسفل وأدخل السعر.
+              </p>
+            ) : (
+              <>
+                <div className={"mt-3 rounded-2xl border p-4 " + semanticBorder[savedTone] + " " + semanticBg[savedTone]}>
+                  <span className={"text-xs font-bold " + semanticText[savedTone]}>{savedAmount >= 0 ? "وفّرتَ" : "دفعتَ أكثر"}</span>
+                  <strong className={"mt-1 block text-4xl font-black " + semanticText[savedTone]}>{formatMoney(Math.abs(savedAmount))}</strong>
+                  <span className="mt-1 block text-[11px] font-semibold opacity-75">مبلغ لم تدفعه للشبكة بفضل الطاقة الشمسية</span>
+                </div>
+
+                <dl className="mt-3 divide-y divide-slate-100 rounded-2xl border border-slate-200">
+                  <div className="flex items-center justify-between gap-3 p-3">
+                    <dt className="text-xs font-bold text-slate-600">لو أُخذت كل كهرباء المنزل من الشبكة لدفعتَ</dt>
+                    <dd className="shrink-0 text-sm font-black text-slate-800">{formatMoney(hypotheticalCost)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 p-3">
+                    <dt className="text-xs font-bold text-slate-600">ما دفعته فعلياً للشبكة <span className="font-semibold text-slate-400">(<bdi dir="ltr">{formatNumber(data.totals.gridImportKWh)} kWh</bdi>)</span></dt>
+                    <dd className="shrink-0 text-sm font-black text-violet-700">− {formatMoney(gridCost)}</dd>
+                  </div>
+                  {exportIncome > 0 && (
+                    <div className="flex items-center justify-between gap-3 p-3">
+                      <dt className="text-xs font-bold text-slate-600">عائد بيع الفائض <span className="font-semibold text-slate-400">(<bdi dir="ltr">{formatNumber(data.totals.gridExportKWh)} kWh</bdi>)</span></dt>
+                      <dd className="shrink-0 text-sm font-black text-amber-700">+ {formatMoney(exportIncome)}</dd>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3 bg-slate-50/70 p-3">
+                    <dt className="text-xs font-black text-slate-800">{savedAmount >= 0 ? "إذن وفّرتَ" : "إذن دفعتَ أكثر"}</dt>
+                    <dd className={"shrink-0 text-sm font-black " + semanticText[savedTone]}>{formatMoney(Math.abs(savedAmount))}</dd>
+                  </div>
+                </dl>
+                <p className="mt-2 text-[11px] font-semibold text-slate-500">محسوبة بسعر <bdi dir="ltr">{formatMoney(tariff)}</bdi> للكيلوواط ساعة من الشبكة.</p>
+                {period !== "day" && data.periodDays < PERIOD_DAYS[period] && (
+                  <p className="mt-1 text-[11px] font-semibold text-amber-700">
+                    الرقم يخص {daysCount(data.periodDays)} فقط فيها قراءات، وليس كل أيام الفترة ({daysCount(PERIOD_DAYS[period])}).
+                  </p>
+                )}
+              </>
+            )}
           </section>
 
           <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-black text-slate-950">⚡ مصادر الكهرباء</h2>
-                <p className="mt-0.5 text-[11px] font-semibold text-slate-500">كيف تم تغطية استهلاك المنزل؟</p>
-              </div>
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-600">
-                {periodLabel(period, data.periodDays)}
-              </span>
+            <div>
+              <h2 className="text-base font-black text-slate-950">⚡ من أين جاءت كهرباء المنزل</h2>
+              <p className="mt-0.5 text-[11px] font-semibold text-slate-500">حصة كل مصدر من استهلاك المنزل</p>
             </div>
 
             <div className="mt-4 flex h-4 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200/60">
@@ -258,79 +306,24 @@ export default function MoneyDashboard() {
 
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
               {sourceRows.map((row) => (
-                <div key={row.key} className={"rounded-xl p-3 " + row.soft}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className={"h-2.5 w-2.5 rounded-full " + row.color} />
-                      <span className={"text-xs font-black " + row.text}>{row.name}</span>
-                    </div>
-                    <strong className={"text-sm font-black " + row.text}>{row.pct}%</strong>
+                <div key={row.key} className={"flex items-center justify-between gap-2 rounded-xl p-3 " + row.soft}>
+                  <div className="flex items-center gap-2">
+                    <span className={"h-2.5 w-2.5 rounded-full " + row.color} />
+                    <span className={"text-xs font-black " + row.text}>{row.name}</span>
                   </div>
-                  <div className="mt-1 flex items-center gap-2 text-[11px] font-bold text-slate-500"><bdi dir="ltr">{formatNumber(row.kwh)} kWh</bdi> <AmpPill tone={row.key === "solar" ? "amber" : row.key === "battery" ? "emerald" : "violet"} unit="Ah" amps={acAmpHours(row.kwh)} /></div>
+                  <div className="text-left">
+                    <strong className={"block text-sm font-black " + row.text}>{row.pct}%</strong>
+                    <span className="text-[11px] font-bold text-slate-500"><bdi dir="ltr">{formatNumber(row.kwh)} kWh</bdi></span>
+                  </div>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-black text-slate-950">💰 الصورة المالية</h2>
-                <p className="mt-0.5 text-[11px] font-semibold text-slate-500">تقدير مبني على التعرفة المسجلة</p>
-              </div>
-            </div>
-
-            {/* With no price saved every amount is zero, which reads like "no savings". */}
-            {settingsLoaded && tariff <= 0 && (
-              <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-bold leading-5 text-amber-800">
-                لم يُحدَّد سعر كهرباء الشبكة بعد، لذلك تظهر المبالغ صفراً. افتح «التفضيلات المالية» في الأسفل وأدخل سعر الكيلوواط ساعة.
-              </p>
-            )}
-
-            <div className="mt-4 grid grid-cols-2 gap-2.5">
-              <div className={"col-span-2 rounded-2xl border p-4 " + semanticBorder[savedTone] + " " + semanticBg[savedTone]}>
-                <span className={"text-[11px] font-bold " + semanticText[savedTone]}>الوفر التقديري</span>
-                <strong className={"mt-1 block text-3xl font-black " + semanticText[savedTone]}>
-                  <bdi dir="ltr">{currency} {money(savedAmount)}</bdi>
-                </strong>
-                <span className="mt-1 block text-[10px] font-semibold opacity-75">ما لم تدفعه للشبكة بفضل النظام</span>
-              </div>
-
-              <div className="rounded-2xl border border-violet-100 bg-violet-50 p-3.5">
-                <span className="text-[11px] font-bold text-violet-700">تكلفة الشبكة الفعلية</span>
-                <strong className="mt-1 block text-lg font-black text-violet-800">
-                  <bdi dir="ltr">{currency} {money(gridCost)}</bdi>
-                </strong>
-                <span className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-slate-500">
-                  <bdi dir="ltr">{formatNumber(data.totals.gridImportKWh)} kWh</bdi>
-                  <AmpPill tone="violet" unit="Ah" amps={acAmpHours(data.totals.gridImportKWh)} />
-                </span>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
-                <span className="text-[11px] font-bold text-slate-600">بلا النظام الشمسي</span>
-                <strong className="mt-1 block text-lg font-black text-violet-700">
-                  <bdi dir="ltr">{currency} {money(hypotheticalCost)}</bdi>
-                </strong>
-                <span className="mt-1.5 block text-[10px] font-semibold text-slate-500">تكلفة افتراضية من الشبكة</span>
-              </div>
-
-              {data.totals.gridExportKWh > 0 && (
-                <div className="col-span-2 rounded-2xl border border-amber-100 bg-amber-50/60 p-3.5">
-                  <span className="text-[11px] font-bold text-amber-700">الفائض المصدّر</span>
-                  <strong className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black text-amber-800">
-                    <bdi dir="ltr">{formatNumber(data.totals.gridExportKWh)} kWh</bdi>
-                    <AmpPill tone="amber" unit="Ah" amps={acAmpHours(data.totals.gridExportKWh)} />
-                  </strong>
-                </div>
-              )}
-            </div>
-
-            {tariff > 0 && (
-              <p className="mt-3 rounded-xl bg-teal-50/60 px-3 py-2 text-[11px] font-bold leading-5 text-slate-600">
-                الحساب: <bdi dir="ltr">{money(hypotheticalCost)}</bdi> بلا النظام − <bdi dir="ltr">{money(gridCost)}</bdi> دفعت للشبكة{exportIncome > 0 ? <> + <bdi dir="ltr">{money(exportIncome)}</bdi> من التصدير</> : null} = <bdi dir="ltr">{money(savedAmount)}</bdi> {currency}
-              </p>
-            )}
+          {/* Totals for the period. */}
+          <section className="desktop-wide grid grid-cols-2 gap-3">
+            <StatTile card big tone="amber" label="إنتاج الألواح" value={formatNumber(data.totals.solarKWh)} unit="kWh" />
+            <StatTile card big tone="sky" label="استهلاك المنزل" value={formatNumber(data.totals.homeKWh)} unit="kWh" />
           </section>
         </>
       )}
@@ -338,8 +331,8 @@ export default function MoneyDashboard() {
       <details onToggle={(e) => { const open = e.currentTarget.open; setPrefsOpen(open); }} className="group rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
           <div>
-            <h2 className="text-base font-black text-slate-950">⚙️ التفضيلات المالية</h2>
-            <p className="mt-0.5 text-[11px] font-semibold text-slate-500">العملة وتعرفة الشبكة والتصدير</p>
+            <h2 className="text-base font-black text-slate-950">⚙️ سعر الكهرباء والعملة</h2>
+            <p className="mt-0.5 text-[11px] font-semibold text-slate-500">يُحسب الوفر على هذا السعر</p>
           </div>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-600 group-open:bg-teal-50 group-open:text-teal-700">
             تعديل
@@ -347,26 +340,26 @@ export default function MoneyDashboard() {
         </summary>
 
         <div className="space-y-3 border-t border-slate-100 p-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-[11px] font-black text-slate-700">العملة</span>
               <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={selectClass}>
                 <option value="USD">دولار أمريكي ($)</option>
-                <option value="LBP">ليرة لبنانية (LBP)</option>
-                <option value="SYP">ليرة سورية (SYP)</option>
+                <option value="SYP">ليرة سورية (ل.س)</option>
                 {/* A currency saved elsewhere stays selectable instead of silently showing USD. */}
-                {!["USD", "LBP", "SYP"].includes(currency) && <option value={currency}>{currency}</option>}
+                {!["USD", "SYP"].includes(currency) && <option value={currency}>{currency}</option>}
               </select>
             </label>
 
             <label className="space-y-1.5">
-              <span className="text-[11px] font-black text-slate-700">سعر شراء الشبكة / kWh</span>
+              <span className="text-[11px] font-black text-slate-700">سعر الكيلوواط ساعة من الشبكة</span>
               <input type="number" inputMode="decimal" min="0" step="0.01" value={tariff} onChange={(e) => setTariff(Number(e.target.value))} className={inputClass} />
             </label>
 
-            <label className="space-y-1.5">
-              <span className="text-[11px] font-black text-slate-700">سعر تصدير الفائض / kWh</span>
+            <label className="space-y-1.5 sm:col-span-2">
+              <span className="text-[11px] font-black text-slate-700">سعر بيع الفائض للشبكة (لكل كيلوواط ساعة)</span>
               <input type="number" inputMode="decimal" min="0" step="0.01" value={exportTariff} onChange={(e) => setExportTariff(Number(e.target.value))} className={inputClass} />
+              <span className="block text-[11px] font-semibold leading-4 text-slate-500">اتركه 0 إن كنت لا تبيع الكهرباء للشبكة؛ لن يُحتسب أي عائد.</span>
             </label>
           </div>
         </div>

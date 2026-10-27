@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { DevicesList } from "@/components/devices-list";
 import { AmpPill } from "@/components/amp-pill";
 import { AC_VOLTS, batteryAmpHours } from "@/lib/energy";
-import { AlertCircle, Bell, CheckCircle2, ChevronDown, Cpu, Database, Eye, EyeOff, Plug, Plus, Radio, RotateCcw, Save, SlidersHorizontal as SettingsIcon, Smartphone, X, type LucideIcon } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, Cpu, Database, Eye, EyeOff, Plug, Plus, Radio, RotateCcw, Save, SlidersHorizontal as SettingsIcon, Smartphone, X, type LucideIcon } from "lucide-react";
 
 type Protocol = "Modbus RTU" | "Modbus TCP" | "MQTT" | "Cloud API" | "Wi-Fi Datalogger";
 type ConnectionMode = "local" | "gateway";
@@ -356,7 +356,7 @@ export default function SettingsPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <SettingsField label="اسم المنظومة"><input value={draft.systemName} onChange={(e) => updateDraft("systemName", e.target.value)} className={input} /></SettingsField>
             <SettingsField label="رقم Datalogger (PN)"><input dir="ltr" value={draft.dataloggerPn || ""} onChange={(e) => updateDraft("dataloggerPn", e.target.value)} className={input} /></SettingsField>
-            <SettingsField label="نوع / موديل الإنفرتر"><select value={draft.inverterModel} onChange={(e) => updateDraft("inverterModel", e.target.value)} className={input}><option>Deye</option><option>Felicity Solar</option><option>Growatt</option><option>NEXT - Victor Max 8.2KW</option><option>Voltronic</option><option>غير ذلك</option></select></SettingsField>
+            <SettingsField label="نوع / موديل الإنفرتر"><select value={draft.inverterModel} onChange={(e) => updateDraft("inverterModel", e.target.value)} className={input}>{!["Deye", "Felicity Solar", "Growatt", "NEXT - Victor Max 8.2KW", "Voltronic", "غير ذلك"].includes(draft.inverterModel) && <option>{draft.inverterModel}</option>}<option>Deye</option><option>Felicity Solar</option><option>Growatt</option><option>NEXT - Victor Max 8.2KW</option><option>Voltronic</option><option>غير ذلك</option></select></SettingsField>
             {draft.protocol !== "Wi-Fi Datalogger" && <>
               <SettingsField label="نوع الاتصال"><select value={draft.protocol} onChange={(e) => updateDraft("protocol", e.target.value as Protocol)} className={input}><option>Wi-Fi Datalogger</option><option>Modbus RTU</option><option>Modbus TCP</option></select></SettingsField>
               <SettingsField label="وضع الاتصال"><select value={draft.connectionMode || "gateway"} onChange={(e) => updateDraft("connectionMode", e.target.value as ConnectionMode)} className={input}><option value="gateway">عبر بوابة</option><option value="local">محلي (نفس الجهاز)</option></select></SettingsField>
@@ -445,7 +445,7 @@ export default function SettingsPage() {
         </div>}
       </SettingsSection>
 
-      <SettingsSection icon={Cpu} tone="amber" summary={<>ألواح <bdi dir="ltr">{(settings.panelPowerW / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })} kW</bdi> · بطارية <bdi dir="ltr">{(settings.batteryCapacityWh / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 })} kWh</bdi>{settings.inverterRatedPowerKw ? <> · إنفرتر <bdi dir="ltr">{settings.inverterRatedPowerKw} kW</bdi></> : null}</>} query={query} keywords="ألواح بطارية سعة جهد كيلوواط شبكة طور ميل اتجاه موقع خط العرض خط الطول منطقة زمنية عملة" onReset={() => resetSection(["panelPowerW","batteryCapacityWh","batteryNominalVoltage","batteryChemistry","batteryMinReservePct","inverterRatedPowerKw","gridType","gridPhase","panelTilt","panelAzimuth","latitude","longitude","timezone","currency"], "مواصفات العتاد")} title="مواصفات العتاد" subtitle="الألواح والبطارية والإنفرتر والموقع">
+      <SettingsSection icon={Cpu} tone="amber" summary={<>ألواح <bdi dir="ltr">{(settings.panelPowerW / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })} kW</bdi> · بطارية <bdi dir="ltr">{(settings.batteryCapacityWh / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 })} kWh</bdi>{settings.inverterRatedPowerKw ? <> · إنفرتر <bdi dir="ltr">{settings.inverterRatedPowerKw} kW</bdi></> : null}</>} query={query} keywords="ألواح بطارية سعة جهد كيلوواط شبكة طور ميل اتجاه موقع خط العرض خط الطول منطقة زمنية" onReset={() => resetSection(["panelPowerW","batteryCapacityWh","batteryNominalVoltage","batteryChemistry","batteryMinReservePct","inverterRatedPowerKw","gridType","gridPhase","panelTilt","panelAzimuth","latitude","longitude","timezone"], "مواصفات العتاد")} title="مواصفات العتاد" subtitle="الألواح والبطارية والإنفرتر والموقع">
         <div className="grid gap-3 sm:grid-cols-2">
           <SettingsField label={<>إجمالي قدرة الألواح <bdi dir="ltr">(kW)</bdi></>}><input type="number" min={0.1} max={100} step={0.1} value={settings.panelPowerW / 1000} onChange={(e) => updateSetting("panelPowerW", Number(e.target.value) * 1000)} className={input} /><span className="mt-1.5 block"><AmpPill tone="amber" amps={settings.panelPowerW / AC_VOLTS} /></span>{settings.panelPowerW > 100_000 && <p className="mt-1 text-xs font-bold text-rose-600">القيمة بالكيلوواط وليس بالواط: لألواح 6000 واط اكتب 6.</p>}</SettingsField>
           <SettingsField label={<>سعة البطاريات <bdi dir="ltr">(kWh)</bdi></>}><input type="number" min={0.1} step="0.1" value={settings.batteryCapacityWh / 1000} onChange={(e) => { if (e.target.value !== "") updateSetting("batteryCapacityWh", Number(e.target.value) * 1000); }} className={input} /><span className="mt-1.5 block"><AmpPill tone="emerald" unit="Ah" amps={batteryAmpHours(settings.batteryCapacityWh / 1000, settings.batteryNominalVoltage)} /></span></SettingsField>
@@ -465,20 +465,6 @@ export default function SettingsPage() {
         </AdvancedBlock>
       </SettingsSection>
 
-      <SettingsSection icon={Bell} tone="rose" summary={`منخفضة ${settings.lowBatteryPct}% · حرجة ${settings.criticalBatteryPct}%`} query={query} keywords="تنبيه بطارية منخفضة حرجة انقطاع تحميل زائد هدوء بريد" onReset={() => resetSection(["lowBatteryPct","criticalBatteryPct","offlineMinutes","overloadPct","gridOutageAlert","faultAlert","channels","quietHoursStart","quietHoursEnd"], "التنبيهات")} title="التنبيهات" subtitle="حدود البطارية والانقطاع والأعطال">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <SettingsField label={<>بطارية منخفضة <bdi dir="ltr">(%)</bdi></>}><input type="number" min={5} max={50} value={settings.lowBatteryPct} onChange={(e) => updateSetting("lowBatteryPct", Number(e.target.value))} className={input} /></SettingsField>
-          <SettingsField label={<>بطارية حرجة <bdi dir="ltr">(%)</bdi></>}><input type="number" min={5} max={30} value={settings.criticalBatteryPct} onChange={(e) => updateSetting("criticalBatteryPct", Number(e.target.value))} className={input} /></SettingsField>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {[["gridOutageAlert","انقطاع / عودة الشبكة"]].map(([key,label]) => <label key={key} className="flex min-h-14 items-center justify-between rounded-xl bg-slate-50 px-4 text-sm font-bold"><span>{label}</span><input type="checkbox" checked={Boolean(settings[key as "gridOutageAlert"])} onChange={(e) => updateSetting(key as "gridOutageAlert", e.target.checked)} className="h-6 w-6" /></label>)}
-        </div>
-        <AdvancedBlock title="حد التحميل الزائد">
-          <div className="grid gap-3 sm:grid-cols-2">
-          <SettingsField label={<>تحميل زائد <bdi dir="ltr">(%)</bdi></>}><input type="number" min={50} max={100} value={settings.overloadPct} onChange={(e) => updateSetting("overloadPct", Number(e.target.value))} className={input} /></SettingsField>
-          </div>
-        </AdvancedBlock>
-      </SettingsSection>
 
       {isOwnerSession && <SettingsSection icon={Smartphone} tone="violet" query={query} keywords="أجهزة جهاز موبايل هاتف دخول متصفح أمان" title="الأجهزة" subtitle="الأجهزة التي تستخدم حسابك">
         <DevicesList />
@@ -488,8 +474,11 @@ export default function SettingsPage() {
           <SettingsField label="مدة حفظ السجل التاريخي"><select value={settings.retentionDays} onChange={(e) => updateSetting("retentionDays", Number(e.target.value))} className={input}><option value={30}>30 يوماً</option><option value={90}>90 يوماً</option><option value={180}>180 يوماً</option><option value={365}>365 يوماً</option><option value={0}>بلا حد</option></select></SettingsField>
         <div className="flex flex-wrap gap-2">
           <a href="/api/settings/export" className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white">تصدير CSV</a>
-          <button type="button" onClick={async () => { if (!window.confirm("سيتم حذف سجل القياسات التاريخية نهائياً. هل أنت متأكد؟")) return; const response = await fetch("/api/settings/export", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: "مسح السجل" }) }); const data = await response.json().catch(() => ({})); if (!response.ok) setError(data.message || "تعذر مسح السجل."); else setMessage("تم مسح سجل القياسات التاريخية."); }} className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-black text-rose-700">مسح السجل</button>
         </div>
+        <AdvancedBlock title="مسح كل القراءات المحفوظة">
+          <p className="mb-3 text-xs font-semibold leading-5 text-slate-500">يحذف سجل القراءات التاريخية نهائياً، ولا يمكن التراجع عنه. صدّر نسخة CSV قبله إن احتجت.</p>
+          <button type="button" onClick={async () => { if (!window.confirm("سيتم حذف سجل القياسات التاريخية نهائياً. هل أنت متأكد؟")) return; const response = await fetch("/api/settings/export", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: "مسح السجل" }) }); const data = await response.json().catch(() => ({})); if (!response.ok) setError(data.message || "تعذر مسح السجل."); else setMessage("تم مسح سجل القياسات التاريخية."); }} className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-black text-rose-700">مسح السجل</button>
+        </AdvancedBlock>
         <AdvancedBlock title="سجل النشاط">
         <div>
           {auditItems.length === 0 ? <p className="mt-2 text-xs font-semibold text-slate-500">لا توجد أحداث مرتبطة بحساب قاعدة البيانات الحالي.</p> :
