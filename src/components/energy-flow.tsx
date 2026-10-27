@@ -140,7 +140,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   const spokeDuration = (kw: number) => Math.max(0.7, 2.4 - Math.min(Math.abs(kw), 6) * 0.28);
 
   return (
-    <section className="relative mx-auto w-full max-w-lg overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-[0_18px_55px_rgba(82,55,38,0.09)]" aria-label="مخطط تدفق الطاقة">
+    <section className="relative -mx-3 -mt-3 flex min-h-[calc(100dvh-8.45rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col overflow-hidden bg-white sm:mx-auto sm:mt-0 sm:min-h-0 sm:w-full sm:max-w-lg sm:rounded-[2rem] sm:border sm:border-slate-200/80 sm:shadow-[0_18px_55px_rgba(82,55,38,0.09)]" aria-label="مخطط تدفق الطاقة">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(245,156,0,0.10),transparent_30%),radial-gradient(circle_at_14%_50%,rgba(133,72,242,0.08),transparent_28%),radial-gradient(circle_at_86%_50%,rgba(32,119,240,0.08),transparent_28%),radial-gradient(circle_at_50%_82%,rgba(16,171,90,0.09),transparent_30%)]" />
 
       <div className="relative px-4 pt-4 sm:px-6 sm:pt-5">
@@ -162,7 +162,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
         </div>
       </div>
 
-      <div className="relative mx-auto mt-9 aspect-[400/530] w-full max-w-lg min-[380px]:mt-1">
+      <div className="relative mx-auto mt-9 aspect-[400/530] w-full max-w-lg min-[380px]:mt-1 max-sm:w-[min(100%,calc((100dvh_-_18.5rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))_*_0.7547))]">
         <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 400 530" fill="none" aria-hidden="true">
           <defs>
             <filter id={glowId}><feGaussianBlur stdDeviation="2" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
@@ -358,7 +358,7 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
 
       {!liveFlowActive && <div className="relative mx-4 mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-center text-xs font-bold text-amber-800 sm:mx-6">⚠️ لا توجد قراءة حية متاحة حاليًا. تحقّق من اتصال الإنفرتر وإرسال بيانات القياس.</div>}
 
-      <div className="relative border-t border-slate-100 bg-slate-50/70 px-3 py-4 sm:px-5">
+      <div className="relative mt-auto border-t border-slate-100 bg-slate-50/70 px-3 py-4 sm:px-5">
         <div className="grid grid-cols-3 divide-x divide-x-reverse divide-slate-200 text-center">
           <div className="px-2"><div className="text-[11px] font-bold text-slate-500">إنتاج اليوم</div><div className="mt-1 text-base font-black text-amber-600 sm:text-lg">{formatKwh(todayProductionKWh)}</div></div>
           <div className="px-2"><div className="text-[11px] font-bold text-slate-500">استهلاك اليوم</div><div className="mt-1 text-base font-black text-sky-700 sm:text-lg">{formatKwh(todayHomeUsageKWh)}</div></div>
