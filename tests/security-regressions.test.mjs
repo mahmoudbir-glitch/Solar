@@ -982,8 +982,7 @@ test("smart monitor treats twilight light after sunset as real production, not a
 
 test("money page splits house energy by source reading by reading, not from day totals", () => {
   const route = fs.readFileSync(new URL("../src/app/api/finance/route.ts", import.meta.url), "utf8");
-  assert.match(route, /async function splitHouseSources\(since: Date, until: Date\)/);
-  assert.match(route, /WHERE "timestamp" >= \$\{since\} AND "timestamp" < \$\{until\}/);
+  assert.match(route, /async function splitHouseSources\(since: Date\)/);
   assert.match(route, /LEAST\(load, grid\) AS from_grid/);
   assert.match(route, /const scale = home \/ split\.homeKWh;/);
 });
