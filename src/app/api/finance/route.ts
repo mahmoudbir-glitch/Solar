@@ -7,13 +7,23 @@ export const dynamic = "force-dynamic";
 
 /** How many local days each period covers, today included. */
 const PERIOD_DAYS = { day: 1, week: 7, month: 30 } as const;
-type Period = keyof typeof PERIOD_DAYS;
+type Period = keyof typeof PERIOD_DAYS | "custom";
+/** The longest custom range the page may ask for. */
+const MAX_CUSTOM_DAYS = 366;
+
+/** A local calendar day "YYYY-MM-DD" as the UTC midnight the daily rows are keyed by; null when not a real date. */
+function parseDay(value: string | null) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(value + "T00:00:00Z");
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? date : null;
+}
+const dayText = (date: Date) => date.toISOString().slice(0, 10);
 
 /**
  * House energy by source from the stored readings, integrated over the gaps
  * the daily totals also count (consecutive readings at most 15 minutes apart).
  */
-async function splitHouseSources(since: Date) {
+async function splitHouseSources(since: Date, until: Date) {
   const [row] = await prisma.$queryRaw<Array<{ home: number | null; grid: number | null; battery: number | null }>>`
     WITH r AS (
       SELECT "timestamp" AS t,
@@ -22,7 +32,7 @@ async function splitHouseSources(since: Date) {
              GREATEST(-"batteryPowerW", 0) AS discharge,
              LAG("timestamp") OVER (ORDER BY "timestamp") AS pt
       FROM "TelemetryLog"
-      WHERE "timestamp" >= ${since}
+      WHERE "timestamp" >= ${since} AND "timestamp" < ${until}
     ), i AS (
       SELECT EXTRACT(EPOCH FROM (t - pt)) / 3600.0 AS h, load, LEAST(load, grid) AS from_grid, discharge
       FROM r
@@ -40,19 +50,34 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
   }
 
-  const requested = new URL(request.url).searchParams.get("period");
-  const period: Period = requested === "day" || requested === "week" ? requested : "month";
+  const params = new URL(request.url).searchParams;
+  const requested = params.get("period");
+  const period: Period = requested === "day" || requested === "week" || requested === "custom" ? requested : "month";
 
   try {
     // Daily rows are keyed by the local calendar day (UTC midnight of that
     // date), so "today" and the days before it come from the site's time zone.
     const settings = await prisma.energySettings.findUnique({ where: { id: "default" } }).catch(() => null);
     const today = localDayStart(new Date(), settings?.timezone);
-    const from = new Date(today.getTime() - (PERIOD_DAYS[period] - 1) * 86_400_000);
+    let from: Date;
+    let to: Date = today;
+    if (period === "custom") {
+      const start = parseDay(params.get("from"));
+      const end = parseDay(params.get("to"));
+      if (!start || !end || start > end) return NextResponse.json({ error: "invalid_range" }, { status: 400 });
+      // A range reaching past today stops at today; one longer than a year is refused rather than cut silently.
+      to = end > today ? today : end;
+      from = start;
+      if (from > to) return NextResponse.json({ error: "invalid_range" }, { status: 400 });
+      if ((to.getTime() - from.getTime()) / 86_400_000 + 1 > MAX_CUSTOM_DAYS) return NextResponse.json({ error: "range_too_long" }, { status: 400 });
+    } else {
+      from = new Date(today.getTime() - (PERIOD_DAYS[period] - 1) * 86_400_000);
+    }
+    const requestedDays = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
     const rows = await prisma.dailySummary.findMany({
-      where: { day: { gte: from } },
+      where: { day: { gte: from, lte: to } },
       orderBy: { day: "desc" },
-      take: PERIOD_DAYS[period],
+      take: requestedDays,
     });
 
     const totals = rows.reduce(
@@ -75,7 +100,8 @@ export async function GET(request: Request) {
     const home = Math.max(0, totals.homeKWh);
     const offsetMs = new Date(new Date().toLocaleString("en-US", { timeZone: settings?.timezone || "UTC" })).getTime() - new Date(new Date().toLocaleString("en-US", { timeZone: "UTC" })).getTime();
     const since = new Date(from.getTime() - offsetMs);
-    const split = await splitHouseSources(since).catch(() => null);
+    const until = new Date(to.getTime() + 86_400_000 - offsetMs);
+    const split = await splitHouseSources(since, until).catch(() => null);
     let gridKWh: number, batteryKWh: number, directSolarKWh: number;
     if (split && split.homeKWh > 0) {
       // Scaled to the day totals so the three parts always add up to the house figure shown.
@@ -95,6 +121,14 @@ export async function GET(request: Request) {
       {
         period,
         periodDays: rows.length,
+        // The days asked for, and the first and last of them that really have readings.
+        range: {
+          from: dayText(from),
+          to: dayText(to),
+          requestedDays,
+          firstDataDay: rows.length ? dayText(rows[rows.length - 1].day) : null,
+          lastDataDay: rows.length ? dayText(rows[0].day) : null,
+        },
         totals,
         sources: {
           solarPct: Math.round((directSolarKWh / served) * 100),
@@ -104,6 +138,9 @@ export async function GET(request: Request) {
           solarKWh: directSolarKWh,
           batteryKWh,
           gridKWh,
+          // Grid energy bought beyond what the house drew from it: mostly the grid charging the battery
+          // (plus inverter losses), so part of the battery's share is not solar.
+          gridToBatteryKWh: Math.max(0, totals.gridImportKWh - gridKWh),
         },
         source: "daily_summary",
       },
