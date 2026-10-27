@@ -65,24 +65,32 @@ export type AutonomyResult = {
 };
 
 // isDay is false only for "now" after sunset; daily forecasts describe the daytime.
+// WMO weather codes as Open-Meteo sends them: 1 mainly clear, 2 partly cloudy,
+// 3 overcast, 45/48 fog, 85/86 snow showers, 95-99 thunderstorms.
 export function weatherLabel(code: number, isDay = true) {
   if (code === 0) return isDay ? "مشمس" : "صافٍ";
-  if (code <= 3) return "غائم جزئياً";
+  if (code === 1) return isDay ? "مشمس غالباً" : "صافٍ غالباً";
+  if (code === 2) return "غائم جزئياً";
+  if (code === 3) return "غائم";
   if (code <= 48) return "ضبابي";
   if (code <= 57) return "رذاذ";
   if (code <= 67) return "أمطار";
   if (code <= 77) return "ثلوج";
   if (code <= 82) return "زخات مطر";
-  return "عواصف";
+  if (code <= 86) return "زخات ثلج";
+  return "عواصف رعدية";
 }
 
 export function weatherIcon(code: number, isDay = true) {
   if (code === 0) return isDay ? "☀️" : "🌙";
-  if (code <= 3) return isDay ? "⛅" : "☁️";
+  if (code === 1) return isDay ? "🌤️" : "🌙";
+  if (code === 2) return isDay ? "⛅" : "☁️";
+  if (code === 3) return "☁️";
   if (code <= 48) return "🌫️";
   if (code <= 67) return "🌧️";
   if (code <= 77) return "❄️";
   if (code <= 82) return "🌦️";
+  if (code <= 86) return "🌨️";
   return "⛈️";
 }
 

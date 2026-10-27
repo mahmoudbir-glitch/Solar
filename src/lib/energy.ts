@@ -57,39 +57,6 @@ export function kwhFromPower(powerW: number, hours: number) {
 
 export type SemanticTone = "neutral" | "green" | "cyan" | "blue" | "amber" | "orange" | "red";
 
-export function batteryTone(soc: number): SemanticTone {
-  if (!Number.isFinite(soc)) return "neutral";
-  if (soc >= 70) return "green";
-  if (soc >= 35) return "amber";
-  if (soc >= 15) return "amber";
-  return "red";
-}
-
-export function solarTone(powerKw: number, panelCapacityKw?: number): SemanticTone {
-  if (!Number.isFinite(powerKw) || powerKw <= 0) return "neutral";
-  if (panelCapacityKw && panelCapacityKw > 0) {
-    const ratio = powerKw / panelCapacityKw;
-    if (ratio >= 0.7) return "green";
-    if (ratio >= 0.25) return "cyan";
-    return "blue";
-  }
-  if (powerKw >= 4) return "green";
-  if (powerKw >= 1) return "cyan";
-  return "blue";
-}
-
-export function loadTone(powerKw: number): SemanticTone {
-  if (!Number.isFinite(powerKw) || powerKw <= 0) return "neutral";
-  if (powerKw >= 5) return "red";
-  if (powerKw >= 2) return "amber";
-  return "blue";
-}
-
-export function surplusTone(surplusKw: number): SemanticTone {
-  if (!Number.isFinite(surplusKw) || Math.abs(surplusKw) < 0.05) return "neutral";
-  return surplusKw > 0 ? "green" : "orange";
-}
-
 export function moneyTone(amount: number): SemanticTone {
   if (!Number.isFinite(amount) || Math.abs(amount) < 0.0001) return "neutral";
   return amount > 0 ? "green" : "red";

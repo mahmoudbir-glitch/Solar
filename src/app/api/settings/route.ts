@@ -76,6 +76,41 @@ const settingsSchema = z.object({
   quietHoursEnd: z.string().regex(TIME_HHMM).nullable().optional(),
 });
 
+/** Arabic names of the fields, so a rejected value says which one it is. */
+const FIELD_LABELS: Record<string, string> = {
+  panelPowerW: "قدرة الألواح",
+  batteryCapacityWh: "سعة البطاريات",
+  gridTariff: "سعر شراء الشبكة",
+  exportTariff: "سعر تصدير الفائض",
+  currency: "العملة",
+  latitude: "خط العرض",
+  longitude: "خط الطول",
+  panelTilt: "ميل الألواح",
+  panelAzimuth: "اتجاه الألواح",
+  batteryMinReservePct: "حد الاحتياطي الأدنى",
+  inverterRatedPowerKw: "قدرة الإنفرتر الاسمية",
+  lowBatteryPct: "حد البطارية المنخفضة",
+  criticalBatteryPct: "حد البطارية الحرجة",
+  overloadPct: "حد التحميل الزائد",
+  offlineMinutes: "مدة انقطاع القراءات",
+};
+
+/**
+ * zod's own messages are English ("Number must be greater than 0") and reached
+ * the Arabic page as they were; our refine() messages are already Arabic.
+ */
+function settingsIssueMessage(issue: z.ZodIssue | undefined) {
+  if (!issue) return "تحقق من القيم المدخلة.";
+  if (issue.code === "custom") return issue.message;
+  const label = FIELD_LABELS[String(issue.path[0] ?? "")];
+  if (issue.code === "too_small" && issue.minimum === 0 && !issue.inclusive) return `قيمة «${label ?? "الحقل"}» يجب أن تكون أكبر من صفر.`;
+  if (issue.code === "too_small" && typeof issue.minimum === "number") {
+    return `قيمة «${label ?? "الحقل"}» يجب ألا تقل عن ${issue.minimum}.`;
+  }
+  if (issue.code === "too_big" && typeof issue.maximum === "number") return `قيمة «${label ?? "الحقل"}» يجب ألا تتجاوز ${issue.maximum}.`;
+  return label ? `قيمة «${label}» غير صحيحة.` : "تحقق من القيم المدخلة.";
+}
+
 type Merged = {
   batteryNominalVoltage?: number | null;
   batteryChemistry?: string | null;
@@ -203,7 +238,7 @@ export async function PUT(request: NextRequest) {
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     return NextResponse.json(
-      { error: "invalid_settings", message: first?.message || "تحقق من القيم المدخلة.", issues: parsed.error.flatten() },
+      { error: "invalid_settings", message: settingsIssueMessage(first), issues: parsed.error.flatten() },
       { status: 422 },
     );
   }

@@ -89,7 +89,7 @@ function batteryEstimate(snapshot: EnergySnapshot, settings: IntelligentEnergySe
   const soc = Math.min(100, Math.max(0, safeNumber(snapshot.batterySoc)));
   const powerW = safeNumber(snapshot.batteryPowerW);
   const capacityWh = safeNumber(settings.batteryCapacityWh);
-  const reservePct = Math.min(99, Math.max(0, safeNumber(settings.batteryMinReservePct, 10)));
+  const reservePct = Math.min(99, Math.max(0, safeNumber(settings.batteryMinReservePct, 20)));
   if (capacityWh <= 0 || Math.abs(powerW) < 50) return null;
 
   const charging = powerW > 0;
@@ -132,7 +132,7 @@ export function analyzeEnergy(
   const batteryDischarging = batteryPowerW < -50;
   const batteryCharging = batteryPowerW > 50;
   const solarSurplus = Math.max(0, solarKw - homeKw);
-  const reservePct = settings ? Math.min(99, Math.max(0, safeNumber(settings.batteryMinReservePct, 10))) : 10;
+  const reservePct = settings ? Math.min(99, Math.max(0, safeNumber(settings.batteryMinReservePct, 20))) : 20;
   const nearReserve = batteryDischarging && soc > reservePct && soc <= reservePct + 5;
   const estimate = settings ? batteryEstimate(snapshot, settings) : null;
   const estimateDetail = estimate

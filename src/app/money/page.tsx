@@ -346,6 +346,8 @@ export default function MoneyDashboard() {
               <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={selectClass}>
                 <option value="USD">دولار أمريكي ($)</option>
                 <option value="SYP">ليرة سورية (ل.س)</option>
+                {/* A currency saved elsewhere stays selectable instead of silently showing USD. */}
+                {!["USD", "SYP"].includes(currency) && <option value={currency}>{currency}</option>}
               </select>
             </label>
 

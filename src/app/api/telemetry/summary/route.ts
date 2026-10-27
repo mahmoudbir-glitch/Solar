@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const session = await verifySessionToken(request.cookies.get(COOKIE_NAME)?.value);
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  if (!process.env.DATABASE_URL) {
+  if (!(process.env.DATABASE_URL || process.env.PRISMA_DATABASE_URL || process.env.POSTGRES_URL)) {
     return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
   }
 

@@ -92,7 +92,8 @@ export function SurplusRecommendations() {
           {/* What the surplus can run: one short chip per appliance. */}
           {recommendations.length > 0 && (
             <div className="mt-3">
-              <h3 className="text-[11px] font-black text-slate-500">💡 يكفي الفائض لتشغيل</h3>
+              {/* Each chip is checked against the surplus on its own, not added together. */}
+              <h3 className="text-[11px] font-black text-slate-500">💡 يكفي الفائض لتشغيل {recommendations.length > 1 ? "أيٍّ منها" : ""} <span className="font-bold text-slate-400">(تقدير الاستهلاك لكل تشغيلة)</span></h3>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {recommendations.map((item) => (
                   <span key={item.id} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-800 ring-1 ring-emerald-200/70">

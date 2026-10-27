@@ -51,7 +51,9 @@ export async function GET(request: NextRequest) {
         batteryCurrent: 16.6,
         batteryTemperature: 28,
         gridConnected: false,
-        source: "mock",
+        // Every page drops a reading that is not "live", so a "mock" source
+        // left the whole app empty in mock mode.
+        source: "live",
         stale: false,
         ageSeconds: 0,
       },

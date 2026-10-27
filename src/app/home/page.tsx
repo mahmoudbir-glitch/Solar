@@ -6,7 +6,7 @@ import { Lightbulb, Loader2, RefreshCw } from "lucide-react";
 import type { EnergySnapshot } from "@/lib/energy";
 import { PageHeader } from "@/components/page-header";
 import { LoadChart, type LoadPoint } from "@/components/load-chart";
-import { homeText, acAmps } from "@/lib/energy";
+import { homeText, acAmps, percentsOf } from "@/lib/energy";
 import { AmpPill } from "@/components/amp-pill";
 import { startVisiblePolling } from "@/lib/visible-polling";
 
@@ -71,11 +71,8 @@ export default function HomeConsumptionPage() {
   const fromGrid = Math.min(homeW, Math.max(0, snapshot?.gridPowerW ?? 0));
   const fromBattery = Math.min(homeW - fromGrid, Math.max(0, -(snapshot?.batteryPowerW ?? 0)));
   const fromSolar = Math.min(homeW - fromGrid - fromBattery, Math.max(0, snapshot?.solarPowerW ?? 0));
-  const served = fromSolar + fromBattery + fromGrid;
   // Rounded so the three always add up to 100 (33 + 33 + 33 left 1% unexplained).
-  const solarPct = served > 0 ? Math.round((fromSolar / served) * 100) : 0;
-  const batteryPct = served > 0 ? Math.min(100 - solarPct, Math.round((fromBattery / served) * 100)) : 0;
-  const gridPct = served > 0 ? 100 - solarPct - batteryPct : 0;
+  const [solarPct, batteryPct, gridPct] = percentsOf([fromSolar, fromBattery, fromGrid]);
   const sources = [
     { label: "الشمس", w: fromSolar, pct: solarPct, bar: "bg-amber-400", text: "text-amber-700", tone: "amber" as const },
     { label: "البطارية", w: fromBattery, pct: batteryPct, bar: "bg-emerald-500", text: "text-emerald-700", tone: "emerald" as const },
@@ -115,7 +112,7 @@ export default function HomeConsumptionPage() {
         ) : (
           <>
             <div className="mt-1 flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
-              <span className={"text-4xl font-black leading-none tracking-tight " + toneText}><bdi dir="ltr">{homeW.toLocaleString("en-US")}</bdi> <small className="text-base">واط</small></span>
+              <span className={"text-4xl font-black leading-none tracking-tight " + toneText}><bdi dir="ltr">{Math.round(homeW).toLocaleString("en-US")}</bdi> <small className="text-base">واط</small></span>
               <span className="flex items-center gap-1.5">
                 <span className={"text-sm font-black " + toneText}><bdi dir="ltr">{homeKw.toFixed(2)} kW</bdi></span>
                 <AmpPill tone="sky" amps={acAmps(homeW)} />

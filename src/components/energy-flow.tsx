@@ -103,16 +103,18 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
   const operatingMode = !isLive
     ? { label: 'بانتظار البيانات الحية', className: 'border-slate-200 bg-slate-50 text-slate-600' }
     : gridImporting && !solarActive && batteryDischarging
-      ? { label: 'البطارية أولًا', className: 'border-violet-200 bg-violet-50 text-violet-700' }
+      ? { label: 'الشبكة والبطارية معًا', className: 'border-violet-200 bg-violet-50 text-violet-700' }
       : gridImporting
-        ? { label: 'الشبكة تغطي الحمل', className: 'border-sky-200 bg-sky-50 text-sky-700' }
+        ? { label: 'الشبكة تغطي الحمل', className: 'border-violet-200 bg-violet-50 text-violet-700' }
         : solarActive && gridExporting
           ? { label: 'الشمس أولًا • تصدير الفائض', className: 'border-amber-200 bg-amber-50 text-amber-700' }
+          : solarActive && batteryDischarging
+            ? { label: 'الشمس والبطارية معًا', className: 'border-amber-200 bg-amber-50 text-amber-700' }
           : solarActive
-            ? { label: 'الشمس أولًا', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' }
+            ? { label: 'الشمس أولًا', className: 'border-amber-200 bg-amber-50 text-amber-700' }
             : batteryDischarging
-              ? { label: 'البطارية تغطي الحمل', className: 'border-violet-200 bg-violet-50 text-violet-700' }
-              : { label: 'الوضع الحالي غير محدد', className: 'border-slate-200 bg-slate-50 text-slate-600' };
+              ? { label: 'البطارية تغطي الحمل', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' }
+              : { label: 'لا تدفق يُذكر الآن', className: 'border-slate-200 bg-slate-50 text-slate-600' };
 
   // Every flow passes through the inverter (the hub in the middle), so each
   // node has its own spoke to the hub. A spoke's colour is its node's colour,
@@ -143,10 +145,14 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
 
       <div className="relative px-4 pt-4 sm:px-6 sm:pt-5">
         <div className="flex flex-col items-start gap-1">
-          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-extrabold text-emerald-700">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-            تدفق الطاقة الآن
-          </span>
+          <div className="flex w-full items-center justify-between gap-3">
+            <span className={"inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold " + (isLive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600")}>
+              <span className={"h-2 w-2 rounded-full " + (isLive ? "animate-pulse bg-emerald-500" : "bg-slate-400")} />
+              تدفق الطاقة الآن
+            </span>
+            {/* What is feeding the house right now, in one line. */}
+            {isLive && <span className={"min-w-0 truncate rounded-full border px-3 py-1.5 text-[11px] font-black " + operatingMode.className}>{operatingMode.label}</span>}
+          </div>
           {/* When the numbers below were read from the inverter (not the clock). */}
           {lastReadingAt && Number.isFinite(new Date(lastReadingAt).getTime()) && (
             <span className={"text-[11px] font-bold " + (isLive ? "text-slate-500" : "text-amber-700")}>
@@ -329,13 +335,13 @@ export const EnergyFlow: React.FC<EnergyFlowProps> = ({
               {activeNode === "home" && (
                 <>
                   <div className="rounded-xl bg-slate-50 p-3"><div className="font-bold text-slate-500">الاستهلاك الآن</div><div className={"mt-1 font-black " + homeToneClass}>{formatKw(homeKw)}</div><div className="mt-1.5"><AmpPill tone="sky" amps={isLive ? acAmps(homeKw * 1000) : null} /></div></div>
-                  <div className="rounded-xl bg-slate-50 p-3"><div className="font-bold text-slate-500">الحمل</div><div className="mt-1 font-black text-slate-800">{homeActive ? "نشط" : "لا توجد قراءة حية مؤكدة"}</div></div>
+                  <div className="rounded-xl bg-slate-50 p-3"><div className="font-bold text-slate-500">الحمل</div><div className="mt-1 font-black text-slate-800">{homeActive ? "نشط" : isLive ? "شبه متوقف" : "لا توجد قراءة حية"}</div></div>
                 </>
               )}
               {activeNode === "inverter" && (
                 <>
                   <div className="rounded-xl bg-amber-50 p-3"><div className="font-bold text-slate-500">الطاقة المارّة الآن</div><div className="mt-1 font-black text-amber-700">{formatKw(throughputKw)}</div><div className="mt-1.5"><AmpPill tone="amber" amps={isLive ? acAmps(throughputKw * 1000) : null} /></div></div>
-                  <div className="rounded-xl bg-slate-50 p-3"><div className="font-bold text-slate-500">دوره</div><div className="mt-1 font-black text-slate-800">يوزّع الطاقة بين الشمس والبطارية والشبكة والمنزل</div></div>
+                  <div className="rounded-xl bg-slate-50 p-3"><div className="font-bold text-slate-500">عمله</div><div className="mt-1 font-black text-slate-800">يوزّع الطاقة بين الشمس والبطارية والشبكة والمنزل</div></div>
                 </>
               )}
               {activeNode === "grid" && (

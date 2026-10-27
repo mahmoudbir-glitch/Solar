@@ -209,7 +209,7 @@ export default function BatteryPage() {
           <Reading label="الجهد" value={snapshot?.batteryVoltage != null ? snapshot.batteryVoltage.toFixed(1) : "—"} unit={snapshot?.batteryVoltage != null ? "V" : undefined} muted={snapshot?.batteryVoltage == null} note={settings?.batteryNominalVoltage ? `الاسمي ${settings.batteryNominalVoltage} V` : undefined} />
           <Reading label="التيار" value={amps != null ? amps.toFixed(1) : "—"} unit={amps != null ? "A" : undefined} muted={amps == null} note={snapshot && state !== "idle" ? (state === "charging" ? "داخل للبطارية" : "خارج منها") : "لا تيار الآن"} />
           {snapshot?.batteryTemperature != null
-            ? <Reading label="الحرارة" value={snapshot.batteryTemperature.toFixed(1)} unit="°C" note={snapshot.batteryTemperature >= 45 ? "مرتفعة" : "طبيعية"} />
+            ? <Reading label="الحرارة" value={snapshot.batteryTemperature.toFixed(1)} unit="°C" note={snapshot.batteryTemperature >= 45 ? "مرتفعة" : snapshot.batteryTemperature < 5 ? "منخفضة، تجنّب الشحن" : "طبيعية"} />
             : <Reading label="الحرارة" value="—" muted note="تحتاج BMS" />}
         </div>
       </section>

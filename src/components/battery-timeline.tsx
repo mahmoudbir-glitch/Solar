@@ -17,6 +17,13 @@ function hourEnd(time: string) {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
+/** "ليلة" / "ليلتين" / "3 ليالٍ": "2 أيام" is not Arabic. */
+function nightsWord(n: number) {
+  if (n === 1) return "ليلة";
+  if (n === 2) return "ليلتين";
+  return `${n} ليالٍ`;
+}
+
 type DayRow = {
   date: string;
   label: string;
@@ -77,7 +84,7 @@ export function BatteryTimeline({ anchor }: { anchor?: string } = {}) {
         };
       })
       .filter((row): row is DayRow => row !== null);
-  }, [forecasts, reservePct]);
+  }, [forecasts, reservePct, utcOffsetSeconds]);
 
   // Folded by default to keep the page short; opened when arriving from the
   // home card's night link (#night) so that link still lands on the answer.
@@ -107,10 +114,10 @@ export function BatteryTimeline({ anchor }: { anchor?: string } = {}) {
             {withNight.length === 0
               ? "متى تمتلئ وكم تبقى عند الغروب"
               : short === 0
-                ? `✓ تكفي حتى الصباح في كل الأيام (${withNight.length})`
-                : withNight.length === 1
-                  ? "⚠ تصل للاحتياطي ليلًا"
-                  : `⚠ تصل للاحتياطي ليلًا في ${short} من ${withNight.length === 2 ? "يومين" : `${withNight.length} أيام`}`}
+                ? withNight.length === 1 ? "✓ تكفي حتى الصباح" : `✓ تكفي حتى الصباح في كل الليالي (${withNight.length})`
+                : short === withNight.length
+                  ? withNight.length === 1 ? "⚠ تصل للاحتياطي قبل الصباح" : `⚠ تصل للاحتياطي في كل الليالي (${withNight.length})`
+                  : `⚠ تصل للاحتياطي في ${short === 1 ? "ليلة" : short} من ${nightsWord(withNight.length)}`}
           </p>
         </div>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 ring-1 ring-slate-200/70">
