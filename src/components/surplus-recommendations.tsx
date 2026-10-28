@@ -6,14 +6,16 @@ import { siteClock } from "@/lib/smart-forecast";
 export function SurplusRecommendations() {
   const { forecasts, loading } = useSharedSmartEnergy();
   type Window = { start: string; end: string; kwh: number };
-  const bestWindow = (dayIndex: number): Window | undefined => {
+  type Measure = "surplusKWh" | "sunAfterHomeKWh";
+  const bestWindow = (dayIndex: number, measure: Measure): Window | undefined => {
     const windows: Window[] = [];
     let current: Window | null = null;
     for (const point of forecasts[dayIndex]?.hourly ?? []) {
-      if (point.surplusKWh >= 0.3) {
+      const kwh = point[measure] ?? 0;
+      if (kwh >= 0.3) {
         if (!current) current = { start: point.time, end: point.time, kwh: 0 };
         current.end = point.time;
-        current.kwh += point.surplusKWh;
+        current.kwh += kwh;
       } else if (current) {
         windows.push(current);
         current = null;
@@ -25,10 +27,18 @@ export function SurplusRecommendations() {
 
   // Today's remaining hours first; once today has no surplus left (evening,
   // or the battery still absorbs everything), look ahead to tomorrow.
-  const todayBest = bestWindow(0);
-  const tomorrowBest = todayBest ? undefined : bestWindow(1);
-  const best = todayBest ?? tomorrowBest;
-  const dayWord = todayBest ? "اليوم" : "غدًا";
+  const todayBest = bestWindow(0, "surplusKWh");
+  const tomorrowBest = todayBest ? undefined : bestWindow(1, "surplusKWh");
+  // When the battery will not fill (short winter days, a big house load) there is no true surplus, yet
+  // the strongest sun hours are still the best time for heavy loads: they run on the sun instead of on
+  // the battery or the grid at night. So fall back to the sun left after the house's own load.
+  const sunToday = todayBest || tomorrowBest ? undefined : bestWindow(0, "sunAfterHomeKWh");
+  const sunTomorrow = todayBest || tomorrowBest || sunToday ? undefined : bestWindow(1, "sunAfterHomeKWh");
+  const sunMode = !todayBest && !tomorrowBest && Boolean(sunToday ?? sunTomorrow);
+  const best = todayBest ?? tomorrowBest ?? sunToday ?? sunTomorrow;
+  const isToday = Boolean(todayBest ?? sunToday);
+  const measure: Measure = sunMode ? "sunAfterHomeKWh" : "surplusKWh";
+  const dayWord = isToday ? "اليوم" : "غدًا";
   // The hour in progress is the first of today's hours with a modelled level;
   // a window starting there starts now, not at that hour's (past) top.
   const nowHour = forecasts[0]?.hourly.find((point) => typeof point.socPct === "number")?.time;
@@ -36,7 +46,7 @@ export function SurplusRecommendations() {
 
   // Hour by hour for the day the window belongs to: only hours still ahead
   // (they carry a modelled battery level) and with some sun.
-  const detailHours = (forecasts[todayBest ? 0 : 1]?.hourly ?? []).filter(
+  const detailHours = (forecasts[isToday ? 0 : 1]?.hourly ?? []).filter(
     (point) => typeof point.socPct === "number" && point.solarKWh >= 0.05,
   );
   const maxSolar = Math.max(0.1, ...detailHours.map((point) => point.solarKWh));
@@ -57,7 +67,7 @@ export function SurplusRecommendations() {
   return (
     <section dir="rtl" className="energy-card overflow-hidden p-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-black tracking-tight text-slate-950">⚡ أفضل وقت لاستخدام الشمس</h2>
+        <h2 className="text-lg font-black tracking-tight text-slate-950">⚡ أفضل وقت لتشغيل الأجهزة</h2>
         {best && !loading && <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-800">{dayWord}</span>}
       </div>
 
@@ -72,17 +82,21 @@ export function SurplusRecommendations() {
           <div className="mt-3 rounded-2xl bg-gradient-to-br from-amber-50 to-white p-3.5 ring-1 ring-amber-100">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <span className="block text-[11px] font-bold text-slate-500">☀️ النافذة الأفضل</span>
+                <span className="block text-[11px] font-bold text-slate-500">{sunMode ? "☀️ أقوى ساعات الشمس" : "☀️ النافذة الأفضل"}</span>
                 <strong className="mt-0.5 block text-2xl font-black tracking-tight text-amber-700">
-                  {todayBest && best.start === nowHour ? "الآن" : siteClock(best.start)} – {siteClock(best.end, 1)}
+                  {isToday && best.start === nowHour ? "الآن" : siteClock(best.start)} – {siteClock(best.end, 1)}
                 </strong>
               </div>
               <div className="shrink-0 text-left">
-                <span className="block text-[11px] font-bold text-slate-500">فائض قابل للاستخدام</span>
+                <span className="block text-[11px] font-bold text-slate-500">{sunMode ? "شمس تزيد عن حاجة البيت" : "فائض قابل للاستخدام"}</span>
                 <strong className="mt-0.5 block text-lg font-black text-slate-900"><bdi dir="ltr">{Math.round(best.kwh * 10) / 10} kWh</bdi></strong>
               </div>
             </div>
-            {!todayBest && (
+            {sunMode ? (
+              <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-xs font-bold leading-5 text-slate-600">
+                لن تمتلئ البطارية {dayWord}، فما تشغّله في هذه الساعات يأخذ من شحنها. مع ذلك هذا أفضل وقت للأجهزة الكبيرة: تعمل من الشمس بدل البطارية أو الشبكة ليلاً.
+              </p>
+            ) : !todayBest && (
               <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-xs font-bold leading-5 text-slate-500">
                 لا فائض متبقٍ اليوم{todayLeftKWh < 0.3 ? ": ما تبقّى من الشمس يذهب للمنزل وشحن البطارية" : ""}. هذه نافذة الغد.
               </p>
@@ -93,7 +107,7 @@ export function SurplusRecommendations() {
           {recommendations.length > 0 && (
             <div className="mt-3">
               {/* Each chip is checked against the surplus on its own, not added together. */}
-              <h3 className="text-[11px] font-black text-slate-500">💡 يكفي الفائض لتشغيل {recommendations.length > 1 ? "أيٍّ منها" : ""} <span className="font-bold text-slate-400">(تقدير الاستهلاك لكل تشغيلة)</span></h3>
+              <h3 className="text-[11px] font-black text-slate-500">💡 {sunMode ? "تكفي الشمس في هذه الساعات لتشغيل" : "يكفي الفائض لتشغيل"} {recommendations.length > 1 ? "أيٍّ منها" : ""} <span className="font-bold text-slate-400">(تقدير الاستهلاك لكل تشغيلة)</span></h3>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {recommendations.map((item) => (
                   <span key={item.id} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-800 ring-1 ring-emerald-200/70">
@@ -114,24 +128,25 @@ export function SurplusRecommendations() {
                 <div className="grid grid-cols-[4.5rem_1fr_3rem_3rem] items-center gap-x-2 py-2 text-[10px] font-black text-slate-400">
                   <span>الساعة</span>
                   <span>الشمس</span>
-                  <span className="text-center">الفائض</span>
+                  <span className="text-center">{sunMode ? "بعد البيت" : "الفائض"}</span>
                   <span className="text-center">البطارية</span>
                 </div>
                 {detailHours.map((point) => {
                   const inWindow = point.time >= best.start && point.time <= best.end;
+                  const value = point[measure] ?? 0;
                   return (
                     <div key={point.time} className={"grid grid-cols-[4.5rem_1fr_3rem_3rem] items-center gap-x-2 rounded-lg py-1.5 text-[11px] font-bold " + (inWindow ? "bg-amber-50" : "")}>
                       <bdi dir="ltr" className="text-right text-slate-600">{siteClock(point.time)}</bdi>
                       <div className="relative h-2.5 overflow-hidden rounded-full bg-slate-100" title={`الشمس ${Math.round(point.solarKWh * 10) / 10} kWh`}>
                         <div className="absolute inset-y-0 right-0 rounded-full bg-amber-200" style={{ width: `${(point.solarKWh / maxSolar) * 100}%` }} />
-                        <div className="absolute inset-y-0 right-0 rounded-full bg-amber-500" style={{ width: `${(point.surplusKWh / maxSolar) * 100}%` }} />
+                        <div className="absolute inset-y-0 right-0 rounded-full bg-amber-500" style={{ width: `${(value / maxSolar) * 100}%` }} />
                       </div>
-                      <bdi dir="ltr" className={"text-center " + (point.surplusKWh >= 0.05 ? "font-black text-amber-700" : "text-slate-400")}>{point.surplusKWh >= 0.05 ? (Math.round(point.surplusKWh * 10) / 10).toFixed(1) : "—"}</bdi>
+                      <bdi dir="ltr" className={"text-center " + (value >= 0.05 ? "font-black text-amber-700" : "text-slate-400")}>{value >= 0.05 ? (Math.round(value * 10) / 10).toFixed(1) : "—"}</bdi>
                       <bdi dir="ltr" className="text-center text-emerald-700">{Math.round(point.socPct!)}%</bdi>
                     </div>
                   );
                 })}
-                <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">الأرقام بالـ kWh لكل ساعة. في الشريط: الفاتح كل إنتاج الشمس، والغامق الفائض منه، أي ما يبقى بعد المنزل وشحن البطارية. «البطارية» نسبتها في آخر الساعة. الصفوف المظللة هي النافذة الأفضل.</p>
+                <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">الأرقام بالـ kWh لكل ساعة. في الشريط: الفاتح كل إنتاج الشمس، والغامق {sunMode ? "ما يبقى منه بعد حاجة البيت (قبل شحن البطارية)" : "الفائض منه، أي ما يبقى بعد المنزل وشحن البطارية"}. «البطارية» نسبتها في آخر الساعة. الصفوف المظللة هي النافذة الأفضل.</p>
               </div>
             </details>
           )}

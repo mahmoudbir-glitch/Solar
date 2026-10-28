@@ -9,6 +9,8 @@ export type HourlySolarPoint = {
   diffuseRadiationWm2?: number;
   /** Modelled battery level (%) at the end of this hour; absent for hours already past. */
   socPct?: number;
+  /** Sun left after the house's own load, before the battery takes its share (kWh); absent for hours already past. */
+  sunAfterHomeKWh?: number;
 };
 
 export type DayForecast = {
