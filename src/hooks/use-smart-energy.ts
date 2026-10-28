@@ -327,6 +327,7 @@ export function useSmartEnergy() {
           batteryChargeKWh += charge;
           surplusKWh += remaining;
           point.surplusKWh = Math.round(remaining * 100) / 100;
+          point.sunAfterHomeKWh = Math.round(netSolarAfterHome * 100) / 100;
 
           if (pointSolarKWh < homeKWh) {
             const deficitWh = (homeKWh - pointSolarKWh) * 1000;
