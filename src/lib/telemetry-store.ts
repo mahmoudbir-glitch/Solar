@@ -10,6 +10,7 @@ type Sample = {
   loadPowerW: number;
   batteryPowerW: number;
   batterySoc: number;
+  batteryVoltage?: number | null;
   gridPowerW: number | null;
   gridConnected: boolean | null;
   operatingMode?: string | null;
@@ -31,6 +32,27 @@ export function effectiveGridW(sample: Sample) {
   const onMains = /mains|line|grid|bypass|utility/i.test(mode) && !/off.?grid/i.test(mode);
   if (!onMains || sample.gridConnected !== true) return 0;
   return Math.max(0, sample.loadPowerW + sample.batteryPowerW - sample.pvPowerW);
+}
+
+/**
+ * SmartESS sometimes reports 0 % for a few minutes while the battery voltage
+ * has not moved (seen: 74 % at 53.0 V, then 0 % at 53.0 V). A battery that
+ * really runs empty shows its voltage falling, so a jump straight to 0 at the
+ * same voltage is a bad reading: keep the last level instead of storing 0 and
+ * raising a false critical-battery alert.
+ */
+export function correctedBatterySoc(soc: number, voltage: number | null | undefined, previous: Pick<Sample, "batterySoc" | "batteryVoltage"> | null) {
+  if (soc !== 0 || !previous || previous.batterySoc < 10) return soc;
+  if (typeof voltage !== "number" || typeof previous.batteryVoltage !== "number" || voltage <= 0) return soc;
+  return Math.abs(voltage - previous.batteryVoltage) < 1 ? previous.batterySoc : soc;
+}
+
+/** The reading to store, with a bad 0 % battery level replaced (see correctedBatterySoc). */
+function withCorrectedSoc<T extends { batterySoc: number; batteryVoltage?: number | null }>(data: T, previous: Sample | null): T {
+  const batterySoc = correctedBatterySoc(data.batterySoc, data.batteryVoltage, previous);
+  if (batterySoc === data.batterySoc) return data;
+  console.warn(`[telemetry] soc_zero_ignored voltage=${data.batteryVoltage} kept=${batterySoc}`);
+  return { ...data, batterySoc };
 }
 
 export function loadSettings() {
@@ -209,7 +231,7 @@ export async function ingestSample(input: TelemetryInput) {
     ({ latest, row } = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(${INGEST_LOCK_KEY})::text`;
       const previous: Sample | null = await tx.telemetryLog.findFirst({ where: { timestamp: { lt: timestamp } }, orderBy: { timestamp: "desc" } });
-      const created: Sample = await tx.telemetryLog.create({ data });
+      const created: Sample = await tx.telemetryLog.create({ data: withCorrectedSoc(data, previous) });
       await updateDailySummary(tx, timestamp, previous, created, settings);
       return { latest: previous, row: created };
     }, { timeout: 15_000 }));
@@ -220,7 +242,7 @@ export async function ingestSample(input: TelemetryInput) {
     if ((error as { code?: string })?.code === "P2002") throw error;
     console.error("[telemetry] locked_ingest_failed_falling_back", error);
     latest = await prisma.telemetryLog.findFirst({ where: { timestamp: { lt: timestamp } }, orderBy: { timestamp: "desc" } });
-    row = await prisma.telemetryLog.create({ data });
+    row = await prisma.telemetryLog.create({ data: withCorrectedSoc(data, latest) });
   }
 
   try {
