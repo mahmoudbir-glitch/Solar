@@ -63,7 +63,7 @@ const settingsSchema = z.object({
   inverterRatedPowerKw: z.number().finite().positive().nullable().optional(),
   gridPhase: z.enum(["single", "three"]).optional(),
   gridType: z.enum(["on-grid", "off-grid", "hybrid"]).optional(),
-  retentionDays: z.union([z.literal(30), z.literal(90), z.literal(180), z.literal(365), z.literal(0)]).optional(),
+  retentionDays: z.union([z.literal(30), z.literal(60), z.literal(90), z.literal(180), z.literal(365), z.literal(0)]).optional(),
   pollIntervalSec: z.union([z.literal(5), z.literal(10), z.literal(30), z.literal(60)]).optional(),
   lowBatteryPct: z.number().finite().min(5).max(50).optional(),
   criticalBatteryPct: z.number().finite().min(5).max(30).optional(),
