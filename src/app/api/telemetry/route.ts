@@ -13,6 +13,8 @@ export const maxDuration = 60;
 
 // أي قراءة أقدم من هذه المدة تعتبر "قديمة" ولا تُعرض كبيانات حية
 const STALE_AFTER_SEC = 180;
+/** A dashboard poll starts a SmartESS sync only when the newest reading is older than this (the cron has stopped). */
+const DASHBOARD_SYNC_AFTER_MS = 5 * 60_000;
 
 function unauthorized() {
   return NextResponse.json({ error: "telemetry_unauthorized" }, { status: 401 });
@@ -65,13 +67,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
   }
 
-  // Refresh from the SmartESS cloud after responding; it throttles itself.
-  // The callback must return the promise: with "void" the platform did not wait,
-  // froze the function after the response, and every SmartESS request timed out.
-  after(() => syncSmartEss());
-
   try {
     const row = await prisma.telemetryLog.findFirst({ orderBy: { timestamp: "desc" } });
+    // The cron keeps readings current. A dashboard poll (every 15 s while the app
+    // is open) only refreshes from SmartESS once readings have stopped, so an
+    // open app does not double the cron's function runs.
+    // The callback must return the promise: with "void" the platform did not wait,
+    // froze the function after the response, and every SmartESS request timed out.
+    if (!row || Date.now() - row.timestamp.getTime() > DASHBOARD_SYNC_AFTER_MS) after(() => syncSmartEss());
     if (!row) return NextResponse.json({ error: "no_telemetry" }, { status: 404 });
 
     const ageSeconds = Math.max(0, Math.round((Date.now() - row.timestamp.getTime()) / 1000));
