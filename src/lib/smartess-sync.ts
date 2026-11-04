@@ -357,6 +357,9 @@ const RUN_BUDGET_MS = 45_000;
 let inFlightSince = 0;
 
 export async function syncSmartEss(): Promise<SyncResult> {
+  // SMARTESS_SYNC=off stops reading SmartESS from both the cron and the dashboard,
+  // e.g. while another app already stores the same inverter.
+  if (process.env.SMARTESS_SYNC?.trim().toLowerCase() === "off") return { ok: false, skipped: true, reason: "sync_disabled" };
   const now = Date.now();
   // A run cut off by the platform never settles; without this the stale
   // promise would be returned forever and no sync would ever run again.
